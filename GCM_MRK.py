@@ -1,16 +1,17 @@
 import random
 import time
 from deap import base, creator, algorithms, tools
-from RandPartition import RandPartition
-import numpy
+from InpPartition import InpPartition
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import multiprocessing
 import os
+import pairwise_distances
 
-def GCM_MRK(Data, N_size, G, all_in_clusters, population_size = 400, weights = (-1.0, -1.0, -1.0,), tourn_size = 4, 
-         mutation_intensity = 1, mutation_p = 0.1, crossover_p = 0.8, generations = 200, hf_size = 4,
-         DBI = True, BIC = True, AIC = True, seed = int(time.time()), CPUs_number = multiprocessing.cpu_count() - 1):
+def GCM_MRK(Data, N_size, G, all_in_clusters, input = None, sep = ",", population_size = 400, weights = (-1.0, -1.0, -1.0,), 
+            tourn_size = 4, mutation_intensity = 1, mutation_p = 0.1, crossover_p = 0.8, generations = 200, hf_size = 4,
+            DBI = True, BIC = True, AIC = True, seed = int(time.time()), CPUs_number = multiprocessing.cpu_count() - 1):
 
     """
     Executes the main genetic algorithm.
@@ -47,8 +48,11 @@ def GCM_MRK(Data, N_size, G, all_in_clusters, population_size = 400, weights = (
     MAX_GENERATIONS = generations # number of optimization rounds
     HALL_OF_FAME_SIZE = hf_size # number of best-ever-seen individuals preserved in memory
 
+    # Calculated by the algorithm
+    Distance_matrix = pairwise_distances.pairwise_d(Data)
+
     # Initialize an instanceof the RandPartition class:
-    RandIndividual = RandPartition(N_size, G, all_in_clusters)
+    OneIndividual = InpPartition(Data, N_size, G, input = input, sep = sep, all_in_clusters = all_in_clusters)
 
     # Set the random seed:
     random.seed(seed)
@@ -56,16 +60,16 @@ def GCM_MRK(Data, N_size, G, all_in_clusters, population_size = 400, weights = (
     toolbox = base.Toolbox()
 
     # Enabling parallelization of the algorithm:
-    #pool = multiprocessing.Pool(processes=CPUs_number)
-    #toolbox.register("map", pool.map) 
+    # pool = multiprocessing.Pool(processes=CPUs_number)
+    # toolbox.register("map", pool.map) 
 
     # Genetic Algorithm flow:
 
     # Create the fitness function:
     creator.create("FitnessMulti", base.Fitness, weights=weights)
-    creator.create("Individual", RandPartition, fitness=creator.FitnessMulti)
+    creator.create("Individual", InpPartition, fitness=creator.FitnessMulti)
    
-    toolbox.register("Individual_creator", creator.Individual, N_size, G, all_in_clusters=all_in_clusters)
+    toolbox.register("Individual_creator", creator.Individual, Data, N_size, G, input, sep, all_in_clusters)
 
     # Create initial population (generation 0):
     toolbox.register("Population_creator", tools.initRepeat, list, toolbox.Individual_creator)
@@ -81,19 +85,18 @@ def GCM_MRK(Data, N_size, G, all_in_clusters, population_size = 400, weights = (
 
     # Flip-bit mutation:
     # indpb: Independent probability for each attribute to be flipped
-    toolbox.register("mutate", tools.mutShuffleIndexes, indpb=mutation_intensity/RandIndividual.__len__())
-
+    toolbox.register("mutate", tools.mutShuffleIndexes, indpb=mutation_intensity/OneIndividual.__len__())
+    
     # Registering the evaluation function
     def evaluate(individual):
-        return individual.get_values(Data, DBI, BIC, AIC)
-    
+        return individual.get_values(Data, Distance_matrix, DBI, BIC, AIC)
     toolbox.register("evaluate", evaluate)
 
     # prepare the statistics object:
     stats = tools.Statistics(lambda ind: ind.fitness.values)
-    stats.register("min", numpy.min)
-    stats.register("avg", numpy.mean)
-    stats.register("delta", lambda ind: abs(numpy.min(ind) - numpy.mean(ind)))
+    stats.register("min", np.min)
+    stats.register("avg", np.mean)
+    stats.register("delta", lambda ind: abs(np.min(ind) - np.mean(ind)))
 
     # define the hall-of-fame object:
     hof = tools.HallOfFame(HALL_OF_FAME_SIZE)    
@@ -123,6 +126,5 @@ def GCM_MRK(Data, N_size, G, all_in_clusters, population_size = 400, weights = (
     return best
 
 if __name__ == "__main__":
-    GCM_MRK()
-    # Add freeze_support() here 
-    # multiprocessing.freeze_support() 
+
+    GCM_MRK() 

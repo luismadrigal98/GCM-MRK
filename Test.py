@@ -9,7 +9,7 @@ iris = iris.to_numpy()
 print(iris)
 print(iris.shape)
 
-out = GCM_MRK.GCM_MRK(iris[:, :-1], 149, 3, True, population_size=500, tourn_size=2)
+out = GCM_MRK.GCM_MRK(iris[:, :-1], 149, 3, True, population_size=200)
 
 with open(r"C:\Users\usuario\Downloads\results", "w") as file:
     file.write(str(out.items))

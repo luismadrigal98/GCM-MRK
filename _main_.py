@@ -1,5 +1,6 @@
 import argparse
 from .GCM_MRK import GCM_MRK
+import multiprocessing
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Your Package Description")
@@ -12,5 +13,6 @@ def parse_args():
     return parser.parse_args()
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     args = parse_args()
     GCM_MRK(args)

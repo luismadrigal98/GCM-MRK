@@ -7,7 +7,6 @@ input partitions generated from gene-coexpression analysis software, like Clust 
 
 import random
 from davies_bouldin_index import davies_bouldin_index
-import pairwise_distances
 from bic import bic
 from aic import aic
 
@@ -39,17 +38,15 @@ class RandPartition:
         start = 1 if all_in_clusters else 0
         self.items = [random.randint(start, G) for _ in range(element_number)]
 
-    def get_values(self, Data, DBI = True, BIC = True, AIC = True):
+    def get_values(self, Data, Distance_matrix, DBI = True, BIC = True, AIC = True):
         """
         Calculate different internal measurements of cluster quality.
         """
-        
-        Distance_matrix = pairwise_distances.pairwise_d(Data)
 
         internal_indexes = {}
 
         if DBI:
-            internal_indexes["DBI"] = davies_bouldin_index(Distance_matrix, self.items, unassigned_penalty=1.0)
+            internal_indexes["DBI"] = davies_bouldin_index(Data, self.items, unassigned_penalty=1.0)
 
         if BIC:
             internal_indexes["BIC"] = bic(Distance_matrix, self.items, unassigned_penalty=1.0)
