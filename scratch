@@ -1,0 +1,68 @@
+import numpy as np
+import sklearn.metrics
+from consolidate_labels import consolidate_labels
+
+def davies_bouldin_index(data, labels, q = 1, p = 2, unassigned_penalty=1.0):
+    """ Calculate the Davies-Bouldin Index for a given clustering solution.
+
+    Parameters:
+    data (numpy.ndarray): A 2D array where each row is a data point and each column is a feature, shape (n_samples, n_features).
+    labels (numpy.ndarray): The predicted labels for each data point, shape (n_samples,). Unassigned elements are labeled as 0.
+    q (int, optional): The power to which each distance will be raised in the dispersion calculation. Default is 1.
+    p (int, optional): The power to which each distance will be raised in the distance calculation. Default is 2.
+    unassigned_penalty (float, optional): The penalty factor for unassigned elements. Default is 1.0.
+
+    Returns:
+    float: The Davies-Bouldin Index value, lower is better. This is a measure of the average 'similarity' between clusters, where the similarity is a measure that compares the distance between clusters with the size of the clusters themselves.
+    """
+    
+    labels = consolidate_labels(labels)
+
+    n_samples = len(labels)
+
+    if 0 in labels:
+        n_unassigned = len(labels[labels == 0])  # count unassigned elements
+    else:
+        n_unassigned = 0
+    
+    assigned_labels = np.array(labels[labels != 0])  # filter out unassigned elements
+    clusters = len(np.unique(assigned_labels))
+    
+    s_array = np.array([])
+    m_array = np.array([np.array(data[labels == i]).mean(axis = 0) for i in np.unique(assigned_labels)]) # Array of centroids
+
+    for index, i in enumerate(np.unique(assigned_labels)):
+        i_count = len(assigned_labels[assigned_labels == i])
+        s_array[index] = (sum(abs(data[labels == i] - m_array[index])**q)/i_count)**1/q
+
+    db_index = np.mean([max((s_array[i] + s_array[j]) / sklearn.metrics.pairwise_distances(m_array[i].reshape(1, -1), m_array[j].reshape(1, -1))) for j in range(clusters) if i != j for i in range(clusters)])
+
+    # Penalty for unassigned elements
+    if n_unassigned > 0:
+        unassigned_distances = np.mean(sklearn.metrics.pairwise_distances(data[labels == 0]))
+        db_index += unassigned_penalty * (n_unassigned / n_samples) * unassigned_distances
+
+    return db_index
+
+
+
+
+
+### Test framework 1
+
+import davies_bouldin_index
+import numpy as np
+from sklearn.metrics import davies_bouldin_score, pairwise_distances
+import bic
+import os
+import aic
+
+os.environ['LOKY_MAX_CPU_COUNT'] = '3'
+
+Data = np.array([[1, 1], [1, 3], [5, 1], [5,3], [20 , 20], [-20, -20]])
+labels = [1,1,2,2,0,0]
+
+print(davies_bouldin_score(Data, labels))
+print(davies_bouldin_index.davies_bouldin_index(Data, labels=labels))
+print(bic.bic(pairwise_distances(Data), labels))
+print(aic.aic(pairwise_distances(Data), labels))

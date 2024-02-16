@@ -15,26 +15,34 @@ def aic(Distance_matrix, labels, unassigned_penalty=1.0):
     float: The AIC value, lower is better.
     """
     
+    labels = np.array(labels)
+
+    n_samples = len(labels)
+
     # Filter out unassigned elements
-    assigned_labels = labels[labels != 0]
+    filter = labels != 0
+    assigned_labels = labels[filter]
     unassigned_labels = labels[labels == 0]
 
     # Number of clusters
-    n_clusters = len(np.unique(assigned_labels))
+    unique_labels = np.unique(assigned_labels)
 
-    # Fit a Gaussian Mixture Model
-    gmm = GaussianMixture(n_components=n_clusters)
-    gmm.fit(Distance_matrix)
+    total_aic = 0
 
-    # Calculate AIC
-    aic = gmm.aic(Distance_matrix)
+    # Fit a separate GMM and calculate AIC for each cluster
+    for label in unique_labels:
+        cluster_filter = labels == label  # Use 'labels' instead of 'assigned_labels'
+        gmm = GaussianMixture(n_components=1)
+        gmm.fit(Distance_matrix[cluster_filter, :][: , cluster_filter])
+        aic = gmm.aic(Distance_matrix[cluster_filter, :][: , cluster_filter])
+        total_aic += aic
 
-    # Penalty for unassigned elements
-    n_samples = len(labels)
-    n_unassigned = len(unassigned_labels)
-    penalty = unassigned_penalty * (n_unassigned / n_samples)
+    if len(unassigned_labels) > 0:
+        # Penalty for unassigned elements
+        n_unassigned = len(unassigned_labels)
+        penalty = unassigned_penalty * (n_unassigned / n_samples)
 
-    # Add penalty to AIC
-    aic += penalty
+        # Add penalty to AIC
+        total_aic += penalty
 
-    return aic
+    return total_aic

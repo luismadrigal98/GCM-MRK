@@ -1,5 +1,5 @@
 import argparse
-from .GCM-MRK import GCM_MRK
+from .GCM_MRK import GCM_MRK
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Your Package Description")
