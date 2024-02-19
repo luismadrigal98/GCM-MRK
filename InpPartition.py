@@ -5,11 +5,8 @@ other clustering softwares or can be initialized randomly (See class RandPartiti
 
 """
 
-from davies_bouldin_index import davies_bouldin_index
-from bic import bic
-from aic import aic
+from internal_indexes import davies_bouldin_index, bic, aic
 import random
-import numpy as np
 
 class InpPartition:
     """
@@ -21,19 +18,19 @@ class InpPartition:
 
     instance_count = 0  # Class variable to keep track of instances
 
-    def __init__(self, Data, element_number, G = 2, input = None, sep = ",", all_in_clusters = True):
+    def __init__(self, Data, element_number, G_max = 2, input = None, sep = ",", all_in_clusters = True):
         """
         Initializes the instance variables and creates a partition.
 
         Args:
             element_number (int): The number of elements to be clustered.
-            G (int, optional): Defaults to 2. Number of components (clusters).
+            G_max (int, optional): Defaults to 2. Number of components (clusters).
             input (str, optional): Defaults to None. If provided, should be the path to a file where each line represents a partition.
             sep (str, optional): Defaults to ",". The separator used in the input file.
             all_in_clusters (bool, optional): Defaults to True. Unknown parameter, needs clarification.
         """
 
-        self.__init_part(element_number, G, input, sep, all_in_clusters)
+        self.__init_part(element_number, G_max, input, sep, all_in_clusters)
         InpPartition.instance_count += 1  # Increment count when instance is created
 
     def __len__(self):
@@ -46,13 +43,13 @@ class InpPartition:
 
         return len(self.items)
     
-    def __init_part(self, element_number, G, input = None, sep = ",", all_in_clusters = True):
+    def __init_part(self, element_number, G_max, input = None, sep = ",", all_in_clusters = True):
         """
         Creates a partition of elements into clusters. The partition can be created from an input file or randomly.
 
         Args:
             element_number (int): The number of elements to be partitioned.
-            G (int): Number of components (clusters).
+            G_max (int): Number of components (clusters).
             input (str, optional): Defaults to None. If provided, should be the path to a file where each line represents a partition.
             sep (str, optional): Defaults to ",". The separator used in the input file.
             all_in_clusters (bool, optional): Defaults to True. Unknown parameter, needs clarification.
@@ -60,29 +57,23 @@ class InpPartition:
         Returns:
             list: A partition of elements into clusters.
         """
-
-        if input is None:
-            start = 1 if all_in_clusters else 0
-            self.items = [random.randint(start, G) for _ in range(element_number)]
-            partition_from_input = False
-        else:
-            with open(input, "r") as file:
-                try:
-                    for _ in range(InpPartition.instance_count):  # Skip lines already read by previous instances
-                        next(file)
-                except StopIteration:
-                    print("You are creating more instances than the number of lines in the input file. The rest of the partitions will be generated at random")
-                line = file.readline()
-                if not line:  # We've reached the end of the file
-                    partition_from_input = False
-                else:
-                    part = line.replace("\n", "").split(sep)
-                    partition = [elem for elem in part]
+        with open(input, "r") as file:
+            try:
+                for _ in range(InpPartition.instance_count):  # Skip lines already read by previous instances
+                    next(file)
+            except StopIteration:
+                print("You are creating more instances than the number of lines in the input file. The rest of the partitions will be generated at random")
+            line = file.readline()
+            if not line:  # We've reached the end of the file
+                partition_from_input = False
+            else:
+                part = line.replace("\n", "").split(sep)
+                partition = [elem for elem in part]
 
         if not partition_from_input:  # If no partition was read from the file, generate a random
 
             start = 1 if all_in_clusters else 0
-            rand_partition = [random.randint(start, G) for _ in range(element_number)]
+            rand_partition = [random.randint(start, G_max) for _ in range(element_number)]
             partition = rand_partition
 
         if all_in_clusters:

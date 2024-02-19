@@ -2,14 +2,15 @@ import random
 import time
 from deap import base, creator, algorithms, tools
 from InpPartition import InpPartition
+from RandPartition import RandPartition
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import multiprocessing
 import os
-import pairwise_distances
+from utilities import pairwise_d
 
-def GCM_MRK(Data, N_size, G, all_in_clusters, input = None, sep = ",", population_size = 400, weights = (-1.0, -1.0, -1.0,), 
+def GCM_MRK(Data, N_size, G_max, all_in_clusters, input = None, sep = ",", population_size = 400, weights = (-1.0, -1.0, -1.0,), 
             tourn_size = 4, mutation_intensity = 1, mutation_p = 0.1, crossover_p = 0.8, generations = 200, hf_size = 4,
             DBI = True, BIC = True, AIC = True, seed = int(time.time()), CPUs_number = multiprocessing.cpu_count() - 1):
 
@@ -19,7 +20,7 @@ def GCM_MRK(Data, N_size, G, all_in_clusters, input = None, sep = ",", populatio
     Parameters:
     Data: The dataset to be used in the genetic algorithm.
     N_size: The number of genes in an individual.
-    G: The number of clusters.
+    G_max: The number of clusters.
     all_in_clusters: Boolean indicating whether all genes should be assigned to a cluster.
     population_size: The size of the population. Default is 200.
     weights: The weights for the fitness function. Default is (1.0, -1.0, -1.0,).
@@ -51,8 +52,12 @@ def GCM_MRK(Data, N_size, G, all_in_clusters, input = None, sep = ",", populatio
     # Calculated by the algorithm
     Distance_matrix = pairwise_distances.pairwise_d(Data)
 
+    if input is None:
     # Initialize an instanceof the RandPartition class:
-    OneIndividual = InpPartition(Data, N_size, G, input = input, sep = sep, all_in_clusters = all_in_clusters)
+        OneIndividual = RandPartition(Data, N_size, G_max, sep = sep, all_in_clusters = all_in_clusters)
+    else:
+    # Initialize an instanceof the InpPartition class:
+        OneIndividual = InpPartition(Data, N_size, G_max, input = input, sep = sep, all_in_clusters = all_in_clusters)
 
     # Set the random seed:
     random.seed(seed)
@@ -67,9 +72,13 @@ def GCM_MRK(Data, N_size, G, all_in_clusters, input = None, sep = ",", populatio
 
     # Create the fitness function:
     creator.create("FitnessMulti", base.Fitness, weights=weights)
-    creator.create("Individual", InpPartition, fitness=creator.FitnessMulti)
+    
+    if input is None:
+        creator.create("Individual", RandPartition, fitness=creator.FitnessMulti)
+    else:
+        creator.create("Individual", InpPartition, fitness=creator.FitnessMulti) 
    
-    toolbox.register("Individual_creator", creator.Individual, Data, N_size, G, input, sep, all_in_clusters)
+    toolbox.register("Individual_creator", creator.Individual, Data, N_size, G_max, input, sep, all_in_clusters)
 
     # Create initial population (generation 0):
     toolbox.register("Population_creator", tools.initRepeat, list, toolbox.Individual_creator)
