@@ -1,9 +1,9 @@
 from sklearn.mixture import GaussianMixture
 import numpy as np
-from utilities import consolidate_labels
+from utilities import consolidate_labels, handle_singletons
 from sklearn.metrics import davies_bouldin_score, pairwise_distances
 
-def davies_bouldin_index(data, labels, unassigned_penalty=1.0):
+def davies_bouldin_index(data, labels, unassigned_penalty):
     """
     Calculate the Davies-Bouldin Index for a given clustering solution.
 
@@ -18,8 +18,7 @@ def davies_bouldin_index(data, labels, unassigned_penalty=1.0):
     try:
         # Input validation
         assert isinstance(data, np.ndarray), "Data must be a NumPy array"
-        assert np.issubdtype(data, np.number), "Data must contain numeric values"
-    
+
         labels = consolidate_labels(labels)
         labels = np.array(labels)
 
@@ -48,7 +47,7 @@ def davies_bouldin_index(data, labels, unassigned_penalty=1.0):
     except AssertionError as e:
         raise ValueError(f"Invalid input: {e}") from e
 
-def aic(Distance_matrix, labels, m, unassigned_penalty = 10):
+def aic(Distance_matrix, labels, m, unassigned_penalty):
     """Calculate the Akaike Information Criterion (AIC) for a given clustering solution.
 
     The AIC is a metric that evaluates the quality of a clustering solution based on the likelihood of the data given the model and the number of parameters in the model. Lower AIC values indicate better clustering because they represent models that fit the data well and are not too complex. This function also adds a penalty term for unassigned elements, which are data points that are not assigned to any cluster.
@@ -72,7 +71,7 @@ def aic(Distance_matrix, labels, m, unassigned_penalty = 10):
         assert isinstance(Distance_matrix, np.ndarray), "Distance_matrix must be a NumPy array"
         assert Distance_matrix.ndim == 2 and Distance_matrix.shape[0] == Distance_matrix.shape[1], "Distance_matrix must be a square matrix"
         assert np.issubdtype(Distance_matrix.dtype, np.number), "Distance_matrix must contain numeric values"
-    
+
         labels = consolidate_labels(labels)
         labels = np.array(labels)
 
@@ -119,7 +118,7 @@ from sklearn.mixture import GaussianMixture
 import numpy as np
 from utilities import consolidate_labels
 
-def bic(Distance_matrix, labels, m, unassigned_penalty = 10):
+def bic(Distance_matrix, labels, m, unassigned_penalty):
     """
     This function calculates the Bayesian Information Criterion (BIC) for a given distance matrix and labels.
     
@@ -166,7 +165,7 @@ def bic(Distance_matrix, labels, m, unassigned_penalty = 10):
 
         # Fit a separate GMM and calculate BIC for each cluster
         for label in unique_labels:
-            cluster_filter = labels == label  # Use 'labels' instead of 'assigned_labels'
+            cluster_filter = labels == label
             gmm = GaussianMixture(n_components=1)
             gmm.fit(Distance_matrix[cluster_filter, :][: , cluster_filter])
             bic = gmm.bic(Distance_matrix[cluster_filter, :][: , cluster_filter])

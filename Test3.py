@@ -1,11 +1,11 @@
 ### Test framework 1
 
-import davies_bouldin_index
+from utilities import davies_bouldin_index
 import numpy as np
 from sklearn.metrics import davies_bouldin_score, pairwise_distances
-import bic
+from internal_indexes import bic
 import os
-import aic
+from utilities import aic
 
 os.environ['LOKY_MAX_CPU_COUNT'] = '3'
 

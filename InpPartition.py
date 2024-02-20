@@ -18,7 +18,7 @@ class InpPartition:
 
     instance_count = 0  # Class variable to keep track of instances
 
-    def __init__(self, Data, element_number, G_max = 2, input = None, sep = ",", all_in_clusters = True):
+    def __init__(self, element_number, G_max = 2, input = None, sep = ",", m = int(), all_in_clusters = True):
         """
         Initializes the instance variables and creates a partition.
 
@@ -30,7 +30,7 @@ class InpPartition:
             all_in_clusters (bool, optional): Defaults to True. Unknown parameter, needs clarification.
         """
 
-        self.__init_part(element_number, G_max, input, sep, all_in_clusters)
+        self.__init_part(element_number, G_max, input, sep, m, all_in_clusters)
         InpPartition.instance_count += 1  # Increment count when instance is created
 
     def __len__(self):
@@ -43,7 +43,7 @@ class InpPartition:
 
         return len(self.items)
     
-    def __init_part(self, element_number, G_max, input = None, sep = ",", all_in_clusters = True):
+    def __init_part(self, element_number, G_max, all_in_clusters, input = None, sep = ","):
         """
         Creates a partition of elements into clusters. The partition can be created from an input file or randomly.
 
@@ -92,7 +92,7 @@ class InpPartition:
         else:
             self.items = partition
 
-    def get_values(self, Data, Distance_matrix, DBI = True, BIC = True, AIC = True):
+    def get_values(self, Data, Distance_matrix, m, unassigned_penalty, DBI = True, BIC = True, AIC = True):
         """
         Calculates different internal measurements of cluster quality.
 
@@ -109,13 +109,13 @@ class InpPartition:
         internal_indexes = {}
 
         if DBI:
-            internal_indexes["DBI"] = davies_bouldin_index(Data, self.items, unassigned_penalty=1.0)
+            internal_indexes["DBI"] = davies_bouldin_index(Data, self.items, m, unassigned_penalty)
 
         if BIC:
-            internal_indexes["BIC"] = bic(Distance_matrix, self.items, unassigned_penalty=1.0)
+            internal_indexes["BIC"] = bic(Distance_matrix, self.items, m, unassigned_penalty)
 
         if AIC:
-            internal_indexes["AIC"] = aic(Distance_matrix, self.items, unassigned_penalty=1.0)
+            internal_indexes["AIC"] = aic(Distance_matrix, self.items, m, unassigned_penalty)
 
         return tuple(internal_indexes.values())
 

@@ -23,7 +23,7 @@ def pairwise_d(data, metric='euclidean', dis_type = None): ## I can do it using 
     
     assert isinstance(data, np.ndarray), "Data must be a numpy array"
     assert data.ndim == 2, "Data must be a 2D array (n_samples, n_features)"
-    assert np.all(data.shape[1] == data.shape[0]), "All data points must have the same number of features"
+    assert np.all(data.shape[1] == data[0].shape[0]), "All data points must have the same number of features"
 
     if isinstance(metric, str):
         supported_metrics = ['euclidean', 'pearson']
@@ -92,3 +92,21 @@ def consolidate_labels(labels):
         return new_labels
     except:
         raise TypeError("Labels must be integers.")
+    
+def handle_singletons(Distance_matrix, labels, all_in_clusters):
+    """Assigns singletons to the closest cluster if all_in_clusters is True."""
+
+    unique_labels = np.unique(labels)
+    for label in unique_labels:
+        cluster_filter = labels == label
+        if sum(cluster_filter) == 1:
+            if all_in_clusters:
+                # Find the closest cluster
+                distances = Distance_matrix[cluster_filter, :]
+                closest_cluster_index = np.argmin(np.min(distances, axis=1))
+                indices_to_update = np.where(cluster_filter)[0]  # Get actual indices
+                labels[indices_to_update] = labels[closest_cluster_index]  # Assign label
+            else:
+                labels[cluster_filter] = 0
+
+    return labels

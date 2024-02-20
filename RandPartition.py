@@ -9,7 +9,7 @@ class RandPartition:
     like Clust or WGCNA (See class InpPartition).
     """
 
-    def __init__(self, element_number, G_max=2, all_in_clusters=True):
+    def __init__(self, element_number, G_max, m, all_in_clusters=True):
         """
         Initialize the instance variables and create a random partition.
 
@@ -20,7 +20,7 @@ class RandPartition:
         """
 
         self.element_number = element_number
-        self.__init_part(element_number, G_max, all_in_clusters)
+        self.__init_part(element_number, G_max, m, all_in_clusters)
 
     def __len__(self):
         """
@@ -32,7 +32,7 @@ class RandPartition:
 
         return len(self.items)
     
-    def __init_part(self, element_number, G_max, all_in_clusters=True):
+    def __init_part(self, element_number, G_max, m, all_in_clusters):
         """
         Create a random partition of genes into clusters.
 
@@ -45,7 +45,7 @@ class RandPartition:
         start = 1 if all_in_clusters else 0
         self.items = [random.randint(start, G_max) for _ in range(element_number)]
 
-    def get_values(self, Data, Distance_matrix, DBI = True, BIC = True, AIC = True):
+    def get_values(self, Data, Distance_matrix, m, unassigned_penalty, DBI = True, BIC = True, AIC = True):
         """
         Calculate different internal measurements of cluster quality.
 
@@ -63,13 +63,13 @@ class RandPartition:
         internal_indexes = {}
 
         if DBI:
-            internal_indexes["DBI"] = davies_bouldin_index(Data, self.items, unassigned_penalty=1.0)
+            internal_indexes["DBI"] = davies_bouldin_index(Data, self.items, unassigned_penalty)
 
         if BIC:
-            internal_indexes["BIC"] = bic(Distance_matrix, self.items, unassigned_penalty=1.0)
+            internal_indexes["BIC"] = bic(Distance_matrix, self.items, m, unassigned_penalty)
 
         if AIC:
-            internal_indexes["AIC"] = aic(Distance_matrix, self.items, unassigned_penalty=1.0)
+            internal_indexes["AIC"] = aic(Distance_matrix, self.items, m, unassigned_penalty)
 
         return tuple(internal_indexes.values())
 

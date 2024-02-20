@@ -8,9 +8,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import multiprocessing
 import os
-from utilities import pairwise_d
+from utilities import pairwise_d, handle_singletons
 
-def GCM_MRK(Data, N_size, G_max, all_in_clusters, input = None, sep = ",", population_size = 400, weights = (-1.0, -1.0, -1.0,), 
+def GCM_MRK(Data, N_size, G_max, m, all_in_clusters, input = None, sep = ",", population_size = 400, weights = (-1.0, -1.0, -1.0,), 
             tourn_size = 4, mutation_intensity = 1, mutation_p = 0.1, crossover_p = 0.8, generations = 200, hf_size = 4,
             DBI = True, BIC = True, AIC = True, seed = int(time.time()), CPUs_number = multiprocessing.cpu_count() - 1):
 
@@ -50,11 +50,11 @@ def GCM_MRK(Data, N_size, G_max, all_in_clusters, input = None, sep = ",", popul
     HALL_OF_FAME_SIZE = hf_size # number of best-ever-seen individuals preserved in memory
 
     # Calculated by the algorithm
-    Distance_matrix = pairwise_distances.pairwise_d(Data)
+    Distance_matrix = pairwise_d(Data)
 
     if input is None:
     # Initialize an instanceof the RandPartition class:
-        OneIndividual = RandPartition(Data, N_size, G_max, sep = sep, all_in_clusters = all_in_clusters)
+        OneIndividual = RandPartition(N_size, G_max, all_in_clusters)
     else:
     # Initialize an instanceof the InpPartition class:
         OneIndividual = InpPartition(Data, N_size, G_max, input = input, sep = sep, all_in_clusters = all_in_clusters)
@@ -75,10 +75,10 @@ def GCM_MRK(Data, N_size, G_max, all_in_clusters, input = None, sep = ",", popul
     
     if input is None:
         creator.create("Individual", RandPartition, fitness=creator.FitnessMulti)
+        toolbox.register("Individual_creator", creator.Individual, N_size, G_max, all_in_clusters)
     else:
-        creator.create("Individual", InpPartition, fitness=creator.FitnessMulti) 
-   
-    toolbox.register("Individual_creator", creator.Individual, Data, N_size, G_max, input, sep, all_in_clusters)
+        creator.create("Individual", InpPartition, fitness=creator.FitnessMulti)
+        toolbox.register("Individual_creator", creator.Individual, Data, N_size, G_max, input, sep, all_in_clusters)   
 
     # Create initial population (generation 0):
     toolbox.register("Population_creator", tools.initRepeat, list, toolbox.Individual_creator)
@@ -98,6 +98,7 @@ def GCM_MRK(Data, N_size, G_max, all_in_clusters, input = None, sep = ",", popul
     
     # Registering the evaluation function
     def evaluate(individual):
+        individual.items = handle_singletons(Distance_matrix, individual.items, all_in_clusters)
         return individual.get_values(Data, Distance_matrix, DBI, BIC, AIC)
     toolbox.register("evaluate", evaluate)
 
