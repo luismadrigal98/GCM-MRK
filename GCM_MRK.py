@@ -8,35 +8,40 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import multiprocessing
 import os
-from utilities import pairwise_d, handle_singletons
+from utilities import pairwise_d
 
-def GCM_MRK(Data, N_size, G_max, m, all_in_clusters, input = None, sep = ",", population_size = 400, weights = (-1.0, -1.0, -1.0,), 
-            tourn_size = 4, mutation_intensity = 1, mutation_p = 0.1, crossover_p = 0.8, generations = 200, hf_size = 4,
-            DBI = True, BIC = True, AIC = True, seed = int(time.time()), CPUs_number = multiprocessing.cpu_count() - 1):
+def GCM_MRK(Data, N_size, G_max, m, all_in_clusters, input = None, sep = ",", population_size = 400, weights = (-1.0, -1.0, -1.0, 1.0), 
+            num_selected_ind = None, num_reference_points = 4, Scales = 0.25, nd = 'log', mutation_intensity = 1, mutation_p = 0.1, 
+            crossover_p = 0.8, generations = 200, DBI = True, BIC = True, AIC = True, SI = True, unassigned_penalty = 1, seed = int(time.time()), 
+            CPUs_number = multiprocessing.cpu_count() - 1):
 
     """
-    Executes the main genetic algorithm.
-
-    Parameters:
-    Data: The dataset to be used in the genetic algorithm.
-    N_size: The number of genes in an individual.
-    G_max: The number of clusters.
-    all_in_clusters: Boolean indicating whether all genes should be assigned to a cluster.
-    population_size: The size of the population. Default is 200.
-    weights: The weights for the fitness function. Default is (1.0, -1.0, -1.0,).
-    tourn_size: The tournament size for selection. Default is 4.
-    mutation_intensity: The intensity of mutation. Default is 1.
-    mutation_p: The probability of mutation. Default is 0.1.
-    crossover_p: The probability of crossover. Default is 0.8.
-    generations: The number of generations for the genetic algorithm. Default is 100.
-    hf_size: The size of the hall of fame. Default is 10.
-    DBI: Boolean indicating whether to calculate the Davies-Bouldin Index. Default is True.
-    BIC: Boolean indicating whether to calculate the Bayesian Information Criterion. Default is True.
-    AIC: Boolean indicating whether to calculate the Akaike Information Criterion. Default is True.
-    seed: The seed for the random number generator. Default is the current time.
-
+    Executes a multiobjective genetic algorithm for gene expression data clustering.
+    
+    Args:
+        Data (np.ndarray): The gene expression dataset 
+        N_size (int): Number of genes 
+        G_max (int): Max number of clusters
+        all_in_clusters (bool): Whether all genes should be assigned to a cluster
+        input (list): Initial partition of data, if provided
+        population_size (int): Size of the GA population 
+        weights (tuple): Weights for DBI, BIC, AIC in fitness  
+        num_selected_ind (int): Number of individuals selected each generation
+        num_reference_points (int): Number of reference points for NSGA-III
+        nd (str): Neighbor degree for NSGA-III selection 
+        mutation_intensity (float): Probability of gene mutation
+        mutation_p (float): Probability of individual mutation
+        crossover_p (float): Probability of crossover  
+        generations (int): Number of generations to run GA   
+        DBI (bool): Whether to use DBI in fitness  
+        BIC (bool): Whether to use BIC in fitness
+        AIC (bool): Whether to use AIC in fitness
+        seed (int): Random number generator seed
+        CPUs_number (int): Number of CPU cores to use
+        
     Returns:
-    None
+        pop (list): Final population of partitions
+        logbook (deap.tools.Logbook): Log of GA execution  
     """
 
     os.environ['LOKY_MAX_CPU_COUNT'] = f'{CPUs_number}'
@@ -47,7 +52,12 @@ def GCM_MRK(Data, N_size, G_max, m, all_in_clusters, input = None, sep = ",", po
     P_CROSSOVER = crossover_p  # probability for crossover
     P_MUTATION = mutation_p   # probability for mutating an individual
     MAX_GENERATIONS = generations # number of optimization rounds
-    HALL_OF_FAME_SIZE = hf_size # number of best-ever-seen individuals preserved in memory
+    if num_selected_ind is None: 
+        K = 0.25 * POPULATION_SIZE 
+    else: 
+        K = num_selected_ind
+    N_OBJ = DBI + BIC + AIC + SI
+    P = num_reference_points
 
     # Calculated by the algorithm
     Distance_matrix = pairwise_d(Data)
@@ -68,10 +78,14 @@ def GCM_MRK(Data, N_size, G_max, m, all_in_clusters, input = None, sep = ",", po
     # pool = multiprocessing.Pool(processes=CPUs_number)
     # toolbox.register("map", pool.map) 
 
-    # Genetic Algorithm flow:
+    # Create, combine and removed duplicates
+    ref_points = [tools.uniform_reference_points(N_OBJ, P, Scales) for p, s in zip([P, P * Scales], [1, Scales])]
+    ref_points = np.concatenate(ref_points, axis=0)
+    _, uniques = np.unique(ref_points, axis=0, return_index=True)
+    ref_points = ref_points[uniques]
 
     # Create the fitness function:
-    creator.create("FitnessMulti", base.Fitness, weights=weights)
+    creator.create("FitnessMulti", base.Fitness, weights = weights)
     
     if input is None:
         creator.create("Individual", RandPartition, fitness=creator.FitnessMulti)
@@ -87,54 +101,78 @@ def GCM_MRK(Data, N_size, G_max, m, all_in_clusters, input = None, sep = ",", po
     # genetic operators:
 
     # Tournament selection with tournament size of 3:
-    toolbox.register("select", tools.selTournament, tournsize=tourn_size)
+    toolbox.register("select", tools.selNSGA3)
 
-    # Single-point crossover:
+    # Two-points crossover:
     toolbox.register("mate", tools.cxTwoPoint)
 
-    # Flip-bit mutation:
+    # ShuffleIndexes mutation:
     # indpb: Independent probability for each attribute to be flipped
     toolbox.register("mutate", tools.mutShuffleIndexes, indpb=mutation_intensity/OneIndividual.__len__())
     
     # Registering the evaluation function
     def evaluate(individual):
-        individual.items = handle_singletons(Distance_matrix, individual.items, all_in_clusters)
-        return individual.get_values(Data, Distance_matrix, DBI, BIC, AIC)
+        return individual.get_values(Data, Distance_matrix, m, all_in_clusters, unassigned_penalty, DBI, BIC, 
+                                     AIC, SI)
     toolbox.register("evaluate", evaluate)
 
     # prepare the statistics object:
     stats = tools.Statistics(lambda ind: ind.fitness.values)
-    stats.register("min", np.min)
-    stats.register("avg", np.mean)
-    stats.register("delta", lambda ind: abs(np.min(ind) - np.mean(ind)))
-
-    # define the hall-of-fame object:
-    hof = tools.HallOfFame(HALL_OF_FAME_SIZE)    
+    stats.register("avg", np.mean, axis=0)
+    stats.register("std", np.std, axis=0)
+    stats.register("min", np.min, axis=0)
+    stats.register("max", np.max, axis=0)
+    stats.register("range", lambda ind: abs(np.max(ind) - np.min(ind)))    
 
     # perform the Genetic Algorithm flow with hof feature added:
-    population, logbook = algorithms.eaSimple(population, toolbox, cxpb=P_CROSSOVER, mutpb=P_MUTATION,
-                                              ngen=MAX_GENERATIONS, halloffame=hof, stats=stats, verbose=True)
+    logbook = tools.Logbook()
+    logbook.header = "gen", "evals", "std", "min", "avg", "max", "range"
 
-    # print best solution found:
-    best = hof.items[0]  
+    # Evaluate the individuals with an invalid fitness
+    invalid_ind = [ind for ind in population if not ind.fitness.valid]
+    fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
+    for ind, fit in zip(invalid_ind, fitnesses):
+        ind.fitness.values = fit
 
-    print("-- Best Ever Individual = ", best[0])  
-    print("-- Best Ever Fitness = ", best.fitness.values)
+    # Compile statistics about the population
+    record = stats.compile(population)
+    logbook.record(gen = 0, evals = len(invalid_ind), **record)
+    print(logbook.stream)
+
+    # Genetic Algorithm flow:
+    # Begin the generational process
+    for gen in range(1, MAX_GENERATIONS + 1):
+        offspring = algorithms.varAnd(population, toolbox, P_CROSSOVER, P_MUTATION)
+
+        # Evaluate the individuals with an invalid fitness
+        invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
+        fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
+        for ind, fit in zip(invalid_ind, fitnesses):
+            ind.fitness.values = fit
+
+        # Select the next generation population from parents and offspring
+        population = toolbox.select(population + offspring, POPULATION_SIZE, ref_points, nd)
+
+        # Compile statistics about the new population
+        record = stats.compile(population)
+        logbook.record(gen = gen, evals = len(invalid_ind), **record)
+        print(logbook.stream)
 
     # extract statistics:
-    minFitnessValues, meanFitnessValues = logbook.select("min", "avg")
+    minFitnessValues, meanFitnessValues, maxFitnessValues = logbook.select("min", "avg", "max")
 
     # plot statistics:
     sns.set_style("whitegrid")
-    plt.plot(minFitnessValues, color='red')
-    plt.plot(meanFitnessValues, color='green')
-    plt.xlabel('Generation')
-    plt.ylabel('Min / Average Fitness')
-    plt.title('Min and Average fitness over Generations')
+    plt.plot(minFitnessValues, color = 'red')
+    plt.plot(meanFitnessValues, color = 'green')
+    plt.plot(maxFitnessValues, color = 'blue')
+    plt.xlabel('Generations')
+    plt.ylabel('Min / Max / Average Fitness')
+    plt.title('Min, Max, and Average fitness over Generations')
     plt.show()
 
-    return best
+    return population, logbook
 
 if __name__ == "__main__":
 
-    GCM_MRK() 
+    GCM_MRK()

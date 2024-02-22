@@ -1,7 +1,7 @@
 from sklearn.mixture import GaussianMixture
 import numpy as np
 from utilities import consolidate_labels, handle_singletons
-from sklearn.metrics import davies_bouldin_score, pairwise_distances
+from sklearn.metrics import davies_bouldin_score, pairwise_distances, silhouette_score
 
 def davies_bouldin_index(data, labels, unassigned_penalty):
     """
@@ -113,10 +113,6 @@ def aic(Distance_matrix, labels, m, unassigned_penalty):
     
     except AssertionError as e:
         raise ValueError(f"Invalid input: {e}") from e
-    
-from sklearn.mixture import GaussianMixture
-import numpy as np
-from utilities import consolidate_labels
 
 def bic(Distance_matrix, labels, m, unassigned_penalty):
     """
@@ -184,6 +180,69 @@ def bic(Distance_matrix, labels, m, unassigned_penalty):
             total_bic += unassigned_penalty * total_penalty
 
         return total_bic
+    
+    except AssertionError as e:
+        raise ValueError(f"Invalid input: {e}") from e
+    
+def silhouette_index(Distance_matrix, labels, m, unassigned_penalty):
+    """
+    Calculate the Silhouette Index for a given clustering solution.
+
+    The Silhouette Index is a metric that measures the quality of a clustering solution. It is based on the similarity of data points within the same cluster and the dissimilarity with data points in other clusters. A higher Silhouette Index value indicates a better clustering solution, as it represents clusters that are compact and well-separated. This function also includes a penalty term for unassigned elements, which are data points that are not assigned to any cluster.
+
+    Parameters:
+        Distance_matrix (numpy.ndarray): A 2D array where the entry at [i][j] is the distance between points i and j. It should be of shape (n_samples, n_samples).
+        labels (numpy.ndarray): The predicted labels for each data point. It should be of shape (n_samples,). Unassigned elements are labeled as 0.
+        m (int): The number of features that were used to compute the distance matrix.
+        unassigned_penalty (float, optional): The penalty factor for unassigned elements. Default is 1.0.
+
+    Returns:
+        float: The Silhouette Index value. A higher value is better.
+
+    Raises:
+        ValueError: If Distance_matrix is not a square matrix or contains non-numeric values.
+        TypeError: If labels are not an array-like object or contain non-integer values.
+        ValueError: If all labels are unassigned (0).
+    """
+    try:
+        # Input validation
+        assert isinstance(Distance_matrix, np.ndarray), "Distance_matrix must be a NumPy array"
+        assert Distance_matrix.ndim == 2 and Distance_matrix.shape[0] == Distance_matrix.shape[1], "Distance_matrix must be a square matrix"
+        assert np.issubdtype(Distance_matrix.dtype, np.number), "Distance_matrix must contain numeric values"
+
+        labels = np.array(labels)
+        assert np.issubdtype(labels.dtype, np.integer), "Labels must be integers"
+
+        n_samples = len(labels)
+
+        # Filter out unassigned elements
+        filter = labels != 0
+        assigned_labels = labels[filter]
+        unassigned_labels = labels[labels == 0]
+
+        # Number of clusters
+        unique_labels = np.unique(assigned_labels)
+
+        total_silhouette = 0
+
+        silhouette = silhouette_score(Distance_matrix[filter, :][: , filter], assigned_labels, 
+                                      metric = "precomputed")
+
+        if len(unassigned_labels) > 0:
+            # Penalty based on average distance to nearest cluster
+            average_distance = np.mean(np.min(Distance_matrix[unassigned_labels], axis=1))
+            max_distance = np.max(Distance_matrix)  # Normalize by maximum distance
+            distance_penalty = average_distance / max_distance * unassigned_penalty
+
+            # Data-driven penalty (adjust constants as needed)
+            data_driven_penalty = len(unassigned_labels) * np.log(n_samples) / (n_samples * m)
+
+            total_penalty = distance_penalty + data_driven_penalty
+            silhouette -= unassigned_penalty * total_penalty
+            if silhouette < -1:
+                silhouette = -1
+
+        return silhouette
     
     except AssertionError as e:
         raise ValueError(f"Invalid input: {e}") from e

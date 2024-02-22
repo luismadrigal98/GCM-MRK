@@ -5,8 +5,9 @@ other clustering softwares or can be initialized randomly (See class RandPartiti
 
 """
 
-from internal_indexes import davies_bouldin_index, bic, aic
+from internal_indexes import davies_bouldin_index, bic, aic, silhouette_index
 import random
+from utilities import handle_singletons
 
 class InpPartition:
     """
@@ -73,7 +74,8 @@ class InpPartition:
         if not partition_from_input:  # If no partition was read from the file, generate a random
 
             start = 1 if all_in_clusters else 0
-            rand_partition = [random.randint(start, G_max) for _ in range(element_number)]
+            end = random.randint(start + 1, G_max) if all_in_clusters else random.randint(start + 2, G_max)
+            rand_partition = [random.randint(start, end) for _ in range(element_number)]
             partition = rand_partition
 
         if all_in_clusters:
@@ -92,7 +94,8 @@ class InpPartition:
         else:
             self.items = partition
 
-    def get_values(self, Data, Distance_matrix, m, unassigned_penalty, DBI = True, BIC = True, AIC = True):
+    def get_values(self, Data, Distance_matrix, m, unassigned_penalty, all_in_clusters, DBI, BIC, 
+                   AIC, SI):
         """
         Calculates different internal measurements of cluster quality.
 
@@ -107,6 +110,7 @@ class InpPartition:
         """
 
         internal_indexes = {}
+        handle_singletons(Distance_matrix, self.items, all_in_clusters)
 
         if DBI:
             internal_indexes["DBI"] = davies_bouldin_index(Data, self.items, m, unassigned_penalty)
@@ -117,6 +121,9 @@ class InpPartition:
         if AIC:
             internal_indexes["AIC"] = aic(Distance_matrix, self.items, m, unassigned_penalty)
 
+        if SI:
+            internal_indexes["SI"] = silhouette_index(Distance_matrix, self.items, m, unassigned_penalty)
+        
         return tuple(internal_indexes.values())
 
     def __getitem__(self, index):

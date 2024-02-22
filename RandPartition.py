@@ -1,5 +1,6 @@
 import random
-from internal_indexes import davies_bouldin_index, bic, aic
+from internal_indexes import davies_bouldin_index, bic, aic, silhouette_index
+from utilities import handle_singletons
 
 class RandPartition:
     """
@@ -43,9 +44,10 @@ class RandPartition:
         """
 
         start = 1 if all_in_clusters else 0
-        self.items = [random.randint(start, G_max) for _ in range(element_number)]
+        end = random.randint(start + 1, G_max) if all_in_clusters else random.randint(start + 2, G_max)
+        self.items = [random.randint(start, end) for _ in range(element_number)]
 
-    def get_values(self, Data, Distance_matrix, m, unassigned_penalty, DBI = True, BIC = True, AIC = True):
+    def get_values(self, Data, Distance_matrix, m, all_in_clusters, unassigned_penalty, DBI, BIC, AIC, SI):
         """
         Calculate different internal measurements of cluster quality.
 
@@ -62,6 +64,8 @@ class RandPartition:
 
         internal_indexes = {}
 
+        handle_singletons(Distance_matrix, self.items, all_in_clusters)
+
         if DBI:
             internal_indexes["DBI"] = davies_bouldin_index(Data, self.items, unassigned_penalty)
 
@@ -70,6 +74,9 @@ class RandPartition:
 
         if AIC:
             internal_indexes["AIC"] = aic(Distance_matrix, self.items, m, unassigned_penalty)
+        
+        if SI:
+            internal_indexes["SI"] = silhouette_index(Distance_matrix, self.items, m, unassigned_penalty)
 
         return tuple(internal_indexes.values())
 
@@ -98,4 +105,5 @@ class RandPartition:
         self.items[index] = value
 
 if __name__ == "__main__":
-    rand_partition = RandPartition(10, 5)
+    rand_partition = RandPartition(10, 5, 10)
+    print(rand_partition.items)

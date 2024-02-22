@@ -105,8 +105,6 @@ def handle_singletons(Distance_matrix, labels, all_in_clusters):
                 distances = Distance_matrix[cluster_filter, :]
                 closest_cluster_index = np.argmin(np.min(distances, axis=1))
                 indices_to_update = np.where(cluster_filter)[0]  # Get actual indices
-                labels[indices_to_update] = labels[closest_cluster_index]  # Assign label
+                labels[indices_to_update[0]] = labels[closest_cluster_index]  # Assign label
             else:
                 labels[cluster_filter] = 0
-
-    return labels
