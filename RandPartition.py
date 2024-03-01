@@ -47,7 +47,7 @@ class RandPartition:
         end = random.randint(start + 1, G_max) if all_in_clusters else random.randint(start + 2, G_max)
         self.items = [random.randint(start, end) for _ in range(element_number)]
 
-    def get_values(self, Data, Distance_matrix, m, all_in_clusters, unassigned_penalty, DBI, BIC, AIC, SI):
+    def get_values(self, Data, Distance_matrix, m, unassigned_penalty, DBI, BIC, AIC, SI):
         """
         Calculate different internal measurements of cluster quality.
 
@@ -63,8 +63,6 @@ class RandPartition:
         """
 
         internal_indexes = {}
-
-        handle_singletons(Distance_matrix, self.items, all_in_clusters)
 
         if DBI:
             internal_indexes["DBI"] = davies_bouldin_index(Data, self.items, unassigned_penalty)

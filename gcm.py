@@ -10,20 +10,24 @@ def parse_args():
     parser.add_argument('--Data', required=True, help='The dataset to be used in the genetic algorithm. The dataset msut be formatted as follows: elements that are going to be clustered in the rows (samples) and features in the columns. it is also possible to read the data from a file, as long as the file is a csv or tab delimited file with the mentioned structure')
     parser.add_argument('--N_size', type=int, required=True, help='The number of genes in an individual.')
     parser.add_argument('--G_max', type=int, required=True, help='The number of clusters.')
+    parser.add_argument('--m', type=int, required=True, help='Number of features in the data.')
     parser.add_argument('--all_in_clusters', type=bool, default=True, help='Boolean indicating whether all genes should be assigned to a cluster.')
     parser.add_argument('--input', default=None, help='String that represent the direction of the input for the InpPartition class. Input file must be formatted as follows: csv or tab delimited txt file, with a vector of assignation to clusters per line')
     parser.add_argument('--sep', default=",", help='Separator for the input data.')
-    parser.add_argument('--population_size', type=int, default=400, help='The size of the population.')
-    parser.add_argument('--weights', type=tuple, default=(-1.0, -1.0, -1.0,), help='The weights for the fitness function.')
-    parser.add_argument('--tourn_size', type=int, default=4, help='The tournament size for selection.')
+    parser.add_argument('--population_size', type=int, required = False, default=400, help='The size of the population.')
+    parser.add_argument('--weights', type=tuple, required=False, default=(-1.0, -1.0, -1.0, 1.0), help='The weights for the fitness function.')
+    parser.add_argument('--num_reference_points', type=int, required=False, help='The number of reference points used for searchign the Pareto front')
+    parser.add_argument('--Scales', type=int, required=False, default=1, help='The scale applied for the reduction in the reference point number. This is useful when working with highly dimensional data. Default is set to one, which mean no reduction in the reference point number.')
+    parser.add_argument('--nd', type=str, required=False, help='Specify the non-dominated algorithm to use: ‘standard’ or ‘log’.')
     parser.add_argument('--mutation_intensity', type=int, default=1, help='The intensity of mutation.')
     parser.add_argument('--mutation_p', type=float, default=0.1, help='The probability of mutation.')
     parser.add_argument('--crossover_p', type=float, default=0.8, help='The probability of crossover.')
     parser.add_argument('--generations', type=int, default=200, help='The number of generations for the genetic algorithm.')
-    parser.add_argument('--hf_size', type=int, default=4, help='The size of the hall of fame.')
     parser.add_argument('--DBI', type=bool, default=True, help='Boolean indicating whether to calculate the Davies-Bouldin Index.')
     parser.add_argument('--BIC', type=bool, default=True, help='Boolean indicating whether to calculate the Bayesian Information Criterion.')
     parser.add_argument('--AIC', type=bool, default=True, help='Boolean indicating whether to calculate the Akaike Information Criterion.')
+    parser.add_argument('--SI', type=bool, required=True, help='Boolean indicating whether to calculate the Silhouette score.')
+    parser.add_argument('--unassigned_penalty', type=int, default=1, required=False, help='The magnitude of the penalization for unassigned elements. The higher value, the stronger the penalization')
     parser.add_argument('--seed', type=int, default=int(time.time()), help='The seed for the random number generator.')
     parser.add_argument('--CPUs_number', type=int, default=multiprocessing.cpu_count() - 1, help='The number of CPUs to use.')
     return parser.parse_args()
@@ -31,6 +35,6 @@ def parse_args():
 if __name__ == "__main__":
     multiprocessing.freeze_support()
     args = parse_args()
-    GCM_MRK(args.Data, args.N_size, args.G_max, args.all_in_clusters, args.input, args.sep, args.population_size, args.weights, 
-            args.tourn_size, args.mutation_intensity, args.mutation, args.crossover_p, args.generations, args.hf_size,
-            args.DBI, args.BIC, args.AIC, args.seed, args.CPUs_number)
+    GCM_MRK(args.Data, args.N_size, args.G_max, args.m, args.all_in_clusters, args.input, args.sep, args.population_size, args.weights, 
+            args.num_reference_points, args.Scales, args.nd, args.mutation_intensity, args.mutation, args.crossover_p, args.generations,
+            args.DBI, args.BIC, args.AIC, args.SI, args.unassigned_penalty, args.seed, args.CPUs_number)

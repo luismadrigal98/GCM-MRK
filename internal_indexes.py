@@ -162,7 +162,7 @@ def bic(Distance_matrix, labels, m, unassigned_penalty):
         # Fit a separate GMM and calculate BIC for each cluster
         for label in unique_labels:
             cluster_filter = labels == label
-            gmm = GaussianMixture(n_components=1)
+            gmm = GaussianMixture(n_components = 1)
             gmm.fit(Distance_matrix[cluster_filter, :][: , cluster_filter])
             bic = gmm.bic(Distance_matrix[cluster_filter, :][: , cluster_filter])
             total_bic += bic

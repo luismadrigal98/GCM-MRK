@@ -94,7 +94,7 @@ class InpPartition:
         else:
             self.items = partition
 
-    def get_values(self, Data, Distance_matrix, m, unassigned_penalty, all_in_clusters, DBI, BIC, 
+    def get_values(self, Data, Distance_matrix, m, unassigned_penalty, DBI, BIC, 
                    AIC, SI):
         """
         Calculates different internal measurements of cluster quality.
@@ -110,7 +110,6 @@ class InpPartition:
         """
 
         internal_indexes = {}
-        handle_singletons(Distance_matrix, self.items, all_in_clusters)
 
         if DBI:
             internal_indexes["DBI"] = davies_bouldin_index(Data, self.items, m, unassigned_penalty)

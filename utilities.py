@@ -96,15 +96,94 @@ def consolidate_labels(labels):
 def handle_singletons(Distance_matrix, labels, all_in_clusters):
     """Assigns singletons to the closest cluster if all_in_clusters is True."""
 
+    labels = np.array(labels)
+
     unique_labels = np.unique(labels)
     for label in unique_labels:
         cluster_filter = labels == label
+        opossite_filter = ~ cluster_filter
         if sum(cluster_filter) == 1:
             if all_in_clusters:
                 # Find the closest cluster
                 distances = Distance_matrix[cluster_filter, :]
-                closest_cluster_index = np.argmin(np.min(distances, axis=1))
-                indices_to_update = np.where(cluster_filter)[0]  # Get actual indices
-                labels[indices_to_update[0]] = labels[closest_cluster_index]  # Assign label
+                distances = distances[distances > 0]
+                labels_singleton_out = labels[opossite_filter]
+                closest_cluster_index = np.argmin(distances)
+                indices_to_update = np.where(cluster_filter)  # Get actual indices
+                labels[indices_to_update[0]] = labels_singleton_out[closest_cluster_index]  # Assign label
             else:
                 labels[cluster_filter] = 0
+
+    return labels.tolist()
+
+def write_results_to_file(out, log, file_path):
+    """
+    Writes the results of the GCM_MRK function to a text file.
+
+    Args:
+        out (dict): The output of the GCM_MRK function. It's a dictionary containing 
+                    'Partitions' and 'Fitness' as keys.
+        log (deap.tools.Logbook): The logbook that contains the statistics of the 
+                                  generations.
+        file_path (str): The path to the file where the results should be written.
+
+    Returns:
+        None
+    """    
+    with open(file_path, "w") as file:
+        file.write("****************************************************\n")
+        file.write("Final partitions\n")
+        file.write("____________________________________________________\n")
+        file.write('\n')
+        for lst in out["Partitions"]:
+            file.write(f'{lst}\n')
+        file.write('\n')
+        file.write("****************************************************\n")
+        file.write("Fitness values\n")
+        file.write("____________________________________________________\n")
+        file.write('\n')
+        for lst in out["Fitness"]:
+            file.write(f'{lst}\n')
+        file.write('\n')
+        file.write("****************************************************\n")
+        file.write("Log\n")
+        file.write("____________________________________________________\n")
+        file.write('\n')
+        for lst in log:
+            file.write(f'{lst}\n')
+
+def normalize_data(data):
+    """Normalizes the data to have zero mean and unit variance.
+
+    Args:
+        data (numpy.ndarray): The data to be normalized, shape (n_samples, n_features).
+
+    Returns:
+        numpy.ndarray: The normalized data, shape (n_samples, n_features).
+    """
+    assert isinstance(data, np.ndarray), "Data must be a numpy array"
+    assert data.ndim == 2, "Data must be a 2D array (n_samples, n_features)"
+
+    mean = np.mean(data, axis=0)
+    std = np.std(data, axis=0)
+
+    return (data - mean) / std
+
+def range_per_index(individuals):
+    """
+    Calculate the range (max - min) for each index across a list of individual fitness values.
+
+    Args:
+        individuals (list): A list of individuals, where each individual is a tuple of values.
+
+    Returns:
+        list: A list of ranges, one for each index in the individuals' tuples.
+
+    Example:
+        >>> range_per_index([(1, 2, 3), (4, 5, 6), (7, 8, 9)])
+        [6, 6, 6]
+    """
+    # Transpose the list of individuals to group values by index
+    values_by_index = list(zip(*individuals))
+    # Calculate the range for each index
+    return [np.max(values) - np.min(values) for values in values_by_index]
