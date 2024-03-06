@@ -1,6 +1,7 @@
 import sklearn.metrics
 import numpy as np
 import math as m
+from scipy.stats import entropy
 
 def pairwise_d(data, metric='euclidean', dis_type = None): ## I can do it using chunks
     """Calculates the pairwise distances between data points using a given metric.
@@ -97,12 +98,16 @@ def handle_singletons(Distance_matrix, labels, all_in_clusters):
     """Assigns singletons to the closest cluster if all_in_clusters is True."""
 
     labels = np.array(labels)
+    labels_are_new = False
 
     unique_labels = np.unique(labels)
     for label in unique_labels:
         cluster_filter = labels == label
         opossite_filter = ~ cluster_filter
         if sum(cluster_filter) == 1:
+            
+            labels_are_new = True
+            
             if all_in_clusters:
                 # Find the closest cluster
                 distances = Distance_matrix[cluster_filter, :]
@@ -114,7 +119,7 @@ def handle_singletons(Distance_matrix, labels, all_in_clusters):
             else:
                 labels[cluster_filter] = 0
 
-    return labels.tolist()
+    return labels_are_new, labels.tolist()
 
 def write_results_to_file(out, log, file_path):
     """
@@ -187,3 +192,24 @@ def range_per_index(individuals):
     values_by_index = list(zip(*individuals))
     # Calculate the range for each index
     return [np.max(values) - np.min(values) for values in values_by_index]
+
+def population_entropy(population):
+    """
+    Calculate the entropy of a population in a genetic algorithm.
+
+    This function calculates the entropy based on the frequency of each label (cluster assignment) in the population.
+    A higher entropy indicates a more diverse population.
+
+    Parameters:
+    population (list): A list of individuals in the population. Each individual is an object with an 'items' attribute 
+                       that is a list of integers representing cluster assignments.
+
+    Returns:
+    float: The entropy of the population.
+    """
+    # Flatten the population to get a list of all labels
+    all_labels = [label for individual in population for label in individual.items]
+    # Calculate the frequency of each label
+    label_freqs = np.bincount(all_labels)
+    # Calculate and return the entropy
+    return entropy(label_freqs)

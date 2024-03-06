@@ -1,3 +1,0 @@
-Review the creation of the random individuals, maybe your first approach was better.
-Work over the management of single clusters, the current implementation does not seem to be right.
-Correct the order of the indexes in the graphical output.

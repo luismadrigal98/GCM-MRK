@@ -8,12 +8,12 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import multiprocessing
 import os
-from utilities import pairwise_d, handle_singletons, write_results_to_file, normalize_data, range_per_index
+from utilities import pairwise_d, handle_singletons, write_results_to_file, normalize_data, range_per_index, population_entropy
 
-def GCM_MRK(Data, N_size, G_max, m, all_in_clusters, input = None, output = None, sep = ",", population_size = 400, weights = (-1.0, -1.0, -1.0, 1.0), 
+def GCM_MRK(Data, N_size, G_max, m, all_in_clusters, input = None, output = None, sep = ",", population_size = 400, weights = (-1.0, -1.0, -1.0, 1.0, 1.0), 
             num_reference_points = 4, Scales = None, nd = 'log', mutation_intensity = 1, mutation_p = 0.1, 
-            crossover_p = 0.8, generations = 200, DBI = True, BIC = True, AIC = True, SI = True, unassigned_penalty = 1, seed = int(time.time()), 
-            CPUs_number = multiprocessing.cpu_count() - 1, plot_results = True, normalize = True):
+            crossover_p = 0.8, generations = 200, DBI = True, BIC = True, AIC = True, SI = True, CHI = True, early_stop = 20,
+            unassigned_penalty = 1, seed = int(time.time()), CPUs_number = multiprocessing.cpu_count() - 1, plot_results = True, normalize = True):
 
     """
     Executes a multiobjective genetic algorithm for gene expression data clustering.
@@ -37,6 +37,9 @@ def GCM_MRK(Data, N_size, G_max, m, all_in_clusters, input = None, output = None
         DBI (bool): Whether to use DBI in fitness  
         BIC (bool): Whether to use BIC in fitness
         AIC (bool): Whether to use AIC in fitness
+        SI (bool): Whether to use the SI index in fitness
+        CHI (bool): Whether to use the CHI index in fitness
+        early_stop (int): Number of generations with no improvement before stopping
         seed (int): Random number generator seed
         CPUs_number (int): Number of CPU cores to use
         
@@ -62,10 +65,10 @@ def GCM_MRK(Data, N_size, G_max, m, all_in_clusters, input = None, output = None
     ## Defining constants
     # Genetic Algorithm constants:
     POPULATION_SIZE = population_size
-    P_CROSSOVER = crossover_p  # probability for crossover
-    P_MUTATION = mutation_p   # probability for mutating an individual
-    MAX_GENERATIONS = generations # number of optimization rounds
-    N_OBJ = DBI + BIC + AIC + SI
+    P_CROSSOVER = crossover_p  # Probability for crossover
+    P_MUTATION = mutation_p   # Probability for mutating an individual
+    MAX_GENERATIONS = generations # Number of optimization rounds
+    N_OBJ = DBI + BIC + AIC + SI + CHI  # Number of objectives
     P = num_reference_points
 
     # Normalize the data
@@ -103,7 +106,7 @@ def GCM_MRK(Data, N_size, G_max, m, all_in_clusters, input = None, output = None
 
     # Create the fitness function:
     w = []
-    for index, weight in zip([DBI, AIC, BIC, SI], weights):
+    for index, weight in zip([DBI, AIC, BIC, SI, CHI], weights):
         if index:
             w.append(weight)
     w = tuple(w)
@@ -116,10 +119,6 @@ def GCM_MRK(Data, N_size, G_max, m, all_in_clusters, input = None, output = None
     else:
         creator.create("Individual", InpPartition, fitness=creator.FitnessMulti)
         toolbox.register("Individual_creator", creator.Individual, Data, N_size, G_max, input, sep, all_in_clusters)   
-
-    # Create initial population (generation 0):
-    toolbox.register("Population_creator", tools.initRepeat, list, toolbox.Individual_creator)
-    population = toolbox.Population_creator(n = POPULATION_SIZE)
 
     # Genetic operators:
 
@@ -135,18 +134,8 @@ def GCM_MRK(Data, N_size, G_max, m, all_in_clusters, input = None, output = None
     
     # Registering the evaluation function
     def evaluate(individual):
-        try:
-            return individual.get_values(Data, Distance_matrix, m, unassigned_penalty, DBI, BIC, AIC, SI)
-        except ValueError as e:
-            print("Error evaluating individual:", individual)
-            print("Exception:", e)
-            print("A new individual will be created at random.")
-            # Replace the individual with a new one generated at random
-            new_individual = toolbox.Individual_creator()
-            new_individual.items = list(handle_singletons(Distance_matrix, new_individual.items, all_in_clusters))
-            individual.items[:] = new_individual.items[:]
-            return toolbox.evaluate(individual)
-    
+        return individual.get_values(Data, Distance_matrix, m, unassigned_penalty, DBI, BIC, AIC, SI, CHI)
+        
     toolbox.register("evaluate", evaluate)
 
     # prepare the statistics object:
@@ -156,21 +145,36 @@ def GCM_MRK(Data, N_size, G_max, m, all_in_clusters, input = None, output = None
     stats.register("min", np.min, axis=0)
     stats.register("max", np.max, axis=0)
     stats.register("range", range_per_index)
+    stats.register("entropy", population_entropy)
 
     # GA flow:
     logbook = tools.Logbook()
-    logbook.header = "gen", "evals", "std", "min", "avg", "max", "range"
+    logbook.header = "gen", "evals", "std", "min", "avg", "max", "range", "entropy"
 
-    # Evaluate the individuals with an invalid fitness
+    # Create initial population (generation 0):
+    toolbox.register("Population_creator", tools.initRepeat, list, toolbox.Individual_creator)
+    population = toolbox.Population_creator(n = POPULATION_SIZE)
     
-    # Handling the singletons in the first generation
+    # Handling the singletons in the initial generation
     for ind in population:
-        ind.items = list(handle_singletons(Distance_matrix, ind.items, all_in_clusters))
+            labels_are_new, new_labels = handle_singletons(Distance_matrix, ind.items, all_in_clusters)
+            if labels_are_new:
+                ind.items = list(new_labels)
+
+    # Handling the presence of only one cluster in the first generation
+    for ind in population:
+        if len(set(ind.items)) == 1:
+            while len(set(ind.items)) == 1:
+                ind.items = RandPartition(N_size, G_max, all_in_clusters).items
 
     invalid_ind = [ind for ind in population if not ind.fitness.valid]
     fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
     for ind, fit in zip(invalid_ind, fitnesses):
         ind.fitness.values = fit
+
+    #TEMP
+    for ind in population:
+        print(ind.items)
 
     # Compile statistics about the population
     record = stats.compile(population)
@@ -179,14 +183,24 @@ def GCM_MRK(Data, N_size, G_max, m, all_in_clusters, input = None, output = None
 
     # Genetic Algorithm flow:
     # Begin the generational process
+
+    best_range = float('inf')
+    stagnant_generations = 0
+    stagnation_limit = early_stop  # number of generations with no improvement before stopping
+
     for gen in range(1, MAX_GENERATIONS + 1):
         offspring = algorithms.varAnd(population, toolbox, P_CROSSOVER, P_MUTATION)
 
         for progeny in offspring:
-            progeny.items = list(handle_singletons(Distance_matrix, progeny.items, all_in_clusters))
+            labels_are_new, new_labels = handle_singletons(Distance_matrix, progeny.items, all_in_clusters)
+            if labels_are_new:
+                progeny.items = list(new_labels)
 
-        for ind in population:
-            ind.items = list(handle_singletons(Distance_matrix, ind.items, all_in_clusters))
+        # Handling the presence of only one cluster in the offspring
+        for progeny in offspring:
+            if len(set(progeny.items)) == 1:
+                while len(set(progeny.items)) == 1:
+                    progeny.items = RandPartition(N_size, G_max, all_in_clusters).items
         
         # Evaluate the individuals with an invalid fitness
         invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
@@ -202,6 +216,18 @@ def GCM_MRK(Data, N_size, G_max, m, all_in_clusters, input = None, output = None
         logbook.record(gen = gen, evals = len(invalid_ind), **record)
         print(logbook.stream)
 
+        # Check for early stopping
+        current_range = max(ind.fitness.values[0] for ind in population) - min(ind.fitness.values[0] for ind in population)
+        if current_range < best_range:
+            best_range = current_range
+            stagnant_generations = 0
+        else:
+            stagnant_generations += 1
+
+        if stagnant_generations >= stagnation_limit:
+            print(f"Stopping early at generation {gen} due to lack of improvement.")
+            break
+
     # extract statistics:
     minFitnessValues, meanFitnessValues, maxFitnessValues = logbook.select("min", "avg", "max")
 
@@ -210,7 +236,7 @@ def GCM_MRK(Data, N_size, G_max, m, all_in_clusters, input = None, output = None
         sns.set_style("whitegrid")
 
         # List of fitness indexes
-        fitness_indexes = (np.array(['DBI', 'BIC', 'AIC', 'SI'])[DBI, BIC, AIC, SI]).flatten()
+        fitness_indexes = (np.array(['DBI', 'BIC', 'AIC', 'SI', 'CHI'])[DBI, BIC, AIC, SI, CHI]).flatten()
         print(fitness_indexes)
 
         _, axs = plt.subplots(len(minFitnessValues[0]), figsize=(10, 6*len(minFitnessValues[0])))

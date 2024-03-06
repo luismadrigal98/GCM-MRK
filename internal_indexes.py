@@ -192,7 +192,7 @@ def silhouette_index(Distance_matrix, labels, m, unassigned_penalty):
 
     Parameters:
         Distance_matrix (numpy.ndarray): A 2D array where the entry at [i][j] is the distance between points i and j. It should be of shape (n_samples, n_samples).
-        labels (numpy.ndarray): The predicted labels for each data point. It should be of shape (n_samples,). Unassigned elements are labeled as 0.
+        labels (list or numpy.ndarray): The predicted labels for each data point. It should be of shape (n_samples,). Unassigned elements are labeled as 0.
         m (int): The number of features that were used to compute the distance matrix.
         unassigned_penalty (float, optional): The penalty factor for unassigned elements. Default is 1.0.
 
@@ -244,5 +244,53 @@ def silhouette_index(Distance_matrix, labels, m, unassigned_penalty):
 
         return silhouette
     
+    except AssertionError as e:
+        raise ValueError(f"Invalid input: {e}") from e
+    
+from sklearn.metrics import calinski_harabasz_score
+
+def calinski_harabasz_index(data, labels, m, unassigned_penalty):
+    """
+    Calculate the Calinski-Harabasz Index for a given clustering solution.
+
+    Parameters:
+        data (numpy.ndarray): A 2D array where each row is a data point and each column is a feature, shape (n_samples, n_features).
+        labels (list or numpy.ndarray): The predicted labels for each data point, shape (n_samples,).
+        m (int): The number of features that were used to compute the distance matrix.
+        unassigned_penalty (float, optional): The penalty factor for unassigned elements. Default is 1.0.
+
+    Returns:
+        float: The Calinski-Harabasz Index value, higher is better. This is a measure of the dispersion between and within clusters.
+    """
+    try:
+        # Input validation
+        assert isinstance(data, np.ndarray), "Data must be a NumPy array"
+        labels = np.array(labels)
+        assert np.issubdtype(labels.dtype, np.integer), "Labels must be integers"
+
+        n_samples = len(labels)
+
+        # Filter out unassigned elements
+        filter = labels != 0
+        assigned_labels = labels[filter]
+        unassigned_labels = labels[labels == 0]
+
+        ch_index = calinski_harabasz_score(data[filter], assigned_labels)
+
+        if len(unassigned_labels) > 0:
+            # Penalty based on average distance to nearest cluster
+            average_distance = np.mean(np.min(data[unassigned_labels], axis=1))
+            max_distance = np.max(data)  # Normalize by maximum distance
+            distance_penalty = average_distance / max_distance * unassigned_penalty
+
+            # Data-driven penalty (adjust constants as needed)
+            data_driven_penalty = len(unassigned_labels) * np.log(n_samples) / (n_samples * m)
+
+            total_penalty = distance_penalty + data_driven_penalty
+            ch_index -= unassigned_penalty * total_penalty
+            if ch_index < 0:
+                ch_index = 0
+
+        return ch_index
     except AssertionError as e:
         raise ValueError(f"Invalid input: {e}") from e

@@ -1,5 +1,5 @@
 import random
-from internal_indexes import davies_bouldin_index, bic, aic, silhouette_index
+from internal_indexes import davies_bouldin_index, bic, aic, silhouette_index, calinski_harabasz_index
 from utilities import handle_singletons
 
 class RandPartition:
@@ -47,7 +47,7 @@ class RandPartition:
         end = random.randint(start + 1, G_max) if all_in_clusters else random.randint(start + 2, G_max)
         self.items = [random.randint(start, end) for _ in range(element_number)]
 
-    def get_values(self, Data, Distance_matrix, m, unassigned_penalty, DBI, BIC, AIC, SI):
+    def get_values(self, Data, Distance_matrix, m, unassigned_penalty, DBI, BIC, AIC, SI, CHI):
         """
         Calculate different internal measurements of cluster quality.
 
@@ -57,6 +57,7 @@ class RandPartition:
             DBI (bool): If True, calculate the Davies-Bouldin index. Default is True.
             BIC (bool): If True, calculate the Bayesian Information Criterion. Default is True.
             AIC (bool): If True, calculate the Akaike Information Criterion. Default is True.
+            CHI (bool): If True, calculate the Calinski-Harabasz Index. Default is True.
 
         Returns:
             tuple: A tuple containing the calculated internal measurements of cluster quality.
@@ -75,6 +76,9 @@ class RandPartition:
         
         if SI:
             internal_indexes["SI"] = silhouette_index(Distance_matrix, self.items, m, unassigned_penalty)
+
+        if CHI:
+            internal_indexes["CHI"] = calinski_harabasz_index(Data, self.items, m, unassigned_penalty)
 
         return tuple(internal_indexes.values())
 
@@ -99,7 +103,6 @@ class RandPartition:
             value (int): The value to set the item to.
         """
 
-        self.items[index] = value
         self.items[index] = value
 
 if __name__ == "__main__":
