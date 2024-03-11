@@ -193,12 +193,12 @@ def range_per_index(individuals):
     # Calculate the range for each index
     return [np.max(values) - np.min(values) for values in values_by_index]
 
-def population_entropy(population):
+def population_entropy(individuals):
     """
     Calculate the entropy of a population in a genetic algorithm.
 
     This function calculates the entropy based on the frequency of each label (cluster assignment) in the population.
-    A higher entropy indicates a more diverse population.
+    A higher entropy indicates a more divercse population.
 
     Parameters:
     population (list): A list of individuals in the population. Each individual is an object with an 'items' attribute 
@@ -208,7 +208,7 @@ def population_entropy(population):
     float: The entropy of the population.
     """
     # Flatten the population to get a list of all labels
-    all_labels = [label for individual in population for label in individual.items]
+    all_labels = [label for individual in individuals for label in individual.items]
     # Calculate the frequency of each label
     label_freqs = np.bincount(all_labels)
     # Calculate and return the entropy

@@ -2,7 +2,7 @@
 
 from internal_indexes import davies_bouldin_index
 import numpy as np
-from sklearn.metrics import davies_bouldin_score, pairwise_distances
+from sklearn.metrics import pairwise_distances
 from internal_indexes import bic
 import os
 from internal_indexes import aic
@@ -15,6 +15,6 @@ labels = [1,1,2,2,0,0]
 
 Distance_matrix = pairwise_distances(Data)
 
-print(davies_bouldin_index.davies_bouldin_index(Data, labels=labels))
-print(bic.bic(pairwise_distances(Data), labels))
-print(aic.aic(pairwise_distances(Data), labels))
+print(davies_bouldin_index(Data, labels=labels, unassigned_penalty=1))
+print(bic(pairwise_distances(Data), labels, m = 2, unassigned_penalty=1))
+print(aic(pairwise_distances(Data), labels, m = 2, unassigned_penalty=1))

@@ -8,7 +8,7 @@ iris = iris.to_numpy()
 print(iris)
 print(iris.shape)
 
-out, log = GCM_MRK.GCM_MRK(iris[:, :-1].astype(float), 149, 8, 4, True, population_size = 1000, generations=100, num_reference_points=10, mutation_p=0.8, mutation_intensity=80, crossover_p=0.8)
+out, log = GCM_MRK.GCM_MRK(iris[:, :-1].astype(float), 149, 20, True, population_size = 200, generations=200, num_reference_points=6, mutation_p=0.5, mutation_intensity=20, crossover_p=0.8, seed=42, CPUs_number=3, DBI=True, BIC=True, AIC=True, SI=True, unassigned_penalty=1, nd='standard', normalize=False)
 
 def new_func(out, log):
     """

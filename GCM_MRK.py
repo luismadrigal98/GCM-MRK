@@ -10,9 +10,9 @@ import multiprocessing
 import os
 from utilities import pairwise_d, handle_singletons, write_results_to_file, normalize_data, range_per_index, population_entropy
 
-def GCM_MRK(Data, N_size, G_max, m, all_in_clusters, input = None, output = None, sep = ",", population_size = 400, weights = (-1.0, -1.0, -1.0, 1.0, 1.0), 
-            num_reference_points = 4, Scales = None, nd = 'log', mutation_intensity = 1, mutation_p = 0.1, 
-            crossover_p = 0.8, generations = 200, DBI = True, BIC = True, AIC = True, SI = True, CHI = True, early_stop = 20,
+def GCM_MRK(Data, N_size, G_max, m, all_in_clusters = True, input = None, output = None, sep = ",", population_size = 400, weights = (-1.0, -1.0, -1.0, 1.0, 1.0), 
+            num_reference_points = 4, Scales = None, nd = 'standard', mutation_intensity = 1, mutation_p = 1.0, 
+            crossover_p = 1.0, generations = 200, DBI = True, BIC = True, AIC = True, SI = True, CHI = True, early_stop = 20,
             unassigned_penalty = 1, seed = int(time.time()), CPUs_number = multiprocessing.cpu_count() - 1, plot_results = True, normalize = True):
 
     """
@@ -138,6 +138,10 @@ def GCM_MRK(Data, N_size, G_max, m, all_in_clusters, input = None, output = None
         
     toolbox.register("evaluate", evaluate)
 
+    # Create initial population (generation 0):
+    toolbox.register("Population_creator", tools.initRepeat, list, toolbox.Individual_creator)
+    population = toolbox.Population_creator(n = POPULATION_SIZE)
+
     # prepare the statistics object:
     stats = tools.Statistics(lambda ind: ind.fitness.values)
     stats.register("avg", np.mean, axis=0)
@@ -145,15 +149,10 @@ def GCM_MRK(Data, N_size, G_max, m, all_in_clusters, input = None, output = None
     stats.register("min", np.min, axis=0)
     stats.register("max", np.max, axis=0)
     stats.register("range", range_per_index)
-    stats.register("entropy", population_entropy)
 
     # GA flow:
     logbook = tools.Logbook()
-    logbook.header = "gen", "evals", "std", "min", "avg", "max", "range", "entropy"
-
-    # Create initial population (generation 0):
-    toolbox.register("Population_creator", tools.initRepeat, list, toolbox.Individual_creator)
-    population = toolbox.Population_creator(n = POPULATION_SIZE)
+    logbook.header = "gen", "evals", "std", "min", "avg", "max", "range"
     
     # Handling the singletons in the initial generation
     for ind in population:
@@ -236,7 +235,7 @@ def GCM_MRK(Data, N_size, G_max, m, all_in_clusters, input = None, output = None
         sns.set_style("whitegrid")
 
         # List of fitness indexes
-        fitness_indexes = (np.array(['DBI', 'BIC', 'AIC', 'SI', 'CHI'])[DBI, BIC, AIC, SI, CHI]).flatten()
+        fitness_indexes = np.array(['DBI', 'BIC', 'AIC', 'SI', 'CHI'])[np.array([DBI, BIC, AIC, SI, CHI])]
         print(fitness_indexes)
 
         _, axs = plt.subplots(len(minFitnessValues[0]), figsize=(10, 6*len(minFitnessValues[0])))

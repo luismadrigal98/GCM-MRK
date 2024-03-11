@@ -1,6 +1,6 @@
 from sklearn.mixture import GaussianMixture
 import numpy as np
-from utilities import consolidate_labels, handle_singletons
+from utilities import consolidate_labels
 from sklearn.metrics import davies_bouldin_score, pairwise_distances, silhouette_score
 
 def davies_bouldin_index(data, labels, unassigned_penalty):

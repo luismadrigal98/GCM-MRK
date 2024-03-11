@@ -1,6 +1,5 @@
 import random
 from internal_indexes import davies_bouldin_index, bic, aic, silhouette_index, calinski_harabasz_index
-from utilities import handle_singletons
 
 class RandPartition:
     """
@@ -10,7 +9,7 @@ class RandPartition:
     like Clust or WGCNA (See class InpPartition).
     """
 
-    def __init__(self, element_number, G_max, m, all_in_clusters=True):
+    def __init__(self, element_number, G_max, all_in_clusters):
         """
         Initialize the instance variables and create a random partition.
 
@@ -20,8 +19,15 @@ class RandPartition:
             all_in_clusters (bool): If True, all elements are assigned to a cluster. If False, some elements may not be assigned. Default is True.
         """
 
+        if not isinstance(element_number, int) or element_number <= 0:
+            raise ValueError("Element_number must be a positive integer")
+        if not isinstance(G_max, int) or G_max <= 0:
+            raise ValueError("G_max must be a positive integer")
+        if not isinstance(all_in_clusters, bool):
+            raise ValueError("All_in_clusters must be a boolean")
+
         self.element_number = element_number
-        self.__init_part(element_number, G_max, m, all_in_clusters)
+        self.__init_part(element_number, G_max, all_in_clusters)
 
     def __len__(self):
         """
@@ -33,7 +39,7 @@ class RandPartition:
 
         return len(self.items)
     
-    def __init_part(self, element_number, G_max, m, all_in_clusters):
+    def __init_part(self, element_number, G_max, all_in_clusters):
         """
         Create a random partition of genes into clusters.
 
@@ -62,23 +68,24 @@ class RandPartition:
         Returns:
             tuple: A tuple containing the calculated internal measurements of cluster quality.
         """
-
+        
         internal_indexes = {}
+        labels = self.items[:]
 
         if DBI:
-            internal_indexes["DBI"] = davies_bouldin_index(Data, self.items, unassigned_penalty)
+            internal_indexes["DBI"] = davies_bouldin_index(Data, labels, unassigned_penalty)
 
         if BIC:
-            internal_indexes["BIC"] = bic(Distance_matrix, self.items, m, unassigned_penalty)
+            internal_indexes["BIC"] = bic(Distance_matrix, labels, m, unassigned_penalty)
 
         if AIC:
-            internal_indexes["AIC"] = aic(Distance_matrix, self.items, m, unassigned_penalty)
+            internal_indexes["AIC"] = aic(Distance_matrix, labels, m, unassigned_penalty)
         
         if SI:
-            internal_indexes["SI"] = silhouette_index(Distance_matrix, self.items, m, unassigned_penalty)
+            internal_indexes["SI"] = silhouette_index(Distance_matrix, labels, m, unassigned_penalty)
 
         if CHI:
-            internal_indexes["CHI"] = calinski_harabasz_index(Data, self.items, m, unassigned_penalty)
+            internal_indexes["CHI"] = calinski_harabasz_index(Data, labels, m, unassigned_penalty)
 
         return tuple(internal_indexes.values())
 

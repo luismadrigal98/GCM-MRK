@@ -5,9 +5,8 @@ other clustering softwares or can be initialized randomly (See class RandPartiti
 
 """
 
-from internal_indexes import davies_bouldin_index, bic, aic, silhouette_index
+from internal_indexes import davies_bouldin_index, bic, aic, silhouette_index, calinski_harabasz_index
 import random
-from utilities import handle_singletons
 
 class InpPartition:
     """
@@ -19,19 +18,30 @@ class InpPartition:
 
     instance_count = 0  # Class variable to keep track of instances
 
-    def __init__(self, element_number, G_max = 2, input = None, sep = ",", m = int(), all_in_clusters = True):
+    def __init__(self, element_number, G_max, all_in_clusters, input = None, sep = ","):
         """
         Initializes the instance variables and creates a partition.
 
         Args:
             element_number (int): The number of elements to be clustered.
-            G_max (int, optional): Defaults to 2. Number of components (clusters).
+            G_max (int, optional): Number of components (clusters).
             input (str, optional): Defaults to None. If provided, should be the path to a file where each line represents a partition.
             sep (str, optional): Defaults to ",". The separator used in the input file.
             all_in_clusters (bool, optional): Defaults to True. Unknown parameter, needs clarification.
         """
 
-        self.__init_part(element_number, G_max, input, sep, m, all_in_clusters)
+        if not isinstance(element_number, int) or element_number <= 0:
+            raise ValueError("Element_number must be a positive integer")
+        if not isinstance(G_max, int) or G_max <= 0:
+            raise ValueError("G_max must be a positive integer")
+        if input is not None and not isinstance(input, str):
+            raise ValueError("input_file must be a string")
+        if not isinstance(sep, str):
+            raise ValueError("sep must be a string")
+        if not isinstance(all_in_clusters, bool):
+            raise ValueError("All_in_clusters must be a boolean")
+
+        self.__init_part(element_number, G_max, all_in_clusters, input, sep)
         InpPartition.instance_count += 1  # Increment count when instance is created
 
     def __len__(self):
@@ -44,7 +54,7 @@ class InpPartition:
 
         return len(self.items)
     
-    def __init_part(self, element_number, G_max, all_in_clusters, input = None, sep = ","):
+    def __init_part(self, element_number, G_max, all_in_clusters, input = None, sep = ",", ):
         """
         Creates a partition of elements into clusters. The partition can be created from an input file or randomly.
 
@@ -58,18 +68,21 @@ class InpPartition:
         Returns:
             list: A partition of elements into clusters.
         """
-        with open(input, "r") as file:
-            try:
-                for _ in range(InpPartition.instance_count):  # Skip lines already read by previous instances
-                    next(file)
-            except StopIteration:
-                print("You are creating more instances than the number of lines in the input file. The rest of the partitions will be generated at random")
-            line = file.readline()
-            if not line:  # We've reached the end of the file
-                partition_from_input = False
-            else:
-                part = line.replace("\n", "").split(sep)
-                partition = [elem for elem in part]
+        if input is not None:
+            with open(input, "r") as file:
+                try:
+                    for _ in range(InpPartition.instance_count):  # Skip lines already read by previous instances
+                        next(file)
+                except StopIteration:
+                    print("You are creating more instances than the number of lines in the input file. The rest of the partitions will be generated at random")
+                line = file.readline()
+                if not line:  # We've reached the end of the file
+                    partition_from_input = False
+                else:
+                    part = line.replace("\n", "").split(sep)
+                    partition = [elem for elem in part]
+        else:
+            partition_from_input = False
 
         if not partition_from_input:  # If no partition was read from the file, generate a random
 
@@ -95,7 +108,7 @@ class InpPartition:
             self.items = partition
 
     def get_values(self, Data, Distance_matrix, m, unassigned_penalty, DBI, BIC, 
-                   AIC, SI):
+                   AIC, SI, CHI):
         """
         Calculates different internal measurements of cluster quality.
 
@@ -110,19 +123,23 @@ class InpPartition:
         """
 
         internal_indexes = {}
+        labels = self.items[:]
 
         if DBI:
-            internal_indexes["DBI"] = davies_bouldin_index(Data, self.items, m, unassigned_penalty)
+            internal_indexes["DBI"] = davies_bouldin_index(Data, labels, unassigned_penalty)
 
         if BIC:
-            internal_indexes["BIC"] = bic(Distance_matrix, self.items, m, unassigned_penalty)
+            internal_indexes["BIC"] = bic(Distance_matrix, labels, m, unassigned_penalty)
 
         if AIC:
-            internal_indexes["AIC"] = aic(Distance_matrix, self.items, m, unassigned_penalty)
-
-        if SI:
-            internal_indexes["SI"] = silhouette_index(Distance_matrix, self.items, m, unassigned_penalty)
+            internal_indexes["AIC"] = aic(Distance_matrix, labels, m, unassigned_penalty)
         
+        if SI:
+            internal_indexes["SI"] = silhouette_index(Distance_matrix, labels, m, unassigned_penalty)
+
+        if CHI:
+            internal_indexes["CHI"] = calinski_harabasz_index(Data, labels, m, unassigned_penalty)
+
         return tuple(internal_indexes.values())
 
     def __getitem__(self, index):
@@ -151,3 +168,4 @@ class InpPartition:
 
 if __name__ == "__main__":
     inp_partition = InpPartition(10, 5)
+    print(inp_partition.items)
