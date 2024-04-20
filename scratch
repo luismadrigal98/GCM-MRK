@@ -66,3 +66,31 @@ print(davies_bouldin_score(Data, labels))
 print(davies_bouldin_index.davies_bouldin_index(Data, labels=labels))
 print(bic.bic(pairwise_distances(Data), labels))
 print(aic.aic(pairwise_distances(Data), labels))
+
+
+
+
+
+    # Handling the singletons in the initial generation
+    for ind in population:
+            labels_are_new, new_labels = handle_singletons(Distance_matrix, ind.items, all_in_clusters)
+            if labels_are_new:
+                ind.items = list(new_labels)
+
+    # Handling the presence of only one cluster in the first generation
+    for ind in population:
+        if len(set(ind.items)) == 1:
+            while len(set(ind.items)) == 1:
+                ind.items = RandPartition(N_size, G_max, all_in_clusters).items
+
+
+    for progeny in offspring:
+            labels_are_new, new_labels = handle_singletons(Distance_matrix, progeny.items, all_in_clusters)
+            if labels_are_new:
+                progeny.items = list(new_labels)
+
+        # Handling the presence of only one cluster in the offspring
+        for progeny in offspring:
+            if len(set(progeny.items)) == 1:
+                while len(set(progeny.items)) == 1:
+                    progeny.items = RandPartition(N_size, G_max, all_in_clusters).items

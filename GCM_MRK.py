@@ -8,82 +8,111 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import multiprocessing
 import os
-from utilities import pairwise_d, handle_singletons, write_results_to_file, normalize_data, range_per_index, population_entropy
+from utilities import normalize_data, write_results_to_file, Pearson_correlation
+import operator
 
-def GCM_MRK(Data, N_size, G_max, m, all_in_clusters = True, input = None, output = None, sep = ",", population_size = 400, weights = (-1.0, -1.0, -1.0, 1.0, 1.0), 
-            num_reference_points = 4, Scales = None, nd = 'standard', mutation_intensity = 1, mutation_p = 1.0, 
-            crossover_p = 1.0, generations = 200, DBI = True, BIC = True, AIC = True, SI = True, CHI = True, early_stop = 20,
-            unassigned_penalty = 1, seed = int(time.time()), CPUs_number = multiprocessing.cpu_count() - 1, plot_results = True, normalize = True):
+def eaSimpleWithElitism(population, toolbox, cxpb, mutpb, ngen, stats=None,
+             halloffame=None, verbose=__debug__):
+    """This algorithm is similar to DEAP eaSimple() algorithm, with the modification that
+    halloffame is used to implement an elitism mechanism. The individuals contained in the
+    halloffame are directly injected into the next generation and are not subject to the
+    genetic operators of selection, crossover and mutation.
+    """
+    logbook = tools.Logbook()
+    logbook.header = ['gen', 'nevals'] + (stats.fields if stats else [])
+
+    # Evaluate the individuals with an invalid fitness
+    invalid_ind = [ind for ind in population if not ind.fitness.valid]
+    fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
+    for ind, fit in zip(invalid_ind, fitnesses):
+        ind.fitness.values = fit
+
+    if halloffame is None:
+        raise ValueError("halloffame parameter must not be empty!")
+
+    halloffame.update(population)
+    hof_size = len(halloffame.items) if halloffame else 0
+
+    record = stats.compile(population) if stats else {}
+    logbook.record(gen=0, nevals=len(invalid_ind), **record)
+    if verbose:
+        print(logbook.stream)
+
+    # Begin the generational process
+    for gen in range(1, ngen + 1):
+
+        # Select the next generation individuals
+        offspring = toolbox.select(population, len(population) - hof_size)
+
+        # Vary the pool of individuals
+        offspring = algorithms.varAnd(offspring, toolbox, cxpb, mutpb)
+
+        # Evaluate the individuals with an invalid fitness
+        invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
+        fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
+        for ind, fit in zip(invalid_ind, fitnesses):
+            ind.fitness.values = fit
+
+        # Update the hall of fame with the generated individuals
+        if halloffame is not None:
+            halloffame.update(offspring)
+
+        # Replace the current population by the offspring
+        population[:len(offspring)] = offspring
+        population[len(offspring):] = halloffame.items
+
+        # Append the current generation statistics to the logbook
+        record = stats.compile(population) if stats else {}
+        logbook.record(gen=gen, nevals=len(invalid_ind), **record)
+        if verbose:
+            print(logbook.stream)
+
+    return population, logbook
+
+def GCM_MRK(Data, N_size, G_max, all_in_clusters, input = None, sep = ",", population_size = 400, weights = (1.0,), 
+            tourn_size = 4, mutation_intensity = 150, mutation_p = 0.1, crossover_p = 0.8, generations = 200, hf_size = 10,
+            normalize = True, Log_Likelihood = True, BIC = False, AIC = False, seed = int(time.time()), CPUs_number = multiprocessing.cpu_count() - 1):
 
     """
-    Executes a multiobjective genetic algorithm for gene expression data clustering.
-    
-    Args:
-        Data (np.ndarray): The gene expression dataset 
-        N_size (int): Number of genes 
-        G_max (int): Max number of clusters
-        all_in_clusters (bool): Whether all genes should be assigned to a cluster
-        input (list): Initial partition of data, if provided
-        output (str): Path to the file where the results should be written
-        population_size (int): Size of the GA population 
-        weights (tuple): Weights for DBI, BIC, AIC in fitness  
-        num_selected_ind (int): Number of individuals selected each generation
-        num_reference_points (int): Number of reference points for NSGA-III
-        nd (str): Neighbor degree for NSGA-III selection 
-        mutation_intensity (float): Probability of gene mutation
-        mutation_p (float): Probability of individual mutation
-        crossover_p (float): Probability of crossover  
-        generations (int): Number of generations to run GA   
-        DBI (bool): Whether to use DBI in fitness  
-        BIC (bool): Whether to use BIC in fitness
-        AIC (bool): Whether to use AIC in fitness
-        SI (bool): Whether to use the SI index in fitness
-        CHI (bool): Whether to use the CHI index in fitness
-        early_stop (int): Number of generations with no improvement before stopping
-        seed (int): Random number generator seed
-        CPUs_number (int): Number of CPU cores to use
-        
+    Executes the main genetic algorithm.
+
+    Parameters:
+    Data: The dataset to be used in the genetic algorithm.
+    N_size: The number of genes in an individual.
+    G_max: The number of clusters.
+    all_in_clusters: Boolean indicating whether all genes should be assigned to a cluster.
+    population_size: The size of the population. Default is 400.
+    weights: The weights for the fitness function. Default is (1.0,).
+    tourn_size: The tournament size for selection. Default is 4.
+    mutation_intensity: The intensity of mutation. Default is 20.
+    mutation_p: The probability of mutation. Default is 0.1.
+    crossover_p: The probability of crossover. Default is 0.8.
+    generations: The number of generations for the genetic algorithm. Default is 200.
+    hf_size: The size of the hall of fame. Default is 10.
+    normalize: Enables the normalization of the data. Default is True (it is a requirement for the log-likelihood approach).
+    Log_Likelihood: Enables the calculation of the log_likelihood based on the correlation coefficient. Default is True.
+    seed: The seed for the random number generator. Default is the current time.
+    CPUs_number: The number of CPUs to be used. Default is the number of CPUs minus 1.
+
     Returns:
-        pop (list): Final population of partitions
-        logbook (deap.tools.Logbook): Log of GA execution  
+    None
     """
-
-    # Check if Data is a valid numpy array
-    if not isinstance(Data, np.ndarray):
-        raise ValueError("Data must be a numpy array")
-
-    # Check if N_size, G_max, m are integers
-    if not all(isinstance(i, int) for i in [N_size, G_max, m]):
-        raise ValueError("N_size, G_max, m must be integers")
-
-    # Check if all_in_clusters is a boolean
-    if not isinstance(all_in_clusters, bool):
-        raise ValueError("all_in_clusters must be a boolean")
 
     os.environ['LOKY_MAX_CPU_COUNT'] = f'{CPUs_number}'
 
-    ## Defining constants
-    # Genetic Algorithm constants:
-    POPULATION_SIZE = population_size
-    P_CROSSOVER = crossover_p  # Probability for crossover
-    P_MUTATION = mutation_p   # Probability for mutating an individual
-    MAX_GENERATIONS = generations # Number of optimization rounds
-    N_OBJ = DBI + BIC + AIC + SI + CHI  # Number of objectives
-    P = num_reference_points
-
-    # Normalize the data
+    # Normalize the data:
     if normalize:
-        Data = normalize_data(Data)
+        Data = normalize_data(Data, by_sample = True)
 
-    # Calculated by the algorithm
-    Distance_matrix = pairwise_d(Data)
+    # Correlation matrix calculation
+    cor_matrix = Pearson_correlation(Data)
 
     if input is None:
     # Initialize an instanceof the RandPartition class:
         OneIndividual = RandPartition(N_size, G_max, all_in_clusters)
     else:
     # Initialize an instanceof the InpPartition class:
-        OneIndividual = InpPartition(Data, N_size, G_max, input = input, sep = sep, all_in_clusters = all_in_clusters)
+        OneIndividual = InpPartition(N_size, G_max, input, sep, all_in_clusters)
 
     # Set the random seed:
     random.seed(seed)
@@ -94,24 +123,10 @@ def GCM_MRK(Data, N_size, G_max, m, all_in_clusters = True, input = None, output
     # pool = multiprocessing.Pool(processes=CPUs_number)
     # toolbox.register("map", pool.map) 
 
-    # Create, combine and removed duplicates
-    if Scales is None:
-        ref_points = tools.uniform_reference_points(N_OBJ, P)
-
-    else:
-        ref_points = [tools.uniform_reference_points(N_OBJ, P, Scales) for p, s in zip([P, P * Scales], [1, Scales])]
-        ref_points = np.concatenate(ref_points, axis=0)
-        _, uniques = np.unique(ref_points, axis=0, return_index=True)
-        ref_points = ref_points[uniques]
+    # Genetic Algorithm flow:
 
     # Create the fitness function:
-    w = []
-    for index, weight in zip([DBI, AIC, BIC, SI, CHI], weights):
-        if index:
-            w.append(weight)
-    w = tuple(w)
-
-    creator.create("FitnessMulti", base.Fitness, weights = w)
+    creator.create("FitnessMulti", base.Fitness, weights=weights)
     
     if input is None:
         creator.create("Individual", RandPartition, fitness=creator.FitnessMulti)
@@ -120,166 +135,63 @@ def GCM_MRK(Data, N_size, G_max, m, all_in_clusters = True, input = None, output
         creator.create("Individual", InpPartition, fitness=creator.FitnessMulti)
         toolbox.register("Individual_creator", creator.Individual, Data, N_size, G_max, input, sep, all_in_clusters)   
 
+    # Create initial population (generation 0):
+    toolbox.register("Population_creator", tools.initRepeat, list, toolbox.Individual_creator)
+    population = toolbox.Population_creator(n = population_size)
+
     # Genetic operators:
 
-    # Selection with NSGA3:
-    toolbox.register("select", tools.selNSGA3)
+    # Selection:
+    toolbox.register("select", tools.selTournament, tournsize=tourn_size)
 
-    # Two-points crossover:
+    # Single-point crossover:
     toolbox.register("mate", tools.cxTwoPoint)
 
-    # ShuffleIndexes mutation:
+    # Flip-bit mutation:
     # indpb: Independent probability for each attribute to be flipped
-    toolbox.register("mutate", tools.mutShuffleIndexes, indpb=mutation_intensity/OneIndividual.__len__())
+    if all_in_clusters:
+        toolbox.register("mutate", tools.mutUniformInt, low = 1, up = G_max, indpb = mutation_intensity/OneIndividual.__len__())
+    else:
+        toolbox.register("mutate", tools.mutUniformInt, low = 0, up = G_max, indpb = mutation_intensity/OneIndividual.__len__())
     
     # Registering the evaluation function
     def evaluate(individual):
-        return individual.get_values(Data, Distance_matrix, m, unassigned_penalty, DBI, BIC, AIC, SI, CHI)
-        
+        return individual.get_values(cor_matrix, Log_Likelihood = Log_Likelihood, BIC = BIC, AIC = AIC)
+    
     toolbox.register("evaluate", evaluate)
-
-    # Create initial population (generation 0):
-    toolbox.register("Population_creator", tools.initRepeat, list, toolbox.Individual_creator)
-    population = toolbox.Population_creator(n = POPULATION_SIZE)
 
     # prepare the statistics object:
     stats = tools.Statistics(lambda ind: ind.fitness.values)
-    stats.register("avg", np.mean, axis=0)
-    stats.register("std", np.std, axis=0)
-    stats.register("min", np.min, axis=0)
-    stats.register("max", np.max, axis=0)
-    stats.register("range", range_per_index)
+    stats.register("min", np.min)
+    stats.register("avg", np.mean)
+    stats.register("max", np.max)
+    stats.register("delta", lambda ind: abs(np.min(ind) - np.mean(ind)))
 
-    # GA flow:
-    logbook = tools.Logbook()
-    logbook.header = "gen", "evals", "std", "min", "avg", "max", "range"
-    
-    # Handling the singletons in the initial generation
-    for ind in population:
-            labels_are_new, new_labels = handle_singletons(Distance_matrix, ind.items, all_in_clusters)
-            if labels_are_new:
-                ind.items = list(new_labels)
+    # define the hall-of-fame object:
+    hof = tools.HallOfFame(hf_size)    
 
-    # Handling the presence of only one cluster in the first generation
-    for ind in population:
-        if len(set(ind.items)) == 1:
-            while len(set(ind.items)) == 1:
-                ind.items = RandPartition(N_size, G_max, all_in_clusters).items
+    # perform the Genetic Algorithm flow with hof feature added:
+    population, logbook = eaSimpleWithElitism(population, toolbox, cxpb=crossover_p, mutpb=mutation_p,
+                                          ngen=generations, halloffame=hof, stats=stats, verbose=True)
 
-    invalid_ind = [ind for ind in population if not ind.fitness.valid]
-    fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
-    for ind, fit in zip(invalid_ind, fitnesses):
-        ind.fitness.values = fit
+    # print best solution found:
+    best = hof.items[0]  
 
-    #TEMP
-    for ind in population:
-        print(ind.items)
-
-    # Compile statistics about the population
-    record = stats.compile(population)
-    logbook.record(gen = 0, evals = len(invalid_ind), **record)
-    print(logbook.stream)
-
-    # Genetic Algorithm flow:
-    # Begin the generational process
-
-    best_range = float('inf')
-    stagnant_generations = 0
-    stagnation_limit = early_stop  # number of generations with no improvement before stopping
-
-    for gen in range(1, MAX_GENERATIONS + 1):
-        offspring = algorithms.varAnd(population, toolbox, P_CROSSOVER, P_MUTATION)
-
-        for progeny in offspring:
-            labels_are_new, new_labels = handle_singletons(Distance_matrix, progeny.items, all_in_clusters)
-            if labels_are_new:
-                progeny.items = list(new_labels)
-
-        # Handling the presence of only one cluster in the offspring
-        for progeny in offspring:
-            if len(set(progeny.items)) == 1:
-                while len(set(progeny.items)) == 1:
-                    progeny.items = RandPartition(N_size, G_max, all_in_clusters).items
-        
-        # Evaluate the individuals with an invalid fitness
-        invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
-        fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
-        for ind, fit in zip(invalid_ind, fitnesses):
-            ind.fitness.values = fit
-        
-        # Select the next generation population from parents and offspring
-        population = toolbox.select(population + offspring, POPULATION_SIZE, ref_points, nd)
-
-        # Compile statistics about the new population
-        record = stats.compile(population)
-        logbook.record(gen = gen, evals = len(invalid_ind), **record)
-        print(logbook.stream)
-
-        # Check for early stopping
-        current_range = max(ind.fitness.values[0] for ind in population) - min(ind.fitness.values[0] for ind in population)
-        if current_range < best_range:
-            best_range = current_range
-            stagnant_generations = 0
-        else:
-            stagnant_generations += 1
-
-        if stagnant_generations >= stagnation_limit:
-            print(f"Stopping early at generation {gen} due to lack of improvement.")
-            break
+    print("-- Best Ever Individual = ", best[0])  
+    print("-- Best Ever items = ", best.items)
+    print("-- Best Ever Fitness = ", best.fitness.values)
 
     # extract statistics:
     minFitnessValues, meanFitnessValues, maxFitnessValues = logbook.select("min", "avg", "max")
 
     # plot statistics:
-    if plot_results:
-        sns.set_style("whitegrid")
+    sns.set_style("whitegrid")
+    plt.plot(minFitnessValues, color='red')
+    plt.plot(meanFitnessValues, color='green')
+    plt.plot(maxFitnessValues, color='blue')
+    plt.xlabel('Generation')
+    plt.ylabel('Min / Average Fitness')
+    plt.title('Min and Average fitness over Generations')
+    plt.show()
 
-        # List of fitness indexes
-        fitness_indexes = np.array(['DBI', 'BIC', 'AIC', 'SI', 'CHI'])[np.array([DBI, BIC, AIC, SI, CHI])]
-        print(fitness_indexes)
-
-        _, axs = plt.subplots(len(minFitnessValues[0]), figsize=(10, 6*len(minFitnessValues[0])))
-        for i in range(len(minFitnessValues[0])):
-            axs[i].plot([gen[i] for gen in minFitnessValues], color = 'red', label='Min')
-            axs[i].plot([gen[i] for gen in meanFitnessValues], color = 'green', label='Average')
-            axs[i].plot([gen[i] for gen in maxFitnessValues], color = 'blue', label='Max')
-            axs[i].set_xlabel('Generations')
-            axs[i].set_ylabel('Fitness')
-            axs[i].set_title(f'Min, Max, and Average {fitness_indexes[i]} over Generations')
-            axs[i].legend()
-
-        # Adjust the space between subplots
-        plt.subplots_adjust(hspace=0.8)
-
-        plt.show()
-    
-    partitions = []
-    fitness = []
-
-    for ind in population:
-        partitions.append(ind.items)
-        fitness.append(ind.fitness.values)
-
-    # Find the utopian point
-    utopian_point = [float('inf')] * N_OBJ
-    for ind in population:
-        for i, val in enumerate(ind.fitness.values):
-            if val < utopian_point[i]:
-                utopian_point[i] = val
-
-    # Find the individual closest to the utopian point
-    best_individual = None
-    best_distance = float('inf')
-    for ind in population:
-        distance = sum((val - utopian_val) ** 2 for val, utopian_val in zip(ind.fitness.values, utopian_point))
-        if distance < best_distance:
-            best_individual = ind
-            best_distance = distance
-
-    out = {'Partitions': partitions, 'Fitness': fitness, "Best_individual": best_individual.items}
-
-    if output is not None:
-        write_results_to_file(out, logbook, output)
-        return out, logbook
-    else:
-        return out, logbook
+    return best.items

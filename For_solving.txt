@@ -1,15 +1,4 @@
-The output does not seem ok. Try to see if we have a problem with the popualtion size.
-I believe that the problem is the mutation operator you are using.
-There is something off. i do not know if it is associated to the mutation, crossover, diversity.
-
-Try to find another alternative for the selection.
-
-Try this one:
-
-deap.tools.selSPEA2(individuals, k)[source]
-
-Feed the algorithm with a good enough solution, like the ones derived from kmeans. See if the algorithm finds the best solution (well, at least should preserve the one from kmeans).
-
-Comment out handle singletons and all associated to the change on the items. Maybe something is going wrong with that and changing the relation between partitions and fitness.
-
-Do it without normalizing your data.
+Expand the solution for those cases where you have non-assigned elements
+Check the behavior of this nad the previous version leaving consolidate clysters for the end
+After consolidating the labels, try to sorther the labels, that way you can assure that there is a correspondence at the end for assessing the overlapping.
+Try to provide a good solution, like the one derived from kmeans.

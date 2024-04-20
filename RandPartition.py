@@ -1,5 +1,6 @@
 import random
-from internal_indexes import davies_bouldin_index, bic, aic, silhouette_index, calinski_harabasz_index
+import numpy as np
+from internal_indexes import likelihood_calculator, calculate_aic, calculate_bic
 
 class RandPartition:
     """
@@ -51,19 +52,20 @@ class RandPartition:
 
         start = 1 if all_in_clusters else 0
         end = random.randint(start + 1, G_max) if all_in_clusters else random.randint(start + 2, G_max)
-        self.items = [random.randint(start, end) for _ in range(element_number)]
+        if start != end:
+            self.items = [random.randint(start, end) for _ in range(element_number)]
+        else:
+            self.items = [start for _ in range(element_number)]
 
-    def get_values(self, Data, Distance_matrix, m, unassigned_penalty, DBI, BIC, AIC, SI, CHI):
+    def get_values(self, cor_matrix, Log_Likelihood, BIC, AIC):
         """
         Calculate different internal measurements of cluster quality.
 
         Parameters:
-            Data (list): The data to be clustered.
-            Distance_matrix (list): The distance matrix of the data.
-            DBI (bool): If True, calculate the Davies-Bouldin index. Default is True.
-            BIC (bool): If True, calculate the Bayesian Information Criterion. Default is True.
-            AIC (bool): If True, calculate the Akaike Information Criterion. Default is True.
-            CHI (bool): If True, calculate the Calinski-Harabasz Index. Default is True.
+            cor_matrix (np.ndarray): The correlation matrix of the data.
+            Log_Likelihood (bool): If True, calculate the log-likelihood of the clustering solution.
+            BIC (bool): If True, calculate the Bayesian Information Criterion (BIC) of the clustering solution.
+            AIC (bool): If True, calculate the Akaike Information Criterion (AIC) of the clustering solution.
 
         Returns:
             tuple: A tuple containing the calculated internal measurements of cluster quality.
@@ -72,20 +74,22 @@ class RandPartition:
         internal_indexes = {}
         labels = self.items[:]
 
-        if DBI:
-            internal_indexes["DBI"] = davies_bouldin_index(Data, labels, unassigned_penalty)
+        if Log_Likelihood:
+            internal_indexes["Log_Likelihood"] = likelihood_calculator(cor_matrix, labels)
 
-        if BIC:
-            internal_indexes["BIC"] = bic(Distance_matrix, labels, m, unassigned_penalty)
+        if BIC and Log_Likelihood:
+            internal_indexes["BIC"] = calculate_bic(internal_indexes["Log_Likelihood"], len(np.unique(np.array(labels))), len(labels))
+        elif not BIC:
+            pass
+        else:
+            raise ValueError("BIC not calculated. It requires the calculation of the log-likelihood. Please set Log_Likelihood to True.")
 
-        if AIC:
-            internal_indexes["AIC"] = aic(Distance_matrix, labels, m, unassigned_penalty)
-        
-        if SI:
-            internal_indexes["SI"] = silhouette_index(Distance_matrix, labels, m, unassigned_penalty)
-
-        if CHI:
-            internal_indexes["CHI"] = calinski_harabasz_index(Data, labels, m, unassigned_penalty)
+        if AIC and Log_Likelihood:
+            internal_indexes["AIC"] = calculate_aic(internal_indexes["Log_Likelihood"], len(np.unique(np.array(labels))))
+        elif not AIC:
+            pass
+        else:
+            raise ValueError("AIC not calculated. It requires the calculation of the log-likelihood. Please set Log_Likelihood to True.")
 
         return tuple(internal_indexes.values())
 
@@ -113,5 +117,5 @@ class RandPartition:
         self.items[index] = value
 
 if __name__ == "__main__":
-    rand_partition = RandPartition(10, 5, 10)
+    rand_partition = RandPartition(10, 5, True)
     print(rand_partition.items)

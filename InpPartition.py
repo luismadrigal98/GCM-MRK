@@ -5,7 +5,7 @@ other clustering softwares or can be initialized randomly (See class RandPartiti
 
 """
 
-from internal_indexes import davies_bouldin_index, bic, aic, silhouette_index, calinski_harabasz_index
+from internal_indexes import likelihood_calculator, calculate_aic, calculate_bic
 import random
 
 class InpPartition:
@@ -18,7 +18,7 @@ class InpPartition:
 
     instance_count = 0  # Class variable to keep track of instances
 
-    def __init__(self, element_number, G_max, all_in_clusters, input = None, sep = ","):
+    def __init__(self, element_number, G_max, input, sep, all_in_clusters):
         """
         Initializes the instance variables and creates a partition.
 
@@ -41,7 +41,7 @@ class InpPartition:
         if not isinstance(all_in_clusters, bool):
             raise ValueError("All_in_clusters must be a boolean")
 
-        self.__init_part(element_number, G_max, all_in_clusters, input, sep)
+        self.__init_part(element_number, G_max, input, sep, all_in_clusters)
         InpPartition.instance_count += 1  # Increment count when instance is created
 
     def __len__(self):
@@ -54,7 +54,7 @@ class InpPartition:
 
         return len(self.items)
     
-    def __init_part(self, element_number, G_max, all_in_clusters, input = None, sep = ",", ):
+    def __init_part(self, element_number, G_max, input, sep, all_in_clusters):
         """
         Creates a partition of elements into clusters. The partition can be created from an input file or randomly.
 
@@ -68,6 +68,9 @@ class InpPartition:
         Returns:
             list: A partition of elements into clusters.
         """
+        
+        partition_from_input = False  # Initialize partition_from_input
+        
         if input is not None:
             with open(input, "r") as file:
                 try:
@@ -81,10 +84,8 @@ class InpPartition:
                 else:
                     part = line.replace("\n", "").split(sep)
                     partition = [elem for elem in part]
-        else:
-            partition_from_input = False
 
-        if not partition_from_input:  # If no partition was read from the file, generate a random
+        if not partition_from_input:  # If no partition was read from the file, generate a random  <<<<<<< This is erasing 
 
             start = 1 if all_in_clusters else 0
             end = random.randint(start + 1, G_max) if all_in_clusters else random.randint(start + 2, G_max)
@@ -107,8 +108,8 @@ class InpPartition:
         else:
             self.items = partition
 
-    def get_values(self, Data, Distance_matrix, m, unassigned_penalty, DBI, BIC, 
-                   AIC, SI, CHI):
+    def get_values(self, Data, cor_matrix, Distance_matrix, m, unassigned_penalty, Log_Likelihood, BIC, 
+                   AIC, DBI, SI, CHI):
         """
         Calculates different internal measurements of cluster quality.
 
@@ -125,14 +126,17 @@ class InpPartition:
         internal_indexes = {}
         labels = self.items[:]
 
-        if DBI:
-            internal_indexes["DBI"] = davies_bouldin_index(Data, labels, unassigned_penalty)
+        if Log_Likelihood:
+            internal_indexes["Log_Likelihood"] = likelihood_calculator(cor_matrix, labels)
 
         if BIC:
-            internal_indexes["BIC"] = bic(Distance_matrix, labels, m, unassigned_penalty)
+            internal_indexes["BIC"] = calculate_bic(Distance_matrix, labels, m, unassigned_penalty)
 
         if AIC:
-            internal_indexes["AIC"] = aic(Distance_matrix, labels, m, unassigned_penalty)
+            internal_indexes["AIC"] = calculate_aic(Distance_matrix, labels, m, unassigned_penalty)
+
+        if DBI:
+            internal_indexes["DBI"] = davies_bouldin_index(Data, labels, unassigned_penalty)
         
         if SI:
             internal_indexes["SI"] = silhouette_index(Distance_matrix, labels, m, unassigned_penalty)

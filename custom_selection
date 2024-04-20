@@ -1,0 +1,92 @@
+import numpy as np
+from collections import defaultdict
+from scipy.spatial.distance import cdist
+
+def non_dominated_sorting(population, objectives):
+    """
+    Perform non-dominated sorting on the population.
+    Returns a list of non-dominated fronts.
+    """
+    fronts = []
+    dominated = defaultdict(list)
+    domination_count = {ind: 0 for ind in population}
+
+    for p, q in [(p, q) for p in population for q in population if p != q]:
+        p_dominates = False
+        q_dominates = False
+
+        for i in range(len(objectives)):
+            if objectives[i](p) < objectives[i](q):
+                p_dominates = True
+            elif objectives[i](p) > objectives[i](q):
+                q_dominates = True
+
+        if p_dominates and not q_dominates:
+            dominated[p].append(q)
+            domination_count[q] += 1
+        elif q_dominates and not p_dominates:
+            dominated[q].append(p)
+            domination_count[p] += 1
+
+    front = [p for p in population if domination_count[p] == 0]
+    fronts.append(front)
+
+    while front:
+        next_front = []
+        for p in front:
+            for q in dominated[p]:
+                domination_count[q] -= 1
+                if domination_count[q] == 0:
+                    next_front.append(q)
+        fronts.append(next_front)
+        front = next_front
+
+    return fronts
+
+def calculate_strength(population, fronts, objectives):
+    """
+    Calculate the strength value for each individual in the population.
+    """
+    strengths = {ind: 0 for ind in population}
+
+    for front in fronts:
+        for p in front:
+            for q in population:
+                if all(obj(p) >= obj(q) for obj in objectives):
+                    strengths[p] += 1
+
+    return strengths
+
+def density_estimation(population, objectives):
+    """
+    Calculate the density estimate for each individual in the population.
+    """
+    distances = cdist(np.array([ind.fitness.values for ind in population]),
+                      np.array([ind.fitness.values for ind in population]))
+    distances = np.sort(distances, axis=1)
+    density_estimates = {ind: distances[i, -1] for i, ind in enumerate(population)}
+    return density_estimates
+
+def selection(population, fronts, strengths, density_estimates, pop_size):
+    """
+    Select individuals for the next generation based on rank, strength, and density.
+    """
+    new_population = []
+    i = 0
+    while len(new_population) < pop_size:
+        front = fronts[i]
+        front_sorted = sorted(front, key=lambda x: (-strengths[x], density_estimates[x]))
+        new_population.extend(front_sorted)
+        i += 1
+
+    return new_population[:pop_size]
+
+def customized_selection(population, objectives, pop_size):
+    """
+    Perform the customized multi-objective selection on the population.
+    """
+    fronts = non_dominated_sorting(population, objectives)
+    strengths = calculate_strength(population, fronts, objectives)
+    density_estimates = density_estimation(population, objectives)
+    new_population = selection(population, fronts, strengths, density_estimates, pop_size)
+    return new_population
