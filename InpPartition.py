@@ -5,7 +5,7 @@ other clustering softwares or can be initialized randomly (See class RandPartiti
 
 """
 
-from internal_indexes import likelihood_calculator, calculate_aic, calculate_bic
+from internal_indexes import log_likelihood_cor_calculator
 import random
 
 class InpPartition:

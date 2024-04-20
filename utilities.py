@@ -48,7 +48,7 @@ def write_results_to_file(out, log, file_path):
         out (dict): The output of the GCM_MRK function. It's a dictionary containing 
                     'Partitions' and 'Fitness' as keys.
         log (deap.tools.Logbook): The logbook that contains the statistics of the 
-                                  generations.
+                                generations.
         file_path (str): The path to the file where the results should be written.
 
     Returns:
@@ -128,7 +128,7 @@ def population_entropy(individuals):
 
     Parameters:
     population (list): A list of individuals in the population. Each individual is an object with an 'items' attribute 
-                       that is a list of integers representing cluster assignments.
+                    that is a list of integers representing cluster assignments.
 
     Returns:
     float: The entropy of the population.
@@ -146,13 +146,25 @@ def Pearson_correlation(data, rowvar=True):
 
     Args:
         data (numpy.ndarray): The input data. If rowvar is True, shape should be (n_samples, n_features). 
-                              If rowvar is False, shape should be (n_features, n_samples).
+                            If rowvar is False, shape should be (n_features, n_samples).
         rowvar (bool): If True (default), the correlation is assesed between observations (rows).
 
     Returns:
         numpy.ndarray: The Pearson correlation coefficient matrix. If rowvar is True, shape is (n_samples, n_samples). 
-                       If rowvar is False, shape is (n_features, n_features).
+                    If rowvar is False, shape is (n_features, n_features).
     """
     # Calculate the correlation matrix
     correlation_matrix = np.corrcoef(data, rowvar=rowvar)
     return correlation_matrix
+
+def p_n_num_calculator(X, labels):
+    
+    n = X.shape[0]  # number of observations
+    
+    c = len(np.unique(labels))  # number of clusters
+    
+    k = X.shape[1]  # number of dimensions
+    
+    p = c * (k + (k * (k + 1)) / 2)  # number of parameters
+    
+    return p, n

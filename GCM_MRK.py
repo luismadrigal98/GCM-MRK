@@ -12,7 +12,7 @@ from utilities import normalize_data, write_results_to_file, Pearson_correlation
 import operator
 
 def eaSimpleWithElitism(population, toolbox, cxpb, mutpb, ngen, stats=None,
-             halloffame=None, verbose=__debug__):
+            halloffame=None, verbose=__debug__):
     """This algorithm is similar to DEAP eaSimple() algorithm, with the modification that
     halloffame is used to implement an elitism mechanism. The individuals contained in the
     halloffame are directly injected into the next generation and are not subject to the
@@ -156,7 +156,7 @@ def GCM_MRK(Data, N_size, G_max, all_in_clusters, input = None, sep = ",", popul
     
     # Registering the evaluation function
     def evaluate(individual):
-        return individual.get_values(cor_matrix, Log_Likelihood = Log_Likelihood, BIC = BIC, AIC = AIC)
+        return individual.get_values(cor_matrix, Log_Likelihood = Log_Likelihood)
     
     toolbox.register("evaluate", evaluate)
 
@@ -172,7 +172,7 @@ def GCM_MRK(Data, N_size, G_max, all_in_clusters, input = None, sep = ",", popul
 
     # perform the Genetic Algorithm flow with hof feature added:
     population, logbook = eaSimpleWithElitism(population, toolbox, cxpb=crossover_p, mutpb=mutation_p,
-                                          ngen=generations, halloffame=hof, stats=stats, verbose=True)
+                                        ngen=generations, halloffame=hof, stats=stats, verbose=True)
 
     # print best solution found:
     best = hof.items[0]  

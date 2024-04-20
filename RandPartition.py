@@ -1,6 +1,5 @@
 import random
-import numpy as np
-from internal_indexes import likelihood_calculator, calculate_aic, calculate_bic
+from internal_indexes import log_likelihood_cor_calculator
 
 class RandPartition:
     """
@@ -57,7 +56,7 @@ class RandPartition:
         else:
             self.items = [start for _ in range(element_number)]
 
-    def get_values(self, cor_matrix, Log_Likelihood, BIC, AIC):
+    def get_values(self, cor_matrix, Log_Likelihood):
         """
         Calculate different internal measurements of cluster quality.
 
@@ -75,21 +74,21 @@ class RandPartition:
         labels = self.items[:]
 
         if Log_Likelihood:
-            internal_indexes["Log_Likelihood"] = likelihood_calculator(cor_matrix, labels)
+            internal_indexes["Log_Likelihood"] = log_likelihood_cor_calculator(cor_matrix, labels)
 
-        if BIC and Log_Likelihood:
-            internal_indexes["BIC"] = calculate_bic(internal_indexes["Log_Likelihood"], len(np.unique(np.array(labels))), len(labels))
-        elif not BIC:
-            pass
-        else:
-            raise ValueError("BIC not calculated. It requires the calculation of the log-likelihood. Please set Log_Likelihood to True.")
+        #if BIC and Log_Likelihood:
+        #    internal_indexes["BIC"] = calculate_bic(internal_indexes["Log_Likelihood"], len(np.unique(np.array(labels))), len(labels))
+        #elif not BIC:
+        #    pass
+        #else:
+         #   raise ValueError("BIC not calculated. It requires the calculation of the log-likelihood. Please set Log_Likelihood to True.")
 
-        if AIC and Log_Likelihood:
-            internal_indexes["AIC"] = calculate_aic(internal_indexes["Log_Likelihood"], len(np.unique(np.array(labels))))
-        elif not AIC:
-            pass
-        else:
-            raise ValueError("AIC not calculated. It requires the calculation of the log-likelihood. Please set Log_Likelihood to True.")
+        #if AIC and Log_Likelihood:
+         #   internal_indexes["AIC"] = calculate_aic(internal_indexes["Log_Likelihood"], len(np.unique(np.array(labels))))
+        #elif not AIC:
+         #   pass
+        #else:
+         #   raise ValueError("AIC not calculated. It requires the calculation of the log-likelihood. Please set Log_Likelihood to True.")
 
         return tuple(internal_indexes.values())
 
