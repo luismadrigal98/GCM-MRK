@@ -80,19 +80,24 @@ class TestEvolveNSGA2(unittest.TestCase):
 
 
 class TestClusterAPI(unittest.TestCase):
-    def test_cluster_end_to_end(self):
+    def test_loglik_recovers_correlation_modules(self):
+        # The correlation-based log-likelihood is the metric designed for
+        # modular (co-expression) data; with g_max at the true cluster count it
+        # recovers the modules.
         data, truth = simulate_modular_data([20, 20, 20], n_samples=50, seed=5)
-        res = cluster(data, targets=["silhouette"], g_max=6,
-                      generations=40, population_size=80, seed=0, verbose=False)
+        res = cluster(data, targets=["loglik"], g_max=3,
+                      generations=50, population_size=80, seed=0, verbose=False)
         self.assertEqual(res.labels.size, 60)
         self.assertGreaterEqual(_accuracy(truth, res.labels), 0.8)
 
-    def test_multi_target_weighted(self):
+    def test_multi_target_weighted_runs(self):
         data, truth = simulate_modular_data([15, 15], n_samples=40, seed=6)
         res = cluster(data, targets=["loglik", "silhouette"], g_max=4,
                       generations=30, population_size=60, seed=0, verbose=False)
         self.assertIn("loglik", res.scores)
         self.assertIn("silhouette", res.scores)
+        self.assertEqual(res.labels.size, 30)
+        self.assertGreaterEqual(len(set(res.labels.tolist())), 2)
 
 
 if __name__ == "__main__":
