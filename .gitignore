@@ -1,0 +1,17 @@
+gcmrk/__pycache__/*.pyc
+gcmrk/__pycache__/*.pyo
+gcmrk/__pycache__/__init__.cpython-*.pyc
+gcmrk/__pycache__/__init__.cpython-*.pyo
+gcmrk/__pycache__/__main__.cpython-*.pyc
+gcmrk/__pycache__/__init__.cpython-312.pyc
+gcmrk/__pycache__/cli.cpython-312.pyc
+gcmrk/__pycache__/core.cpython-312.pyc
+gcmrk/__pycache__/data.cpython-312.pyc
+gcmrk/__pycache__/ga.cpython-312.pyc
+gcmrk/__pycache__/metrics.cpython-312.pyc
+gcmrk/__pycache__/partition.cpython-312.pyc
+gcmrk/__pycache__/simulate.cpython-312.pyc
+tests/__pycache__/test_cli.cpython-312.pyc
+tests/__pycache__/test_ga.cpython-312.pyc
+tests/__pycache__/test_metrics.cpython-312.pyc
+tests/__pycache__/test_partition.cpython-312.pyc
