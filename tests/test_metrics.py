@@ -54,6 +54,40 @@ class TestMetrics(unittest.TestCase):
         bad = metrics.log_likelihood_correlation(cor, shuffled)
         self.assertGreater(good, bad)
 
+    def test_loglik_perfect_cluster_is_finite_not_crash(self):
+        # Regression: a perfectly correlated cluster makes cs == ns**2, so the
+        # internal denominator (ns**2 - cs) is exactly 0.  Because ns is a
+        # Python int the division is a Python-scalar op that np.errstate does
+        # NOT suppress, which used to raise ZeroDivisionError.  This happens with
+        # duplicated/identical rows -- common in real data.  The score must be a
+        # large finite reward (a perfect cluster is the best possible fit), and
+        # the metric must never raise.
+        n = 6
+        cor = np.ones((n, n))  # every pair perfectly correlated
+        score = metrics.log_likelihood_correlation(cor, [1] * n)
+        self.assertTrue(np.isfinite(score))
+        self.assertGreater(score, 0.0)
+
+        # Also robust when only a sub-cluster is perfect inside a larger
+        # partition (the realistic case).
+        big = np.zeros((8, 8))
+        big[:4, :4] = 1.0
+        rng = np.random.default_rng(3)
+        big[4:, 4:] = np.corrcoef(rng.normal(size=(4, 20)))
+        mixed = metrics.log_likelihood_correlation(big, [1, 1, 1, 1, 2, 2, 2, 2])
+        self.assertTrue(np.isfinite(mixed))
+
+    def test_loglik_monotone_in_within_cluster_correlation(self):
+        # Tighter within-cluster correlation must score higher.
+        n = 6
+        prev = -np.inf
+        for r in (0.0, 0.5, 0.9, 0.99):
+            c = np.full((n, n), r)
+            np.fill_diagonal(c, 1.0)
+            cur = metrics.log_likelihood_correlation(c, [1] * n)
+            self.assertGreater(cur, prev)
+            prev = cur
+
     def test_unassigned_penalty_applies(self):
         labels = self.good.copy()
         labels[0] = 0  # leave one element unassigned

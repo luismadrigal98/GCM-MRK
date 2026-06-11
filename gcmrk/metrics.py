@@ -42,6 +42,13 @@ __all__ = [
 # --------------------------------------------------------------------------- #
 # Helpers
 # --------------------------------------------------------------------------- #
+# Finite stand-in for the +inf contributed by a perfectly correlated cluster.
+# Matches the magnitude used to penalise degenerate partitions in the GA's
+# weighted-sum normalisation, so a perfect cluster is strongly (but finitely)
+# rewarded rather than crashing the metric or being dropped.
+_PERFECT_FIT_CAP = 1e6
+
+
 def _as_labels(labels) -> np.ndarray:
     """Return labels as a 1-D integer numpy array."""
     arr = np.asarray(labels)
@@ -92,18 +99,31 @@ def log_likelihood_correlation(cor: np.ndarray, labels) -> float:
     for s in np.unique(labels):
         filter_s = labels == s
         ns = int(np.sum(filter_s))
-        # Sum of absolute correlations within the cluster (includes the
-        # diagonal of ones, i.e. each element's self-correlation).
-        cs = float(np.sum(np.abs(cor[np.outer(filter_s, filter_s)])))
         if ns <= 1:
             # A singleton carries no within-cluster correlation information.
             continue
+        # Sum of absolute correlations within the cluster (includes the
+        # diagonal of ones, i.e. each element's self-correlation).  Because the
+        # diagonal contributes ``ns`` ones, ``cs`` is bounded in ``[ns, ns**2]``.
+        cs = float(np.sum(np.abs(cor[np.outer(filter_s, filter_s)])))
+        # ``denom`` -> 0 as the cluster becomes perfectly correlated (cs -> ns**2).
+        # In that limit the log term diverges to +inf, i.e. the *best* possible
+        # fit.  We must NOT let this raise (a Python-scalar division by zero is
+        # not caught by ``np.errstate``) nor silently drop the cluster: instead
+        # we award a large finite cap so a perfect cluster is rewarded, not lost.
+        denom = float(ns) * ns - cs
+        if denom <= 0.0:
+            log_likelihood += _PERFECT_FIT_CAP
+            continue
         with np.errstate(divide="ignore", invalid="ignore"):
             log_term = np.log(ns / cs) + (ns - 1) * np.log(
-                (ns**2 - ns) / (ns**2 - cs)
+                (float(ns) * ns - ns) / denom
             )
-            if np.isfinite(log_term):
-                log_likelihood += log_term
+        if np.isfinite(log_term):
+            log_likelihood += log_term
+        else:
+            # Numerical overflow in the limit -> treat as a perfect-fit cluster.
+            log_likelihood += _PERFECT_FIT_CAP
 
     return 0.5 * log_likelihood
 
