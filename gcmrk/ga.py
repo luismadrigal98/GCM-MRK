@@ -2,7 +2,7 @@
 
 The algorithm evolves a population of partitions (label vectors).  Each
 partition is scored by one or more validity metrics (the "performance
-targets").  Two optimisation modes are supported:
+targets").  Two optimization modes are supported:
 
 ``weighted``
     Combine the chosen metrics into a single fitness via direction-aware
@@ -101,14 +101,14 @@ class _Evaluator:
     def weighted_fitness(self, labels: np.ndarray) -> float:
         raw = self.raw_scores(labels)
         weights = np.array([m.weight for m in self.metrics])
-        norm = _normalise_for_sum(raw, self.metrics)
+        norm = _normalize_for_sum(raw, self.metrics)
         return float(np.dot(weights, norm))
 
     def named_scores(self, labels: np.ndarray) -> dict:
         return {m.name: float(v) for m, v in zip(self.metrics, self.raw_scores(labels))}
 
 
-def _normalise_for_sum(raw: np.ndarray, metrics: Sequence[MetricSpec]) -> np.ndarray:
+def _normalize_for_sum(raw: np.ndarray, metrics: Sequence[MetricSpec]) -> np.ndarray:
     """Map each metric to a value suitable for the direction-weighted sum.
 
     With a single target there is nothing to scale-balance against, so the raw
@@ -132,7 +132,7 @@ def _normalise_for_sum(raw: np.ndarray, metrics: Sequence[MetricSpec]) -> np.nda
     single = len(metrics) == 1
     for i, (val, m) in enumerate(zip(raw, metrics)):
         if not np.isfinite(val):
-            out[i] = -1e6 * m.weight  # heavily penalise degenerate partitions
+            out[i] = -1e6 * m.weight  # heavily penalize degenerate partitions
         elif single:
             out[i] = val  # rank by the objective directly
         elif m.name == "silhouette":
@@ -175,12 +175,12 @@ def _mutate(ind: np.ndarray, g_max: int, all_in_clusters: bool,
 # NSGA-II support
 # --------------------------------------------------------------------------- #
 def _dominates(a: np.ndarray, b: np.ndarray) -> bool:
-    """True if objective vector ``a`` Pareto-dominates ``b`` (maximisation)."""
+    """True if objective vector ``a`` Pareto-dominates ``b`` (maximization)."""
     return np.all(a >= b) and np.any(a > b)
 
 
 def _fast_non_dominated_sort(objectives: np.ndarray) -> List[List[int]]:
-    """Partition indices into Pareto fronts (objectives are maximised)."""
+    """Partition indices into Pareto fronts (objectives are maximized)."""
     n = objectives.shape[0]
     S = [[] for _ in range(n)]
     dom_count = np.zeros(n, dtype=int)
@@ -245,7 +245,7 @@ def evolve(X, cor, metrics: Sequence[MetricSpec], config: GAConfig,
     cor:
         Sample-by-sample correlation matrix (n_samples, n_samples) or ``None``.
     metrics:
-        The optimisation targets.
+        The optimization targets.
     config:
         Hyper-parameters.
     seeds:
@@ -373,7 +373,7 @@ def _run_nsga2(population, evaluator, metrics, config: GAConfig, rng) -> GAResul
     weights = np.array([m.weight for m in metrics])
 
     def objectives_of(pop):
-        # Convert every metric to a maximisation objective via its weight.
+        # Convert every metric to a maximization objective via its weight.
         return np.array([evaluator.raw_scores(ind) * weights for ind in pop])
 
     history = []
@@ -417,8 +417,8 @@ def _run_nsga2(population, evaluator, metrics, config: GAConfig, rng) -> GAResul
         labels = population[i]
         pareto.append({"labels": labels, "scores": evaluator.named_scores(labels)})
 
-    # Pick a single representative: the knee point maximising the sum of
-    # min-max normalised objectives across the front.
+    # Pick a single representative: the knee point maximizing the sum of
+    # min-max normalized objectives across the front.
     front_obj = obj[front0]
     span = front_obj.max(axis=0) - front_obj.min(axis=0)
     span[span == 0] = 1.0

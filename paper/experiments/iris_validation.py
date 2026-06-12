@@ -1,10 +1,10 @@
-"""Iris as optimiser validation, not a recovery benchmark.
+"""Iris as optimizer validation, not a recovery benchmark.
 
 On Iris the internal validity indices prefer k=2 (merging the overlapping
 versicolor/virginica), a textbook fact: the three-species labelling has a
 *lower* silhouette than the two-cluster split. The point of including Iris is
 therefore to show that the GA reaches the same index optimum a standard method
-does --- i.e. that it is a faithful, competent optimiser of whichever geometric
+does --- i.e. that it is a faithful, competent optimizer of whichever geometric
 index it is given --- with the k=2 outcome attributed entirely to the index.
 
 Writes results/iris_macros.tex with the silhouette values that make this explicit.

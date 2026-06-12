@@ -1,8 +1,8 @@
-"""Internal cluster-validity metrics used as optimisation targets.
+"""Internal cluster-validity metrics used as optimization targets.
 
 Every metric reduces a clustering (a 1-D vector of integer labels) to a single
 scalar score.  These scalars are the "performance targets" that drive the
-genetic algorithm: the user chooses which ones to optimise and in which
+genetic algorithm: the user chooses which ones to optimize and in which
 direction.
 
 A label of ``0`` denotes an *unassigned* element.  Metrics ignore unassigned
@@ -12,9 +12,9 @@ nudges the score so that leaving elements out is not free.
 Conventions
 -----------
 Each public metric is registered in :data:`METRICS` together with its natural
-optimisation ``direction`` (``"max"`` or ``"min"``).  The genetic algorithm
+optimization ``direction`` (``"max"`` or ``"min"``).  The genetic algorithm
 turns a direction into a fitness weight, so metric functions never need to know
-whether they are being maximised or minimised.
+whether they are being maximized or minimized.
 """
 
 from __future__ import annotations
@@ -45,8 +45,8 @@ __all__ = [
 # Helpers
 # --------------------------------------------------------------------------- #
 # Finite stand-in for the +inf contributed by a perfectly correlated cluster.
-# Matches the magnitude used to penalise degenerate partitions in the GA's
-# weighted-sum normalisation, so a perfect cluster is strongly (but finitely)
+# Matches the magnitude used to penalize degenerate partitions in the GA's
+# weighted-sum normalization, so a perfect cluster is strongly (but finitely)
 # rewarded rather than crashing the metric or being dropped.
 _PERFECT_FIT_CAP = 1e6
 
@@ -140,7 +140,7 @@ def _n_coherent_clusters(labels: np.ndarray) -> int:
     return int(np.sum(counts > 1))
 
 
-def _penalised_correlation_loglik(cor: np.ndarray, labels, n_samples: int,
+def _penalized_correlation_loglik(cor: np.ndarray, labels, n_samples: int,
                                   *, penalty_per_cluster: float) -> float:
     r"""Information criterion for the equal-magnitude one-factor block model.
 
@@ -160,7 +160,7 @@ def _penalised_correlation_loglik(cor: np.ndarray, labels, n_samples: int,
 
     .. math:: -2\,\ell(\ell) + \text{penalty\_per\_cluster}\cdot K ,
 
-    minimised.  ``penalty_per_cluster = log(d)`` gives BIC, ``2`` gives AIC.
+    minimized.  ``penalty_per_cluster = log(d)`` gives BIC, ``2`` gives AIC.
     Crucially the likelihood scales with ``d`` while the penalty does not, so
     more samples correctly support more modules.
     """
@@ -181,10 +181,10 @@ def loglik_bic(cor: np.ndarray, labels, n_samples: int) -> float:
 
     Penalty ``log(d)`` per module.  Selects the number of correlation modules in
     a single objective without leaving correlation space.  See
-    :func:`_penalised_correlation_loglik`.
+    :func:`_penalized_correlation_loglik`.
     """
     d = max(int(n_samples), 2)
-    return _penalised_correlation_loglik(cor, labels, n_samples,
+    return _penalized_correlation_loglik(cor, labels, n_samples,
                                          penalty_per_cluster=float(np.log(d)))
 
 
@@ -194,7 +194,7 @@ def loglik_aic(cor: np.ndarray, labels, n_samples: int) -> float:
     Penalty ``2`` per module: a lighter complexity penalty than
     :func:`loglik_bic`, so it tolerates a few more modules.
     """
-    return _penalised_correlation_loglik(cor, labels, n_samples,
+    return _penalized_correlation_loglik(cor, labels, n_samples,
                                          penalty_per_cluster=2.0)
 
 
@@ -381,7 +381,7 @@ def aic(X: np.ndarray, labels, unassigned_penalty: float = 0.0) -> float:
 # --------------------------------------------------------------------------- #
 @dataclass(frozen=True)
 class MetricSpec:
-    """Metadata describing one optimisation target.
+    """Metadata describing one optimization target.
 
     Attributes
     ----------
@@ -411,7 +411,7 @@ class MetricSpec:
 
     @property
     def weight(self) -> float:
-        """Fitness weight: +1 for maximisation, -1 for minimisation."""
+        """Fitness weight: +1 for maximization, -1 for minimization."""
         return 1.0 if self.direction == "max" else -1.0
 
 

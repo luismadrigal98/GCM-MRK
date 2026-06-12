@@ -1,17 +1,17 @@
 """Memetic local search for the correlation-based objective.
 
 The genetic operators (crossover, mutation) explore the partition space globally
-but coarsely; on their own they leave the optimiser short of the optimum, even
+but coarsely; on their own they leave the optimizer short of the optimum, even
 when the seed is a good hierarchical clustering.  This module adds a greedy
 hill-climb that repeatedly performs the single element reassignment that most
 improves the objective, until no improving move remains.  Crucially this is a
 move the greedy *agglomerative* clusterers used for seeding cannot make: once
 they merge two elements they can never separate them, whereas reassignment can
 undo early mistakes.  Hybridising the GA with this refinement (a memetic /
-Lamarckian GA) is what lets the optimiser reach partitions that hierarchical
+Lamarckian GA) is what lets the optimizer reach partitions that hierarchical
 clustering cannot.
 
-The objective is the correlation family (``loglik`` and its penalised variants),
+The objective is the correlation family (``loglik`` and its penalized variants),
 all of which are functions of the per-cluster log-likelihood terms and the number
 of coherent clusters ``K``.  The gain of a single move touches only the source
 and target clusters, so it is evaluated incrementally in ``O(cluster size)``
@@ -55,7 +55,7 @@ class CorrelationRefiner:
         ones).
     metric_name:
         ``"loglik"``, ``"loglik_bic"`` or ``"loglik_aic"``; sets the cluster-count
-        penalty so the hill-climb optimises exactly the reported objective.
+        penalty so the hill-climb optimizes exactly the reported objective.
     n_samples:
         Number of samples (columns); calibrates the BIC/AIC penalty.
     g_max, all_in_clusters:
@@ -74,7 +74,7 @@ class CorrelationRefiner:
         self.max_pass = max_pass
         d = int(n_samples)
         if metric_name == "loglik":
-            self.alpha, self.beta = 1.0, 0.0           # maximise loglik
+            self.alpha, self.beta = 1.0, 0.0           # maximize loglik
         elif metric_name == "loglik_bic":
             self.alpha, self.beta = 2.0 * d, float(np.log(max(d, 2)))
         elif metric_name == "loglik_aic":

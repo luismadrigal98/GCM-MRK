@@ -13,15 +13,15 @@ recovered, the adjusted Rand index (ARI) and Hungarian-matched accuracy against
 ground truth, and runtime.  It covers three regimes:
 
   1. Recovery with the number of clusters known (single-objective).
-  2. Over-segmentation when ``loglik`` is optimised under a loose ``g_max``.
-  3. Model selection with k unknown, via the penalised correlation criteria
+  2. Over-segmentation when ``loglik`` is optimized under a loose ``g_max``.
+  3. Model selection with k unknown, via the penalized correlation criteria
      (``loglik_bic`` / ``loglik_aic``, single objective) and via NSGA-II.
 
 Outputs (under ../results and ../figures):
   results/benchmark.csv / .json      tidy results + metadata
   results/empirical_modules.csv      gene-module summary for GSE183947
   figures/convergence.pdf            GA fitness trajectory (Synthetic-Easy)
-  figures/model_selection.pdf        loglik & penalised criteria vs k (Synthetic-Hard)
+  figures/model_selection.pdf        loglik & penalized criteria vs k (Synthetic-Hard)
   figures/pareto.pdf                 NSGA-II loglik-vs-BIC front (Synthetic-Hard)
   figures/iris_silhouette.pdf        silhouette profile of the Iris clustering
   figures/empirical_eigengenes.pdf   module eigengenes, tumor vs normal
@@ -168,7 +168,7 @@ def synthetic_block(X, truth, k_true, name, rows, meta_key, meta, res_store):
 
 
 def model_selection_scan(X, truth, name, k_range=range(2, 11)):
-    """Single-objective loglik at each k; report loglik and penalised criteria."""
+    """Single-objective loglik at each k; report loglik and penalized criteria."""
     cor = pearson_correlation(normalize_data(X, by_sample=True), rowvar=True)
     d = X.shape[1]
     out = []
@@ -206,7 +206,7 @@ def empirical_block(rows, meta, n_top=200, g_max=12):
     iu = np.triu_indices(n_top, 1)
     bg = float(np.abs(cor[iu]).mean())
 
-    # model-selection by the penalised correlation criterion
+    # model-selection by the penalized correlation criterion
     res = cluster(G, targets=["loglik_aic"], g_max=g_max, by_sample=True, **GA_KW)
     labels = np.asarray(res.labels)
     k = n_clusters(labels)
@@ -302,7 +302,7 @@ def fig_model_selection(scan, k_true):
              label="loglik_bic")
     ax2.plot(ks, [s["loglik_aic"] for s in scan], "^--", color="C2",
              label="loglik_aic")
-    ax2.set_ylabel("penalised criterion (lower = better)")
+    ax2.set_ylabel("penalized criterion (lower = better)")
     kbic = min(scan, key=lambda s: s["loglik_bic"])["k_found"]
     kaic = min(scan, key=lambda s: s["loglik_aic"])["k_found"]
     ax2.axvline(kaic, color="C2", lw=0.8, alpha=0.6)
@@ -324,8 +324,8 @@ def fig_pareto(res):
     fig, ax = plt.subplots(figsize=(4.2, 3.0))
     sc = ax.scatter(ll[order], bic[order], c=kk[order], cmap="viridis", s=40,
                     edgecolor="k", lw=0.4)
-    ax.set_xlabel("correlation log-likelihood (maximise)")
-    ax.set_ylabel("BIC (minimise)")
+    ax.set_xlabel("correlation log-likelihood (maximize)")
+    ax.set_ylabel("BIC (minimize)")
     fig.colorbar(sc, ax=ax, label="clusters")
     fig.tight_layout(); fig.savefig(FIGURES / "pareto.pdf"); plt.close(fig)
 

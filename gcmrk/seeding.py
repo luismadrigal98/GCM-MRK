@@ -5,7 +5,7 @@ The original project seeded its population from external clustering tools
 dependency-free (numpy-only) k-means so the GA can bootstrap itself with strong
 candidate partitions without requiring scikit-learn.
 
-For row-standardised data, Euclidean k-means is monotonically related to the
+For row-standardized data, Euclidean k-means is monotonically related to the
 correlation structure, so these seeds help the correlation-based objective just
 as much as the geometric ones.
 """
@@ -23,7 +23,7 @@ def kmeans(X: np.ndarray, k: int, rng: np.random.Generator,
            n_init: int = 3, max_iter: int = 50) -> np.ndarray:
     """k-means clustering returning 1-based labels.
 
-    Uses k-means++ initialisation and keeps the best of ``n_init`` restarts by
+    Uses k-means++ initialization and keeps the best of ``n_init`` restarts by
     within-cluster sum of squares.
     """
     X = np.asarray(X, dtype=float)
@@ -62,7 +62,7 @@ def _sqdist(X: np.ndarray, centroids: np.ndarray) -> np.ndarray:
 
 
 def _kpp_init(X: np.ndarray, k: int, rng: np.random.Generator) -> np.ndarray:
-    """k-means++ centroid initialisation."""
+    """k-means++ centroid initialization."""
     n = X.shape[0]
     centroids = np.empty((k, X.shape[1]))
     centroids[0] = X[rng.integers(0, n)]
@@ -101,7 +101,7 @@ def correlation_seeds(cor: np.ndarray, g_max: int) -> list:
     get split.  This routine instead clusters on the correlation distance
     ``d = 1 - |R|`` with agglomerative linkage -- the classical co-expression
     clustering strategy -- which produces seeds that already respect the
-    correlation structure the GA is asked to optimise.
+    correlation structure the GA is asked to optimize.
 
     Two linkage methods (average and complete) are used for diversity; for each,
     one partition per ``k`` in ``2..g_max`` is returned as a 1-based label

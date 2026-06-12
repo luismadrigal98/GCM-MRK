@@ -1,14 +1,14 @@
 """Decisive multi-seed benchmark for the GCM-MRK paper.
 
 Establishes, with replication and confidence intervals, where memetic global
-optimisation of the correlation block-likelihood beats greedy alternatives.
+optimization of the correlation block-likelihood beats greedy alternatives.
 
 Experiments
 -----------
 1. Noise sweep (known k): ARI vs noise for
    memetic GCM-MRK, GCM-MRK without local search (ablation),
    hierarchical average / complete linkage on 1-|R|, and k-means.
-2. Model selection (unknown k): memetic loglik_aic vs hierarchical + penalised
+2. Model selection (unknown k): memetic loglik_aic vs hierarchical + penalized
    cut; recovered k and ARI.
 3. Noise-gene robustness: modules embedded among unstructured "noise" genes;
    does the objective isolate the noise rather than pollute real modules?
@@ -73,7 +73,7 @@ def hierarchical(cor, k, method):
 
 
 def hierarchical_select(cor, n_samples, g_max, method):
-    """Cut the dendrogram at the k minimising the penalised correlation AIC."""
+    """Cut the dendrogram at the k minimizing the penalized correlation AIC."""
     Z = linkage(squareform(abscor_distance(cor), checks=False), method=method)
     best_k, best_lab, best_ic = None, None, np.inf
     for k in range(2, g_max + 1):
@@ -217,7 +217,7 @@ def write_latex(data):
     mrows = ["\\begin{tabular}{@{}lrr@{}}", "\\hline",
              "Method & $k$ recovered & ARI \\\\", "\\hline"]
     mlabel = {"memetic_aic": "\\tool{} (\\texttt{loglik\\_aic})",
-              "hier_avg_sel": "hierarchical + penalised cut"}
+              "hier_avg_sel": "hierarchical + penalized cut"}
     for m in ["memetic_aic", "hier_avg_sel"]:
         km, ks = ms(modelsel[m]["k"]); am, asd = ms(modelsel[m]["ari"])
         mrows.append(f"{mlabel[m]} & {km:.1f}$\\pm${ks:.1f} & {am:.2f}$\\pm${asd:.2f} \\\\")

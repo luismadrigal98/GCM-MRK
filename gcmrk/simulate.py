@@ -42,7 +42,7 @@ def simulate_modular_data(
     Returns
     -------
     data : ndarray (sum(genes_per_module), n_samples)
-        Row-standardised data matrix.
+        Row-standardized data matrix.
     labels : ndarray
         Ground-truth module id (1-based) for each row.
     """
@@ -60,7 +60,7 @@ def simulate_modular_data(
             labels[row] = module
             row += 1
 
-    # Row-standardise (mean 0, unit variance per row).
+    # Row-standardize (mean 0, unit variance per row).
     mean = data.mean(axis=1, keepdims=True)
     std = data.std(axis=1, keepdims=True)
     std[std == 0] = 1.0

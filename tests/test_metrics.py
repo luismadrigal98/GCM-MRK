@@ -92,8 +92,8 @@ class TestMetrics(unittest.TestCase):
         labels = self.good.copy()
         labels[0] = 0  # leave one element unassigned
         base = metrics.silhouette(self.X, labels, unassigned_penalty=0.0)
-        penalised = metrics.silhouette(self.X, labels, unassigned_penalty=1.0)
-        self.assertLess(penalised, base)
+        penalized = metrics.silhouette(self.X, labels, unassigned_penalty=1.0)
+        self.assertLess(penalized, base)
 
     def test_registry_directions(self):
         self.assertEqual(metrics.get_metric("silhouette").weight, 1.0)

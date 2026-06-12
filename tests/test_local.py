@@ -32,7 +32,7 @@ class TestGenerativeModelIdentity(unittest.TestCase):
         self.assertAlmostEqual(got, expected, places=6)
 
 
-class TestPenalisedCriteria(unittest.TestCase):
+class TestPenalizedCriteria(unittest.TestCase):
     def test_bic_scaling_uses_samples_and_cluster_count(self):
         X, t = simulate_modular_data([10, 10], n_samples=30, noise=1.0,
                                      latent_per_module=1, seed=1)

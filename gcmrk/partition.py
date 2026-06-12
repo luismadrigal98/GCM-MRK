@@ -1,7 +1,7 @@
 """Partition representation and repair operators.
 
 A *partition* is a 1-D integer vector assigning each of ``n`` elements to a
-cluster.  Two initialisation strategies are provided:
+cluster.  Two initialization strategies are provided:
 
 * random partitions (:func:`random_partition`), and
 * partitions seeded from an external clustering file (:func:`read_partitions`),
