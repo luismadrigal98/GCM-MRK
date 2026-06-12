@@ -6,7 +6,7 @@ List the available performance-target metrics::
 
     gcmrk metrics
 
-Cluster a CSV, maximising the silhouette score, into at most 6 clusters::
+Cluster a CSV, maximizing the silhouette score, into at most 6 clusters::
 
     gcmrk cluster --data expr.csv --targets silhouette --g-max 6 \
         --generations 100 --population 200 --out labels.txt
@@ -36,14 +36,14 @@ from .simulate import simulate_modular_data
 def _add_cluster_parser(sub):
     p = sub.add_parser(
         "cluster",
-        help="Cluster a dataset by optimising performance-target metrics.",
-        description="Evolve a clustering that optimises the chosen metric(s).",
+        help="Cluster a dataset by optimizing performance-target metrics.",
+        description="Evolve a clustering that optimizes the chosen metric(s).",
     )
     p.add_argument("--data", required=True,
                    help="Path to a CSV/TSV file. Rows = elements, columns = features.")
     p.add_argument("--targets", nargs="+", default=["loglik"],
                    metavar="METRIC",
-                   help="Metric(s) to optimise. See `gcmrk metrics`. "
+                   help="Metric(s) to optimize. See `gcmrk metrics`. "
                         "Default: loglik.")
     p.add_argument("--g-max", type=int, default=10,
                    help="Maximum number of clusters (default 10).")
@@ -53,9 +53,9 @@ def _add_cluster_parser(sub):
     p.add_argument("--allow-unassigned", action="store_true",
                    help="Permit elements to be left unassigned (label 0).")
     p.add_argument("--no-normalize", action="store_true",
-                   help="Do not standardise the data before clustering.")
+                   help="Do not standardize the data before clustering.")
     p.add_argument("--by-feature", action="store_true",
-                   help="Normalise per feature (column) instead of per sample (row).")
+                   help="Normalize per feature (column) instead of per sample (row).")
     p.add_argument("--unassigned-penalty", type=float, default=0.0,
                    help="Penalty strength for unassigned elements (default 0).")
     p.add_argument("--seed-file", default=None,
@@ -184,7 +184,7 @@ def _run_simulate(args) -> int:
 def _run_metrics() -> int:
     print("Available performance-target metrics:\n")
     for name, spec in METRICS.items():
-        arrow = "maximise" if spec.direction == "max" else "minimise"
+        arrow = "maximize" if spec.direction == "max" else "minimize"
         print(f"  {name:18s} [{arrow:8s}] {spec.description}")
     return 0
 

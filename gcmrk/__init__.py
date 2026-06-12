@@ -1,6 +1,6 @@
 """GCM-MRK: genetic-algorithm clustering guided by performance-target metrics.
 
-Evolve a partition of your data so that it directly optimises the clustering
+Evolve a partition of your data so that it directly optimizes the clustering
 quality metric(s) you care about -- correlation-based log-likelihood,
 silhouette, Davies-Bouldin, Calinski-Harabasz, BIC or AIC -- either as a single
 weighted objective or as a multi-objective Pareto search.

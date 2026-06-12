@@ -1,6 +1,6 @@
 # GCM-MRK — metric-guided clustering by genetic algorithm
 
-GCM-MRK clusters your data by **directly optimising the cluster-validity metric
+GCM-MRK clusters your data by **directly optimizing the cluster-validity metric
 you care about**. Instead of running a fixed algorithm (k-means, hierarchical,
 …) and then *measuring* quality afterwards, GCM-MRK evolves a partition so that
 the chosen *performance target* is as good as it can be.
@@ -8,7 +8,7 @@ the chosen *performance target* is as good as it can be.
 It is built for settings — such as gene co-expression analysis — where the
 notion of a "good" cluster is defined by the evaluation criterion itself, and
 where that criterion (e.g. a correlation-based likelihood) is not what
-off-the-shelf clusterers optimise.
+off-the-shelf clusterers optimize.
 
 The implementation depends only on **numpy, scipy and pandas**. There is no
 dependency on DEAP or scikit-learn.
@@ -28,21 +28,21 @@ be on `PYTHONPATH`, e.g. run from the repo root).
 |------|---------|
 | **Element** | One row of the data matrix — the thing being clustered. |
 | **Partition** | A vector of integer labels assigning each element to a cluster. Label `0` (optional) marks an *unassigned* element. |
-| **Performance target / metric** | A scalar score measuring partition quality. The GA optimises it. |
+| **Performance target / metric** | A scalar score measuring partition quality. The GA optimizes it. |
 | **Mode** | `weighted` (one combined objective) or `nsga2` (multi-objective Pareto search). |
 
 ### Available metrics
 
 | Name | Direction | Consumes | Notes |
 |------|-----------|----------|-------|
-| `loglik` | maximise | correlation matrix | Correlation-based log-likelihood; rewards within-cluster correlation. The project's bespoke objective, suited to co-expression / modular data. |
-| `loglik_bic` | minimise | correlation matrix | `loglik` penalised by `K·log(n)`; selects the number of modules within correlation space. |
-| `loglik_aic` | minimise | correlation matrix | `loglik` penalised by `2K`; lighter penalty, tolerates a few more modules. |
-| `silhouette` | maximise | data matrix | Mean silhouette in `[-1, 1]`; geometric (Euclidean) separation. |
-| `davies_bouldin` | minimise | data matrix | Compactness vs separation ratio. |
-| `calinski_harabasz` | maximise | data matrix | Variance-ratio criterion. |
-| `bic` | minimise | data matrix | Gaussian-mixture BIC; rewards parsimony. |
-| `aic` | minimise | data matrix | Gaussian-mixture AIC; rewards parsimony. |
+| `loglik` | maximize | correlation matrix | Correlation-based log-likelihood; rewards within-cluster correlation. The project's bespoke objective, suited to co-expression / modular data. |
+| `loglik_bic` | minimize | correlation matrix | `loglik` penalized by `K·log(n)`; selects the number of modules within correlation space. |
+| `loglik_aic` | minimize | correlation matrix | `loglik` penalized by `2K`; lighter penalty, tolerates a few more modules. |
+| `silhouette` | maximize | data matrix | Mean silhouette in `[-1, 1]`; geometric (Euclidean) separation. |
+| `davies_bouldin` | minimize | data matrix | Compactness vs separation ratio. |
+| `calinski_harabasz` | maximize | data matrix | Variance-ratio criterion. |
+| `bic` | minimize | data matrix | Gaussian-mixture BIC; rewards parsimony. |
+| `aic` | minimize | data matrix | Gaussian-mixture AIC; rewards parsimony. |
 
 Run `gcmrk metrics` for this list at any time.
 
@@ -53,7 +53,7 @@ Run `gcmrk metrics` for this list at any time.
 gcmrk simulate --modules 20 20 20 --samples 50 --seed 5 \
     --out sim.csv --truth-out truth.txt
 
-# 2. Cluster it by maximising the correlation-based log-likelihood.
+# 2. Cluster it by maximizing the correlation-based log-likelihood.
 #    --g-max sets the maximum number of clusters.
 gcmrk cluster --data sim.csv --targets loglik --g-max 3 \
     --generations 100 --population 200 --seed 0 --out labels.txt
@@ -73,8 +73,8 @@ non-dominated solution (one partition per line).
   `--unassigned-penalty` controlling how strongly that is discouraged.
 - `--seed-file FILE` — inject seed partitions (one per line), e.g. the output of
   another clustering tool, into the initial population.
-- `--by-feature` — normalise per column instead of per row.
-- `--no-normalize` — skip standardisation entirely.
+- `--by-feature` — normalize per column instead of per row.
+- `--no-normalize` — skip standardization entirely.
 - `--kmeans-restarts N` — number of k-means seed partitions per candidate
   cluster count (`0` disables k-means seeding).
 
@@ -106,7 +106,7 @@ for sol in mo.pareto_front:
 
 ## How it works
 
-1. **Initialisation** — the population is seeded with k-means partitions and
+1. **Initialization** — the population is seeded with k-means partitions and
    correlation-distance hierarchical partitions (average/complete linkage on
    `1 − |R|`, the classical co-expression strategy) across a range of cluster
    counts (`2 … g_max`), any user-supplied seed partitions, and random partitions
@@ -119,7 +119,7 @@ for sol in mo.pareto_front:
 4. **Memetic local search** — for the correlation objective, seeds and elites are
    refined by a greedy hill-climb that reassigns the single gene most improving
    the objective until none remains (computed incrementally, `O(n²)` per sweep).
-   This is the step that lets the optimiser beat the hierarchical clustering it is
+   This is the step that lets the optimizer beat the hierarchical clustering it is
    seeded from — agglomerative clustering can never separate two genes once
    merged. Disable with `local_search=False` (Python API).
 5. **Repair** — after every operator, partitions are relabelled to consecutive
@@ -135,32 +135,32 @@ that model's BIC/AIC. See `paper/` for the derivation and benchmarks.
 
 The correlation-based `loglik` is a *goodness-of-fit* score with **no built-in
 parsimony**: splitting a good cluster into smaller well-correlated pieces tends
-to increase it. Optimising `loglik` alone with a loose `--g-max` therefore
+to increase it. Optimizing `loglik` alone with a loose `--g-max` therefore
 over-segments. Two ways to get the right number of clusters:
 
-- **Optimise a penalised correlation criterion** (recommended) — use
+- **Optimize a penalized correlation criterion** (recommended) — use
   `--targets loglik_aic` (or `loglik_bic`) as a single objective with a loose
   `--g-max`. These add a cluster-count penalty to `loglik` *within correlation
   space*, so the search both fits and selects the number of modules. `loglik_aic`
   recovers the true module count on the synthetic data; `loglik_bic` is more
   conservative and favours fewer, stronger modules when separation is weak.
 - **Constrain `--g-max`** to the number of clusters you expect (or scan a few
-  values and pick the one minimising `loglik_aic`/`loglik_bic`).
+  values and pick the one minimizing `loglik_aic`/`loglik_bic`).
 - **Add a parsimony objective** — combine `loglik` with `bic` or `aic` under
   `--mode nsga2` and inspect the Pareto front. Note that the *geometric* BIC/AIC
   assume Euclidean-Gaussian clusters, so they conflict with the
   absolute-correlation objective when modules contain anti-correlated genes; the
-  penalised correlation criteria above avoid that assumption.
+  penalized correlation criteria above avoid that assumption.
 
 ## Repository layout
 
 ```
 gcmrk/
-  metrics.py     cluster-validity metrics (the optimisation targets)
+  metrics.py     cluster-validity metrics (the optimization targets)
   partition.py   partition representation, repair, label consolidation
   seeding.py     numpy k-means used to seed the population
   ga.py          genetic algorithm engine (weighted + NSGA-II)
-  data.py        loading, normalisation, correlation
+  data.py        loading, normalization, correlation
   simulate.py    synthetic modular-data generator
   core.py        cluster() — the high-level entry point
   cli.py         command-line interface

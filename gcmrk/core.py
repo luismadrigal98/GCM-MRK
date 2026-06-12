@@ -38,16 +38,16 @@ def cluster(
     seed: Optional[int] = None,
     verbose: bool = False,
 ) -> GAResult:
-    """Cluster ``data`` by optimising one or more performance-target metrics.
+    """Cluster ``data`` by optimizing one or more performance-target metrics.
 
     Parameters
     ----------
     data:
         File path or array-like; rows are elements to cluster, columns features.
     targets:
-        Metric names to optimise (see :data:`gcmrk.metrics.METRICS`).  More than
+        Metric names to optimize (see :data:`gcmrk.metrics.METRICS`).  More than
         one target combined with ``mode="nsga2"`` performs multi-objective
-        optimisation.
+        optimization.
     g_max:
         Maximum number of clusters allowed.
     mode:
@@ -55,7 +55,7 @@ def cluster(
     all_in_clusters:
         If true, every element must be assigned (no label ``0``).
     normalize / by_sample:
-        Standardise the data first; ``by_sample`` normalises each row, which the
+        Standardize the data first; ``by_sample`` normalizes each row, which the
         correlation log-likelihood expects.
     seed_file:
         Optional file of seed partitions (one per line) to inject.

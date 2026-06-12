@@ -1,4 +1,4 @@
-"""Data loading, normalisation and correlation helpers."""
+"""Data loading, normalization and correlation helpers."""
 
 from __future__ import annotations
 
@@ -91,11 +91,11 @@ def _sniff_layout(path: str, sep: str):
 
 
 def normalize_data(data: np.ndarray, by_sample: bool = False) -> np.ndarray:
-    """Standardise to zero mean and unit variance.
+    """Standardize to zero mean and unit variance.
 
-    ``by_sample=True`` normalises each row (sample) independently -- the regime
+    ``by_sample=True`` normalizes each row (sample) independently -- the regime
     required by the correlation-based log-likelihood.  ``by_sample=False``
-    normalises each feature (column).  Zero-variance vectors are left centred
+    normalizes each feature (column).  Zero-variance vectors are left centred
     (the denominator is clamped to 1 to avoid division by zero).
     """
     data = np.asarray(data, dtype=float)
