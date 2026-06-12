@@ -12,3 +12,6 @@ paper/figures/iris_silhouette.pdf
 paper/figures/pareto.pdf
 paper/results/benchmark.csv
 paper/results/benchmark.json
+paper/gcmrk_paper.aux
+paper/gcmrk_paper.log
+paper/gcmrk_paper.out

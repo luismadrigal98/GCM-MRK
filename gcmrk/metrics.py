@@ -27,6 +27,8 @@ from scipy.spatial.distance import cdist, pdist, squareform
 
 __all__ = [
     "log_likelihood_correlation",
+    "loglik_bic",
+    "loglik_aic",
     "silhouette",
     "davies_bouldin",
     "calinski_harabasz",
@@ -126,6 +128,64 @@ def log_likelihood_correlation(cor: np.ndarray, labels) -> float:
             log_likelihood += _PERFECT_FIT_CAP
 
     return 0.5 * log_likelihood
+
+
+def _penalised_correlation_loglik(cor: np.ndarray, labels, *, penalty: float) -> float:
+    """Correlation log-likelihood penalised for the number of clusters.
+
+    The raw :func:`log_likelihood_correlation` is a pure goodness-of-fit score:
+    it keeps rising as coherent clusters are split into smaller coherent pieces,
+    so optimising it under a loose ``g_max`` over-segments.  This wrapper adds an
+    information-criterion penalty so that a *single* objective can both fit and
+    select the number of correlation modules, without leaving correlation space
+    (the geometric BIC/AIC assume Euclidean-Gaussian clusters, which is at odds
+    with the absolute-correlation objective when modules contain anti-correlated
+    members).
+
+    Each non-singleton cluster is treated as contributing one within-cluster
+    correlation parameter, so a partition with ``K`` such clusters over ``n``
+    assigned elements is scored
+
+    .. math:: -2\\,\\mathcal{L}(\\ell) + \\text{penalty}\\cdot K,
+
+    with ``penalty = log(n)`` recovering a BIC-style criterion and
+    ``penalty = 2`` an AIC-style one.  Lower is better.
+    """
+    cor = np.asarray(cor, dtype=float)
+    labels = _as_labels(labels)
+    ll = log_likelihood_correlation(cor, labels)
+    if not np.isfinite(ll):
+        return np.inf
+    # Count clusters that actually carry correlation information (size > 1),
+    # matching the clusters that contribute to the log-likelihood.
+    assigned = labels[_assigned_mask(labels)]
+    uniq, counts = np.unique(assigned, return_counts=True)
+    k = int(np.sum(counts > 1))
+    n = int(assigned.size)
+    if k < 1 or n < 1:
+        return np.inf
+    return -2.0 * ll + penalty * k
+
+
+def loglik_bic(cor: np.ndarray, labels) -> float:
+    """BIC-penalised correlation log-likelihood (lower is better).
+
+    Uses ``penalty = log(n)``; selects the number of correlation modules in a
+    single objective.  See :func:`_penalised_correlation_loglik`.
+    """
+    n = int(np.sum(_assigned_mask(_as_labels(labels))))
+    penalty = float(np.log(n)) if n > 1 else 0.0
+    return _penalised_correlation_loglik(cor, labels, penalty=penalty)
+
+
+def loglik_aic(cor: np.ndarray, labels) -> float:
+    """AIC-penalised correlation log-likelihood (lower is better).
+
+    Uses ``penalty = 2``; a lighter complexity penalty than :func:`loglik_bic`,
+    so it tolerates a few more clusters.  See
+    :func:`_penalised_correlation_loglik`.
+    """
+    return _penalised_correlation_loglik(cor, labels, penalty=2.0)
 
 
 # --------------------------------------------------------------------------- #
@@ -344,6 +404,14 @@ METRICS: Dict[str, MetricSpec] = {
     "loglik": MetricSpec(
         "loglik", "max", "cor", log_likelihood_correlation,
         "Correlation-based log-likelihood (rewards correlated clusters).",
+    ),
+    "loglik_bic": MetricSpec(
+        "loglik_bic", "min", "cor", loglik_bic,
+        "BIC-penalised correlation log-likelihood (selects module count).",
+    ),
+    "loglik_aic": MetricSpec(
+        "loglik_aic", "min", "cor", loglik_aic,
+        "AIC-penalised correlation log-likelihood (selects module count).",
     ),
     "silhouette": MetricSpec(
         "silhouette", "max", "X", silhouette,
