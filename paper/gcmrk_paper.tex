@@ -583,22 +583,22 @@ construction.}
 \subsection*{Selecting the number of clusters without knowing it}
 When only \texttt{loglik} is optimised under a loose $g_{\max}$, the correlation
 objective can over-segment, since Eq~\eqref{eq:loglik} carries no parsimony term.
-With correlation-aware seeding the effect is mild but real: on Synthetic-Easy the
-loglik optimum already coincides with the true partition ($k=\EasyLooseK{}$),
-whereas on Synthetic-Hard a loose bound yields $k=\HardLooseK{}$ (true 5;
-Table~\ref{tab:benchmark}). The penalised correlation criteria
-(Eq~\eqref{eq:loglikic}) pin down the count within a single objective: optimising
-\texttt{loglik\_aic} under the same loose $g_{\max}$ returns
-$k=\HardAicK{}$ on this Synthetic-Hard dataset at ARI $=\HardAicARI{}$ (and
-$k=\EasyAicK{}$ at ARI $=\EasyAicARI{}$ on Synthetic-Easy), recovering the true
-number of modules; over \NSeeds{} datasets it averages slightly above the truth
-(Table~\ref{tab:modelsel}). The heavier BIC-style penalty (\texttt{loglik\_bic})
-is more conservative: exact on the well-separated easy data ($k=\EasyBicK{}$) but
-merging the weakest modules on the noisy hard data ($k=\HardBicK{}$), the
-expected behaviour of a stronger complexity penalty when separation is marginal.
-The trade-off is also visible by scanning $g_{\max}$ (Fig~\ref{fig:modelsel}):
-\texttt{loglik} rises and then plateaus with $k$ while \texttt{loglik\_aic} turns
-over near the true number of modules.
+The effect, however, is mild once the likelihood is optimised well: on
+Synthetic-Easy the optimum already coincides with the true partition
+($k=\EasyLooseK{}$), and on Synthetic-Hard a loose bound yields only
+$k=\HardLooseK{}$ (true 5; Table~\ref{tab:benchmark}), one module above the truth.
+The penalised correlation criteria (Eq~\eqref{eq:loglikic}) keep selection near
+the truth within a single objective: on Synthetic-Easy \texttt{loglik\_aic}
+returns $k=\EasyAicK{}$ at ARI $=\EasyAicARI{}$, and on this Synthetic-Hard
+dataset $k=\HardAicK{}$ at ARI $=\HardAicARI{}$. The decisive test is replication:
+over \NSeeds{} datasets \texttt{loglik\_aic} selects $\MemeticSelK{}$ modules on
+average at ARI $\MemeticSelARI{}$, closer to the truth and more accurate than
+hierarchical clustering whose cut minimises the same criterion ($\HierSelK{}$
+modules, ARI $\HierSelARI{}$; Table~\ref{tab:modelsel}) --- so the advantage of
+global optimisation persists when the module count must be inferred. The
+fit--parsimony trade-off is also visible by scanning $g_{\max}$
+(Fig~\ref{fig:modelsel}): \texttt{loglik} rises and plateaus with $k$ while the
+penalised criteria turn over near the true number of modules.
 
 \begin{figure}[!h]
 \caption{\textbf{Model selection on Synthetic-Hard.}
@@ -629,13 +629,6 @@ trade-off explicitly for interactive exploration.}
 \previewfig{pareto.pdf}
 \label{fig:pareto}
 \end{figure}
-
-Replicated over \NSeeds{} datasets at the hard noise level, single-objective
-\texttt{loglik\_aic} recovers a mean of $\MemeticSelK{}$ modules (true 5) at ARI
-$\MemeticSelARI{}$, against $\HierSelK{}$ modules at ARI $\HierSelARI{}$ for
-hierarchical clustering whose dendrogram cut is chosen to minimise the same
-criterion (Table~\ref{tab:modelsel}) --- so the advantage of global optimisation
-persists when the number of modules must also be inferred.
 
 \begin{table}[!ht]
 \centering
