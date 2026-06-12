@@ -24,3 +24,9 @@ paper/figures/empirical_eigengenes.pdf
 paper/figures/model_selection.pdf
 paper/gcmrk_paper.pdf
 paper/gcmrk_paper.synctex.gz
+paper/figures/perf_vs_noise.pdf
+paper/figures/ablation.pdf
+paper/results/decisive.json
+paper/results/decisive_macros.tex
+paper/results/modelsel_table.tex
+paper/results/perf_table.tex

@@ -33,7 +33,7 @@ def main():
     if mpath.exists():
         with open(mpath) as fh:
             for r in csv.DictReader(fh):
-                module_rows.append({
+                row = {
                     "module": int(r["module"]),
                     "size": int(r["size"]),
                     "within_abs_corr": float(r["within_abs_corr"]),
@@ -41,7 +41,10 @@ def main():
                     "tumor_normal_t": float(r["tumor_normal_t"]),
                     "tumor_normal_p": float(r["tumor_normal_p"]),
                     "example_genes": r["example_genes"],
-                })
+                }
+                if "tumor_normal_q" in r:
+                    row["tumor_normal_q"] = float(r["tumor_normal_q"])
+                module_rows.append(row)
 
     write_latex(rows, meta, module_rows or None, scan_hard, kbic, kaic)
     print(f"Regenerated LaTeX files in {RESULTS}: "

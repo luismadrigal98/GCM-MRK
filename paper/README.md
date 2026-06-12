@@ -49,12 +49,30 @@ pdflatex gcmrk_paper
 refresh the paper after changing the analysis: re-run the experiments (or
 `gen_latex.py`), then recompile. No manual number edits.
 
+## Experiments
+
+- `experiments/decisive.py` — the replicated benchmark (30 seeds): noise sweep
+  (memetic vs ablation vs hierarchical avg/complete vs k-means), model selection
+  with unknown k, and noise-gene robustness. Writes `results/decisive.json`,
+  `results/perf_table.tex`, `results/modelsel_table.tex`,
+  `results/decisive_macros.tex`, and `figures/perf_vs_noise.pdf`,
+  `figures/ablation.pdf`.
+- `experiments/run_experiments.py` — single-dataset illustrative table, the
+  generative-model figures (convergence, model selection, Pareto), Iris, and the
+  GSE183947 empirical analysis (BH-corrected). Writes `results/benchmark*.{csv,json}`,
+  `results/results_macros.tex`, `results/benchmark_table.tex`,
+  `results/empirical_table.tex`, and the corresponding figures.
+
+Run both from the repo root with `PYTHONPATH=.`, then compile.
+
 ## Status / TODO
 
-- [x] Tool description and metric definitions (incl. penalised correlation criteria)
-- [x] Two synthetic datasets (easy / hard) + Iris benchmark
-- [x] Model selection: penalised `loglik_aic`/`loglik_bic` + NSGA-II demo
-- [x] Empirical dataset 1: GSE183947 breast-cancer co-expression modules
-- [x] Auto-generated, re-runnable results macros/tables
+- [x] Generative model + likelihood derivation (S1 Appendix)
+- [x] Principled correlation BIC/AIC; memetic local search
+- [x] Decisive replicated benchmark with baselines + ablation (CIs)
+- [x] Model selection and noise-gene robustness experiments
+- [x] Iris generality benchmark
+- [x] Empirical dataset 1: GSE183947, BH-corrected module-phenotype association
+- [x] Auto-generated, re-runnable results macros/tables/figures
 - [ ] Empirical dataset 2 (a second set to be added)
-- [ ] Finalise author list and affiliations
+- [ ] Real citation for GSE183947; finalise author list and affiliations

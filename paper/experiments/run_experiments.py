@@ -170,6 +170,7 @@ def synthetic_block(X, truth, k_true, name, rows, meta_key, meta, res_store):
 def model_selection_scan(X, truth, name, k_range=range(2, 11)):
     """Single-objective loglik at each k; report loglik and penalised criteria."""
     cor = pearson_correlation(normalize_data(X, by_sample=True), rowvar=True)
+    d = X.shape[1]
     out = []
     for k in k_range:
         res = cluster(X, targets=["loglik"], g_max=k, generations=100,
@@ -177,8 +178,8 @@ def model_selection_scan(X, truth, name, k_range=range(2, 11)):
         out.append({
             "k": k, "k_found": n_clusters(res.labels),
             "loglik": float(log_likelihood_correlation(cor, res.labels)),
-            "loglik_bic": float(loglik_bic(cor, res.labels)),
-            "loglik_aic": float(loglik_aic(cor, res.labels)),
+            "loglik_bic": float(loglik_bic(cor, res.labels, d)),
+            "loglik_aic": float(loglik_aic(cor, res.labels, d)),
             "ari": float(adjusted_rand_score(truth, res.labels)),
         })
     return out
@@ -239,18 +240,31 @@ def empirical_block(rows, meta, n_top=200, g_max=12):
             "example_genes": ",".join(map(str, gnames[ii[:5]])),
         })
 
+    # Benjamini-Hochberg FDR correction across the module tests.
+    pvals = np.array([m["tumor_normal_p"] for m in module_rows])
+    order = np.argsort(pvals)
+    m_tests = len(pvals)
+    q = np.empty(m_tests)
+    prev = 1.0
+    for rank, idx in enumerate(order[::-1]):           # largest p first
+        i = m_tests - rank                              # 1-based rank from top
+        prev = min(prev, pvals[idx] * m_tests / i)
+        q[idx] = prev
+    for mrow, qv in zip(module_rows, q):
+        mrow["tumor_normal_q"] = float(qv)
+
     with open(RESULTS / "empirical_modules.csv", "w", newline="") as fh:
         wr = csv.DictWriter(fh, fieldnames=list(module_rows[0].keys()))
         wr.writeheader(); wr.writerows(module_rows)
 
-    n_sig = sum(1 for m in module_rows if m["tumor_normal_p"] < 0.05)
+    n_sig = sum(1 for m in module_rows if m["tumor_normal_q"] < 0.05)
     meta["empirical"] = {
         "dataset": "GSE183947", "shape_full": list(df.shape),
         "n_top_genes": n_top, "g_max": g_max, "k_modules": k,
         "background_abs_corr": round(bg, 3),
         "mean_within_abs_corr": round(
             float(np.mean([m["within_abs_corr"] for m in module_rows])), 3),
-        "modules_assoc_phenotype_p05": n_sig,
+        "modules_assoc_phenotype_q05": n_sig,
         "n_modules": len(module_rows),
     }
     rows.append({
@@ -344,7 +358,7 @@ def fig_empirical_eigengenes(module_rows, eigengenes, is_tumor):
     if not eigengenes:
         return
     # show the modules most associated with phenotype
-    order = sorted(module_rows, key=lambda m: m["tumor_normal_p"])[:6]
+    order = sorted(module_rows, key=lambda m: m["tumor_normal_q"])[:6]
     fig, ax = plt.subplots(figsize=(5.0, 3.0))
     pos = 0; ticks = []; ticklab = []
     for m in order:
@@ -356,12 +370,12 @@ def fig_empirical_eigengenes(module_rows, eigengenes, is_tumor):
                        boxprops=dict(facecolor=col, alpha=0.6),
                        medianprops=dict(color="k"), showfliers=False)
         ticks.append(pos + 0.5)
-        star = "*" if m["tumor_normal_p"] < 0.05 else ""
+        star = "*" if m["tumor_normal_q"] < 0.05 else ""
         ticklab.append(f"M{m['module']}{star}")
         pos += 3
     ax.set_xticks(ticks); ax.set_xticklabels(ticklab)
     ax.set_ylabel("module eigengene")
-    ax.set_xlabel("module (T=tumor red, N=normal blue; * p<0.05)")
+    ax.set_xlabel("module (T=tumor red, N=normal blue; * BH $q<0.05$)")
     fig.tight_layout(); fig.savefig(FIGURES / "empirical_eigengenes.pdf")
     plt.close(fig)
 
@@ -444,7 +458,7 @@ def write_latex(rows, meta, module_rows, scan_hard, kbic, kaic):
         M += _macro("EmpNmodules", emp["n_modules"])
         M += _macro("EmpWithinR", _fmt(emp["mean_within_abs_corr"]))
         M += _macro("EmpBgR", _fmt(emp["background_abs_corr"]))
-        M += _macro("EmpNsig", emp["modules_assoc_phenotype_p05"])
+        M += _macro("EmpNsig", emp["modules_assoc_phenotype_q05"])
 
     (RESULTS / "results_macros.tex").write_text(M)
 
@@ -479,16 +493,16 @@ def write_latex(rows, meta, module_rows, scan_hard, kbic, kaic):
 
     # ----- empirical module table (full tabular) ----- #
     if module_rows:
+        def fmt_p(p):
+            return "$<$0.001" if p < 1e-3 else f"{p:.3f}"
         mb = ["\\begin{tabular}{@{}lrrrrr@{}}", "\\hline",
               "Module & Size & Within $\\lvert r\\rvert$ & Eig.\\ var. & "
-              "$t$ (T vs N) & $p$ \\\\", "\\hline"]
-        for m in sorted(module_rows, key=lambda x: x["tumor_normal_p"]):
-            p = m["tumor_normal_p"]
-            pstr = "$<$0.001" if p < 1e-3 else f"{p:.3f}"
+              "$t$ (T vs N) & $q$ (BH) \\\\", "\\hline"]
+        for m in sorted(module_rows, key=lambda x: x["tumor_normal_q"]):
             mb.append(
                 f"M{m['module']} & {m['size']} & {m['within_abs_corr']:.2f} & "
                 f"{m['eigengene_var_explained']:.2f} & {m['tumor_normal_t']:.1f} & "
-                f"{pstr} \\\\"
+                f"{fmt_p(m['tumor_normal_q'])} \\\\"
             )
         mb += ["\\hline", "\\end{tabular}"]
         (RESULTS / "empirical_table.tex").write_text("\n".join(mb) + "\n")

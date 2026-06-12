@@ -116,9 +116,20 @@ for sol in mo.pareto_front:
 3. **Selection / variation** — elitist tournament selection (weighted mode) or
    NSGA-II non-dominated sorting + crowding distance (multi-objective mode),
    followed by two-point crossover and reassignment mutation.
-4. **Repair** — after every operator, partitions are relabelled to consecutive
+4. **Memetic local search** — for the correlation objective, seeds and elites are
+   refined by a greedy hill-climb that reassigns the single gene most improving
+   the objective until none remains (computed incrementally, `O(n²)` per sweep).
+   This is the step that lets the optimiser beat the hierarchical clustering it is
+   seeded from — agglomerative clustering can never separate two genes once
+   merged. Disable with `local_search=False` (Python API).
+5. **Repair** — after every operator, partitions are relabelled to consecutive
    integers and constrained to have between 2 and `g_max` clusters so the
    validity metrics stay well-defined.
+
+The `loglik` objective is, up to a constant and the sample-size factor, the
+profile log-likelihood of a block-diagonal one-factor Gaussian model (each module
+= one regulator with equal-magnitude ± loadings); `loglik_bic`/`loglik_aic` are
+that model's BIC/AIC. See `paper/` for the derivation and benchmarks.
 
 ## Choosing the number of clusters (important)
 
