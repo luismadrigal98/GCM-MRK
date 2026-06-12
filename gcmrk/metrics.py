@@ -130,62 +130,72 @@ def log_likelihood_correlation(cor: np.ndarray, labels) -> float:
     return 0.5 * log_likelihood
 
 
-def _penalised_correlation_loglik(cor: np.ndarray, labels, *, penalty: float) -> float:
-    """Correlation log-likelihood penalised for the number of clusters.
+def _n_coherent_clusters(labels: np.ndarray) -> int:
+    """Number of clusters with at least two members (size-1 clusters carry no
+    coherence parameter and do not contribute to the log-likelihood)."""
+    assigned = labels[_assigned_mask(labels)]
+    if assigned.size == 0:
+        return 0
+    _, counts = np.unique(assigned, return_counts=True)
+    return int(np.sum(counts > 1))
 
-    The raw :func:`log_likelihood_correlation` is a pure goodness-of-fit score:
-    it keeps rising as coherent clusters are split into smaller coherent pieces,
-    so optimising it under a loose ``g_max`` over-segments.  This wrapper adds an
-    information-criterion penalty so that a *single* objective can both fit and
-    select the number of correlation modules, without leaving correlation space
-    (the geometric BIC/AIC assume Euclidean-Gaussian clusters, which is at odds
-    with the absolute-correlation objective when modules contain anti-correlated
-    members).
 
-    Each non-singleton cluster is treated as contributing one within-cluster
-    correlation parameter, so a partition with ``K`` such clusters over ``n``
-    assigned elements is scored
+def _penalised_correlation_loglik(cor: np.ndarray, labels, n_samples: int,
+                                  *, penalty_per_cluster: float) -> float:
+    r"""Information criterion for the equal-magnitude one-factor block model.
 
-    .. math:: -2\\,\\mathcal{L}(\\ell) + \\text{penalty}\\cdot K,
+    Under that generative model (each module driven by one latent factor with
+    equal-magnitude :math:`\pm` loadings; modules mutually independent), the
+    Gaussian profile log-likelihood of a partition is, up to a
+    partition-independent constant,
 
-    with ``penalty = log(n)`` recovering a BIC-style criterion and
-    ``penalty = 2`` an AIC-style one.  Lower is better.
+    .. math:: \ell(\ell) = d\,\mathcal{L}(\ell),
+
+    where :math:`d` = ``n_samples`` and :math:`\mathcal{L}` is
+    :func:`log_likelihood_correlation` (the maximum-likelihood common coherence
+    of a module equals its mean absolute off-diagonal correlation, at which the
+    trace term of the likelihood collapses to the dimension; see the paper's
+    appendix for the derivation).  Each module contributes a single coherence
+    parameter, so a partition with ``K`` non-singleton modules is scored
+
+    .. math:: -2\,\ell(\ell) + \text{penalty\_per\_cluster}\cdot K ,
+
+    minimised.  ``penalty_per_cluster = log(d)`` gives BIC, ``2`` gives AIC.
+    Crucially the likelihood scales with ``d`` while the penalty does not, so
+    more samples correctly support more modules.
     """
     cor = np.asarray(cor, dtype=float)
     labels = _as_labels(labels)
     ll = log_likelihood_correlation(cor, labels)
     if not np.isfinite(ll):
         return np.inf
-    # Count clusters that actually carry correlation information (size > 1),
-    # matching the clusters that contribute to the log-likelihood.
-    assigned = labels[_assigned_mask(labels)]
-    uniq, counts = np.unique(assigned, return_counts=True)
-    k = int(np.sum(counts > 1))
-    n = int(assigned.size)
-    if k < 1 or n < 1:
+    k = _n_coherent_clusters(labels)
+    if k < 1:
         return np.inf
-    return -2.0 * ll + penalty * k
+    d = int(n_samples)
+    return -2.0 * d * ll + penalty_per_cluster * k
 
 
-def loglik_bic(cor: np.ndarray, labels) -> float:
-    """BIC-penalised correlation log-likelihood (lower is better).
+def loglik_bic(cor: np.ndarray, labels, n_samples: int) -> float:
+    """BIC for the one-factor block model (lower is better).
 
-    Uses ``penalty = log(n)``; selects the number of correlation modules in a
-    single objective.  See :func:`_penalised_correlation_loglik`.
-    """
-    n = int(np.sum(_assigned_mask(_as_labels(labels))))
-    penalty = float(np.log(n)) if n > 1 else 0.0
-    return _penalised_correlation_loglik(cor, labels, penalty=penalty)
-
-
-def loglik_aic(cor: np.ndarray, labels) -> float:
-    """AIC-penalised correlation log-likelihood (lower is better).
-
-    Uses ``penalty = 2``; a lighter complexity penalty than :func:`loglik_bic`,
-    so it tolerates a few more clusters.  See
+    Penalty ``log(d)`` per module.  Selects the number of correlation modules in
+    a single objective without leaving correlation space.  See
     :func:`_penalised_correlation_loglik`.
     """
-    return _penalised_correlation_loglik(cor, labels, penalty=2.0)
+    d = max(int(n_samples), 2)
+    return _penalised_correlation_loglik(cor, labels, n_samples,
+                                         penalty_per_cluster=float(np.log(d)))
+
+
+def loglik_aic(cor: np.ndarray, labels, n_samples: int) -> float:
+    """AIC for the one-factor block model (lower is better).
+
+    Penalty ``2`` per module: a lighter complexity penalty than
+    :func:`loglik_bic`, so it tolerates a few more modules.
+    """
+    return _penalised_correlation_loglik(cor, labels, n_samples,
+                                         penalty_per_cluster=2.0)
 
 
 # --------------------------------------------------------------------------- #
@@ -386,6 +396,10 @@ class MetricSpec:
         Callable ``func(payload, labels, **kwargs) -> float``.
     description:
         Human-readable summary shown in CLI help.
+    wants_n:
+        If true, the metric also receives ``n_samples`` (the number of samples /
+        columns) -- needed by the correlation information criteria, whose penalty
+        is calibrated against a likelihood that scales with the sample size.
     """
 
     name: str
@@ -393,6 +407,7 @@ class MetricSpec:
     needs: str
     func: Callable
     description: str
+    wants_n: bool = False
 
     @property
     def weight(self) -> float:
@@ -407,11 +422,13 @@ METRICS: Dict[str, MetricSpec] = {
     ),
     "loglik_bic": MetricSpec(
         "loglik_bic", "min", "cor", loglik_bic,
-        "BIC-penalised correlation log-likelihood (selects module count).",
+        "BIC for the one-factor block model (selects module count).",
+        wants_n=True,
     ),
     "loglik_aic": MetricSpec(
         "loglik_aic", "min", "cor", loglik_aic,
-        "AIC-penalised correlation log-likelihood (selects module count).",
+        "AIC for the one-factor block model (selects module count).",
+        wants_n=True,
     ),
     "silhouette": MetricSpec(
         "silhouette", "max", "X", silhouette,

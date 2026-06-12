@@ -34,6 +34,7 @@ def cluster(
     mutation_intensity: float = 0.05,
     elitism: int = 5,
     kmeans_restarts: int = 2,
+    local_search: bool = True,
     seed: Optional[int] = None,
     verbose: bool = False,
 ) -> GAResult:
@@ -91,6 +92,7 @@ def cluster(
         mutation_intensity=mutation_intensity,
         elitism=elitism,
         kmeans_restarts=kmeans_restarts,
+        local_search=local_search,
         mode=mode,
         seed=seed,
         verbose=verbose,

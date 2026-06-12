@@ -23,6 +23,7 @@ from typing import List, Optional, Sequence
 
 import numpy as np
 
+from .local import CorrelationRefiner
 from .metrics import MetricSpec
 from .partition import random_partition, repair
 from .seeding import correlation_seeds, kmeans_seeds
@@ -45,6 +46,7 @@ class GAConfig:
     elitism: int = 5
     mode: str = "weighted"  # "weighted" or "nsga2"
     kmeans_restarts: int = 2  # k-means seed partitions per k (0 disables seeding)
+    local_search: bool = True  # memetic refinement for correlation objectives
     seed: Optional[int] = None
     verbose: bool = False
 
@@ -72,6 +74,10 @@ class _Evaluator:
         self.X = X
         self.cor = cor
         self.penalty = unassigned_penalty
+        # Number of samples (columns) -- needed by the correlation information
+        # criteria, whose penalty is calibrated against a sample-size-scaled
+        # likelihood.  Fall back to the correlation dimension if X is absent.
+        self.n_samples = int(X.shape[1]) if X is not None else int(cor.shape[0])
         self._cache: dict = {}
 
     def raw_scores(self, labels: np.ndarray) -> np.ndarray:
@@ -83,7 +89,10 @@ class _Evaluator:
         for i, spec in enumerate(self.metrics):
             payload = self.cor if spec.needs == "cor" else self.X
             if spec.needs == "cor":
-                out[i] = spec.func(payload, labels)
+                if spec.wants_n:
+                    out[i] = spec.func(payload, labels, self.n_samples)
+                else:
+                    out[i] = spec.func(payload, labels)
             else:
                 out[i] = spec.func(payload, labels, unassigned_penalty=self.penalty)
         self._cache[key] = out
@@ -250,6 +259,18 @@ def evolve(X, cor, metrics: Sequence[MetricSpec], config: GAConfig,
     rng = np.random.default_rng(config.seed)
     evaluator = _Evaluator(metrics, X, cor, unassigned_penalty)
 
+    # Memetic refinement: a greedy hill-climb on the correlation objective,
+    # available only when every target is correlation-family and a correlation
+    # matrix is present.  ``refine`` is the identity otherwise.
+    refine = (lambda labels: labels)
+    metric_names = [m.name for m in metrics]
+    if (config.local_search and cor is not None
+            and CorrelationRefiner.supports(metric_names)):
+        refiner = CorrelationRefiner(
+            np.abs(np.asarray(cor, dtype=float)), metric_names[0],
+            evaluator.n_samples, config.g_max, config.all_in_clusters)
+        refine = refiner.refine
+
     # --- initial population ------------------------------------------------ #
     population: List[np.ndarray] = []
     if seeds:
@@ -272,19 +293,34 @@ def evolve(X, cor, metrics: Sequence[MetricSpec], config: GAConfig,
         )
     population = population[: config.population_size]
 
+    # Lamarckian: refine the (few, strong) seed partitions up front so the GA
+    # starts from local optima of the objective.
+    n_seeds = min(len(population), (len(seeds) if seeds else 0)
+                  + (config.kmeans_restarts * max(0, config.g_max - 1) if X is not None else 0)
+                  + (2 * max(0, config.g_max - 1) if cor is not None else 0))
+    for i in range(n_seeds):
+        population[i] = refine(population[i])
+
     if config.mode == "nsga2":
         return _run_nsga2(population, evaluator, metrics, config, rng)
-    return _run_weighted(population, evaluator, config, rng)
+    return _run_weighted(population, evaluator, config, rng, refine=refine)
 
 
-def _run_weighted(population, evaluator, config: GAConfig, rng) -> GAResult:
+def _run_weighted(population, evaluator, config: GAConfig, rng,
+                  refine=lambda labels: labels) -> GAResult:
     history = []
     fits = np.array([evaluator.weighted_fitness(ind) for ind in population])
 
     for gen in range(config.generations):
-        # Elitism: carry over the best individuals untouched.
+        # Elitism: carry over the best individuals, refined by local search so
+        # the population's leading edge sits at a local optimum each generation.
         elite_idx = np.argsort(fits)[::-1][: config.elitism]
-        elites = [population[i].copy() for i in elite_idx]
+        elites = []
+        for i in elite_idx:
+            ref = refine(population[i])
+            if not np.array_equal(ref, population[i]):
+                fits[i] = evaluator.weighted_fitness(ref)
+            elites.append(ref.copy())
 
         # Produce offspring to fill the rest of the next generation.
         offspring = []
@@ -315,11 +351,14 @@ def _run_weighted(population, evaluator, config: GAConfig, rng) -> GAResult:
             print(f"gen {gen:4d} | best {best:.4f} | avg {record['avg']:.4f}")
 
     best_idx = int(np.argmax(fits))
-    best_labels = population[best_idx]
+    best_labels = refine(population[best_idx])   # final polish
+    best_fit = evaluator.weighted_fitness(best_labels)
+    if best_fit < fits[best_idx]:                # never return a worse partition
+        best_labels, best_fit = population[best_idx], float(fits[best_idx])
     return GAResult(
         labels=best_labels,
         scores=evaluator.named_scores(best_labels),
-        fitness=float(fits[best_idx]),
+        fitness=float(best_fit),
         history=history,
     )
 
