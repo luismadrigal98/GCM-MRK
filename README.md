@@ -36,6 +36,8 @@ be on `PYTHONPATH`, e.g. run from the repo root).
 | Name | Direction | Consumes | Notes |
 |------|-----------|----------|-------|
 | `loglik` | maximise | correlation matrix | Correlation-based log-likelihood; rewards within-cluster correlation. The project's bespoke objective, suited to co-expression / modular data. |
+| `loglik_bic` | minimise | correlation matrix | `loglik` penalised by `K·log(n)`; selects the number of modules within correlation space. |
+| `loglik_aic` | minimise | correlation matrix | `loglik` penalised by `2K`; lighter penalty, tolerates a few more modules. |
 | `silhouette` | maximise | data matrix | Mean silhouette in `[-1, 1]`; geometric (Euclidean) separation. |
 | `davies_bouldin` | minimise | data matrix | Compactness vs separation ratio. |
 | `calinski_harabasz` | maximise | data matrix | Variance-ratio criterion. |
@@ -104,9 +106,12 @@ for sol in mo.pareto_front:
 
 ## How it works
 
-1. **Initialisation** — the population is seeded with k-means partitions across
-   a range of cluster counts (`2 … g_max`), any user-supplied seed partitions,
-   and random partitions for diversity.
+1. **Initialisation** — the population is seeded with k-means partitions and
+   correlation-distance hierarchical partitions (average/complete linkage on
+   `1 − |R|`, the classical co-expression strategy) across a range of cluster
+   counts (`2 … g_max`), any user-supplied seed partitions, and random partitions
+   for diversity. The correlation-aware seeds matter for `loglik`: Euclidean
+   k-means splits coherent but anti-correlated genes.
 2. **Evaluation** — each partition is scored on the chosen metric(s).
 3. **Selection / variation** — elitist tournament selection (weighted mode) or
    NSGA-II non-dominated sorting + crowding distance (multi-objective mode),
@@ -122,13 +127,19 @@ parsimony**: splitting a good cluster into smaller well-correlated pieces tends
 to increase it. Optimising `loglik` alone with a loose `--g-max` therefore
 over-segments. Two ways to get the right number of clusters:
 
+- **Optimise a penalised correlation criterion** (recommended) — use
+  `--targets loglik_aic` (or `loglik_bic`) as a single objective with a loose
+  `--g-max`. These add a cluster-count penalty to `loglik` *within correlation
+  space*, so the search both fits and selects the number of modules. `loglik_aic`
+  recovers the true module count on the synthetic data; `loglik_bic` is more
+  conservative and favours fewer, stronger modules when separation is weak.
 - **Constrain `--g-max`** to the number of clusters you expect (or scan a few
-  values and compare). On the synthetic modular data above this recovers the
-  ground-truth modules with ~0.85 accuracy.
+  values and pick the one minimising `loglik_aic`/`loglik_bic`).
 - **Add a parsimony objective** — combine `loglik` with `bic` or `aic` under
-  `--mode nsga2` and inspect the Pareto front for the knee. Note that BIC/AIC
-  here assume Euclidean-Gaussian clusters, so they are most informative when the
-  clusters are also geometrically compact.
+  `--mode nsga2` and inspect the Pareto front. Note that the *geometric* BIC/AIC
+  assume Euclidean-Gaussian clusters, so they conflict with the
+  absolute-correlation objective when modules contain anti-correlated genes; the
+  penalised correlation criteria above avoid that assumption.
 
 ## Repository layout
 

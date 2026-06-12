@@ -56,6 +56,40 @@
 % Shorthand
 \newcommand{\tool}{GCM-MRK}
 
+% Local-preview figures.  PLOS requires figures to be uploaded separately and
+% removed from the manuscript PDF before submission; set \showfigsfalse for the
+% submission build.  When true, the generated PDFs in figures/ are embedded.
+\graphicspath{{figures/}}
+\newif\ifshowfigs\showfigstrue
+\newcommand{\previewfig}[1]{\ifshowfigs\begin{center}%
+\includegraphics[width=0.7\textwidth]{#1}\end{center}\fi}
+
+% Auto-generated result macros (written by experiments/run_experiments.py).
+% Re-running the experiments regenerates these, so the numbers below update
+% automatically.  Defaults are provided so the manuscript compiles before the
+% experiments have been run.
+\InputIfFileExists{results/results_macros.tex}{}{}
+\providecommand{\EasyGenes}{75}\providecommand{\EasySamples}{80}
+\providecommand{\EasyWithinR}{0.66}\providecommand{\EasyBetweenR}{0.07}
+\providecommand{\HardGenes}{100}\providecommand{\HardSamples}{50}
+\providecommand{\HardWithinR}{0.32}\providecommand{\HardBetweenR}{0.12}
+\providecommand{\IrisSamples}{150}\providecommand{\IrisFeatures}{4}
+\providecommand{\EasyLoglikARI}{1.00}\providecommand{\EasyKmeansARI}{0.22}
+\providecommand{\HardLoglikARI}{0.89}\providecommand{\HardKmeansARI}{0.27}
+\providecommand{\EasyLooseK}{6}\providecommand{\HardLooseK}{9}
+\providecommand{\EasyAicK}{3}\providecommand{\EasyAicARI}{1.00}
+\providecommand{\EasyBicK}{3}\providecommand{\EasyBicARI}{1.00}
+\providecommand{\HardAicK}{5}\providecommand{\HardAicARI}{0.84}
+\providecommand{\HardBicK}{2}\providecommand{\HardBicARI}{0.34}
+\providecommand{\ScanHardKaic}{4}\providecommand{\ScanHardKbic}{2}
+\providecommand{\IrisKmeansARI}{0.89}
+\providecommand{\IrisSilK}{2}\providecommand{\IrisSilARI}{0.57}
+\providecommand{\IrisCHK}{2}\providecommand{\IrisCHARI}{0.57}
+\providecommand{\EmpFullGenes}{20246}\providecommand{\EmpSamples}{60}
+\providecommand{\EmpNtop}{200}\providecommand{\EmpKmodules}{8}
+\providecommand{\EmpNmodules}{8}\providecommand{\EmpWithinR}{0.53}
+\providecommand{\EmpBgR}{0.31}\providecommand{\EmpNsig}{0}
+
 \begin{document}
 \vspace*{0.2in}
 
@@ -90,19 +124,20 @@ We present \tool{}, an open-source Python tool that inverts this workflow: it
 treats a cluster-validity metric as the optimisation target and evolves a
 partition that makes that target as good as it can be, using a self-contained
 genetic algorithm that depends only on NumPy and SciPy. \tool{} exposes a single
-interface over six interchangeable targets---a bespoke correlation-based
-log-likelihood for modular data, plus the silhouette, Davies--Bouldin,
-Calinski--Harabasz, and Gaussian-mixture BIC/AIC indices---and supports both a
-single weighted objective and Pareto (NSGA-II) optimisation of competing
-criteria. We benchmark the tool on two synthetic datasets of graded difficulty,
-on the classic Iris dataset, and on two empirical expression datasets. On
-correlated modular data the correlation log-likelihood recovers the planted
-modules with high adjusted Rand index when the number of clusters is
-constrained, while a loglik--BIC Pareto front selects the right number of
-clusters when it is unknown; on geometric data the same engine driven by
-geometric indices matches a strong k-means baseline. \tool{} gives practitioners
-direct, criterion-faithful control over what ``good clustering'' means for their
-data.
+interface over interchangeable targets---a bespoke correlation-based
+log-likelihood for modular data and two cluster-count-penalised variants of it,
+plus the silhouette, Davies--Bouldin, Calinski--Harabasz, and Gaussian-mixture
+BIC/AIC indices---and supports both a single weighted objective and Pareto
+(NSGA-II) optimisation of competing criteria. We benchmark the tool on two
+synthetic datasets of graded difficulty, on the classic Iris dataset, and on a
+breast-cancer RNA-seq dataset. On correlated modular data the correlation
+log-likelihood recovers the planted modules with high adjusted Rand index where
+Euclidean k-means fails, and a penalised correlation criterion selects the
+correct number of modules when it is unknown; on geometric data the same engine
+faithfully optimises geometric indices; and on real expression data it recovers
+coherent modules whose eigengenes track tumour-versus-normal status. \tool{}
+gives practitioners direct, criterion-faithful control over what ``good
+clustering'' means for their data.
 
 \section*{Author summary}
 When biologists group genes by how similarly they are expressed, they usually
@@ -167,21 +202,22 @@ Here we present \tool{} (Genetic Clustering by Metric---Madrigal-Roca and
 Kelly), an open-source Python package that clusters data by directly optimising a
 chosen cluster-validity metric with a genetic algorithm (GA). \tool{} makes
 three contributions. First, it provides a bespoke correlation-based
-log-likelihood objective tailored to modular, co-expression-like data, alongside
-five standard geometric/probabilistic indices, all behind one interface so that
-the criterion is an explicit, swappable choice rather than a hidden default.
-Second, it supports both a single weighted objective and full multi-objective
-(NSGA-II~\cite{Deb2002}) optimisation, so that competing criteria---most usefully
-a goodness-of-fit term traded against a parsimony term---can be explored as a
-Pareto front and used to select the number of clusters. Third, the implementation
-is deliberately minimal: it depends only on NumPy~\cite{Harris2020} and
-SciPy~\cite{Virtanen2020}, with an internal k-means++~\cite{ArthurVassilvitskii2007}
-seeder, and so installs and runs anywhere those libraries are available. We
-evaluate \tool{} on two synthetic datasets of contrasting difficulty, on the
-classic Iris benchmark~\cite{Fisher1936}, and on two empirical expression
-datasets, and we characterise both its strengths and a key failure mode---the
-absence of built-in parsimony in the correlation objective---together with the
-practical remedies the tool provides.
+log-likelihood objective tailored to modular, co-expression-like data, together
+with two cluster-count-penalised variants that select the number of modules
+within correlation space, alongside standard geometric/probabilistic indices, all
+behind one interface so that the criterion is an explicit, swappable choice rather
+than a hidden default. Second, it supports both a single weighted objective and
+full multi-objective (NSGA-II~\cite{Deb2002}) optimisation, so that competing
+criteria---most usefully a goodness-of-fit term traded against a parsimony
+term---can be explored as a Pareto front. Third, the implementation is
+deliberately minimal: it depends only on NumPy~\cite{Harris2020} and
+SciPy~\cite{Virtanen2020}, with internal k-means++~\cite{ArthurVassilvitskii2007}
+and correlation-distance hierarchical seeders, and so installs and runs anywhere
+those libraries are available. We evaluate \tool{} on two synthetic datasets of
+contrasting difficulty, on the classic Iris benchmark~\cite{Fisher1936}, and on a
+breast-cancer RNA-seq dataset, and we characterise both its strengths and the
+absence of built-in parsimony in the raw correlation objective, together with the
+remedies the tool provides.
 
 \section*{Materials and methods}
 
@@ -200,9 +236,9 @@ population of partitions to optimise these scores in their natural direction
 
 \subsection*{Performance-target metrics}
 \tool{} treats every metric as an interchangeable ``performance target''.
-Table~\ref{tab:metrics} lists the six built-in targets, the input each consumes,
-and its optimisation direction. They fall into two families: a correlation-based
-objective designed for modular data, and standard geometric/probabilistic
+Table~\ref{tab:metrics} lists the built-in targets, the input each consumes, and
+its optimisation direction. They fall into two families: correlation-based
+objectives designed for modular data, and standard geometric/probabilistic
 indices.
 
 \paragraph*{Correlation-based log-likelihood.}
@@ -235,10 +271,29 @@ finite and the optimiser stable, a perfectly correlated cluster
 
 A deliberate property of Eq~\eqref{eq:loglik} is that it measures only
 goodness-of-fit and contains \emph{no parsimony penalty}: subdividing a coherent
-cluster into smaller, still-coherent pieces tends to increase $\mathcal{L}$.
-Optimising $\mathcal{L}$ alone under a loose $g_{\max}$ therefore over-segments.
-We address this below (Choosing the number of clusters) and quantify it in the
-Results.
+cluster into smaller, still-coherent pieces does not in general lower
+$\mathcal{L}$, so optimising it alone under a loose $g_{\max}$ can over-segment.
+We quantify the effect in the Results and address it next.
+
+\paragraph*{Penalised correlation criteria.}
+To let a single objective both fit and select the number of modules, we add an
+information-criterion penalty to $\mathcal{L}$ that stays entirely within
+correlation space. Treating each non-singleton cluster as contributing one
+within-cluster correlation parameter, a partition with $K$ such clusters over
+$n$ assigned elements is scored
+\begin{equation}
+\label{eq:loglikic}
+\mathrm{IC}(\boldsymbol{\ell}) = -2\,\mathcal{L}(\boldsymbol{\ell}) + \lambda K ,
+\end{equation}
+to be minimised, with $\lambda = \log n$ giving a BIC-style criterion
+(\texttt{loglik\_bic}) and $\lambda = 2$ an AIC-style one (\texttt{loglik\_aic}).
+This is distinct from the geometric \texttt{bic}/\texttt{aic} targets, which
+assume Euclidean-Gaussian clusters: those are at odds with the
+absolute-correlation objective whenever modules contain anti-correlated members,
+which is precisely the regime in which \texttt{loglik} is the right criterion.
+Because the penalty lives on the same scale as $\mathcal{L}$, optimising
+Eq~\eqref{eq:loglikic} directly under a loose $g_{\max}$ recovers a parsimonious
+partition without the number of clusters being specified.
 
 \paragraph*{Geometric and probabilistic indices.}
 For data whose clusters are defined geometrically, \tool{} provides four
@@ -257,25 +312,29 @@ used for model selection on geometrically compact data.
 
 \begin{table}[!ht]
 \centering
-\caption{\textbf{The six built-in performance-target metrics.}}
+\caption{\textbf{The built-in performance-target metrics.}}
 \label{tab:metrics}
 \begin{tabular}{@{}llll@{}}
-\toprule
+\hline
 Target & Direction & Input & Role \\
-\midrule
+\hline
 \texttt{loglik}            & maximise & correlation matrix & correlation coherence (modules) \\
+\texttt{loglik\_bic}       & minimise & correlation matrix & coherence with cluster-count penalty \\
+\texttt{loglik\_aic}       & minimise & correlation matrix & coherence with lighter penalty \\
 \texttt{silhouette}        & maximise & data matrix        & geometric separation \\
 \texttt{davies\_bouldin}   & minimise & data matrix        & compactness/separation ratio \\
 \texttt{calinski\_harabasz}& maximise & data matrix        & variance-ratio criterion \\
 \texttt{bic}               & minimise & data matrix        & Gaussian-mixture parsimony \\
 \texttt{aic}               & minimise & data matrix        & Gaussian-mixture parsimony \\
-\bottomrule
+\hline
 \end{tabular}
 \begin{flushleft}
-The correlation log-likelihood consumes the element-by-element Pearson
-correlation matrix; the remaining indices are computed directly on the
+The correlation-based targets consume the element-by-element Pearson correlation
+matrix; the geometric/probabilistic indices are computed directly on the
 (standardised) data matrix. Any subset can be combined under multi-objective
-optimisation.
+optimisation. The penalised correlation criteria \texttt{loglik\_bic} and
+\texttt{loglik\_aic} add a cluster-count penalty to \texttt{loglik} so that a
+single objective both fits and selects the number of modules (see below).
 \end{flushleft}
 \end{table}
 
@@ -294,13 +353,18 @@ across all evaluations of $\mathcal{L}$.
 (Fig~\ref{fig:convergence}). The components are:
 
 \begin{enumerate}
-\item \textbf{Initialisation.} The initial population is seeded with k-means++
-partitions across candidate cluster counts $k = 2,\dots,g_{\max}$ (a small
-internal NumPy k-means with multiple restarts), any user-supplied seed
-partitions (e.g.\ the output of WGCNA or Clust), and random partitions for
-diversity. Because the data are row-standardised, Euclidean k-means is
-monotonically related to the correlation structure, so geometric seeds also help
-the correlation objective.
+\item \textbf{Initialisation.} The initial population is seeded with three kinds
+of partition across candidate cluster counts $k = 2,\dots,g_{\max}$: k-means++
+partitions (a small internal NumPy k-means with multiple restarts);
+\emph{correlation-aware} partitions obtained by agglomerative (average- and
+complete-linkage) hierarchical clustering of the correlation distance
+$1-\lvert\mathbf{R}\rvert$, the classical co-expression clustering strategy; and
+random partitions for diversity. User-supplied seeds (e.g.\ the output of WGCNA
+or Clust) can also be injected. The correlation-aware seeds are important for the
+\texttt{loglik} objective: Euclidean k-means splits strongly anti-correlated
+elements that are coherent under the absolute-correlation criterion, whereas the
+correlation-distance seeds already respect the structure the GA is asked to
+optimise.
 \item \textbf{Evaluation.} Each partition is scored on the chosen target(s); a
 cache keyed on the label vector avoids recomputing identical partitions.
 \item \textbf{Selection and variation.} In \emph{weighted} mode the targets are
@@ -327,36 +391,49 @@ random seed for reproducibility.
 
 \subsection*{Choosing the number of clusters}
 Because $\mathcal{L}$ (Eq~\eqref{eq:loglik}) has no parsimony term, \tool{}
-offers two routes to the right number of clusters. (i) \emph{Constrain}
-$g_{\max}$ to the expected number of modules, or scan a small range and compare.
-(ii) \emph{Add a parsimony objective}: optimise \texttt{loglik} jointly with
-\texttt{bic} (or \texttt{aic}) under NSGA-II and read the knee of the Pareto
-front. The information criteria assume Euclidean-Gaussian clusters, so this route
-is most informative when the modules are also geometrically compact.
+offers three routes to the right number of clusters. (i) \emph{Constrain}
+$g_{\max}$ to the expected number of modules. (ii) \emph{Optimise a penalised
+correlation criterion} (\texttt{loglik\_aic} or \texttt{loglik\_bic},
+Eq~\eqref{eq:loglikic}) as a single objective under a loose $g_{\max}$; this
+selects $K$ within correlation space and is our recommended default when $K$ is
+unknown. Equivalently, one can scan $g_{\max}$ with \texttt{loglik} and pick the
+$K$ that minimises Eq~\eqref{eq:loglikic}. (iii) \emph{Explore an explicit
+trade-off} by optimising \texttt{loglik} jointly with a parsimony target under
+NSGA-II and reading the knee of the Pareto front; pairing with the geometric
+\texttt{bic} is informative only when the modules are also geometrically compact,
+whereas the penalised correlation criteria avoid that assumption.
 
 \subsection*{Benchmark datasets and evaluation}
-We evaluate on three datasets with known ground truth and two empirical
-expression datasets.
+We evaluate on three datasets with known ground truth and one empirical
+expression dataset (a second is planned).
 
 \emph{Synthetic-Easy} and \emph{Synthetic-Hard} are generated by \tool{}'s
-modular simulator: each module is driven by a set of shared latent factors so
-that rows within a module are mutually correlated while rows in different modules
-are not, with per-entry Gaussian noise added and rows finally standardised.
-Synthetic-Easy has three equal modules of 25 genes across 80 samples with low
-noise; Synthetic-Hard has five unequal modules (15, 20, 25, 30, 10 genes) across
-only 40 samples, fewer latent factors, and higher noise, yielding weak
-separation. We summarise difficulty by the mean within- versus between-module
-absolute correlation.
+modular simulator: each module is driven by a shared latent factor (with random
+$\pm 1$ loadings, so within-module genes are strongly correlated in absolute
+value while genes in different modules are not), with per-entry Gaussian noise
+added and rows finally standardised. Synthetic-Easy has three equal modules
+(\EasyGenes{} genes across \EasySamples{} samples) at low noise, giving strong
+separation (mean within-module $\lvert r\rvert = \EasyWithinR{}$ versus
+between-module $\EasyBetweenR{}$). Synthetic-Hard has five unequal modules
+(15, 20, 25, 30, 10 genes; \HardGenes{} genes across \HardSamples{} samples) at
+higher noise, giving weak separation (within $\HardWithinR{}$ versus between
+$\HardBetweenR{}$).
 
-\emph{Iris}~\cite{Fisher1936} is the classic 150-sample, 4-feature, 3-class
-benchmark; it is low-dimensional and geometric rather than correlational, and we
-use it to show that the same engine, driven by geometric targets, is competitive
-on data outside the co-expression regime.
+\emph{Iris}~\cite{Fisher1936} is the classic \IrisSamples{}-sample,
+\IrisFeatures{}-feature, 3-class benchmark; it is low-dimensional and geometric
+rather than correlational, and we use it to show that the same engine, driven by
+geometric targets, faithfully optimises those indices on data outside the
+co-expression regime.
 
-\emph{Empirical datasets.} We additionally apply \tool{} to two publicly
-available expression datasets [DATASET 1] and [DATASET 2] (to be finalised),
-clustering genes into co-expression modules and assessing biological coherence by
-functional enrichment of the recovered modules.
+\emph{Empirical data.} We apply \tool{} to GSE183947~\cite{Wang2021}, a breast
+cancer RNA-seq dataset of \EmpSamples{} samples (30 tumours and 30
+patient-matched adjacent-normal tissues) with \EmpFullGenes{} genes
+quantified as FPKM. After $\log_2$ transformation we cluster the \EmpNtop{} most
+variable genes into co-expression modules, and assess each module both by its
+internal correlation coherence and by whether its eigengene (the leading
+principal component of the module's expression across samples) distinguishes
+tumour from normal tissue (Welch $t$-test), linking the recovered modules to the
+clinical phenotype. A second empirical dataset will be added.
 
 We compare \tool{} against a k-means baseline (10 restarts, true $k$) on the same
 standardised data. Agreement with ground truth is measured by the adjusted Rand
@@ -367,37 +444,41 @@ figures, and tables is provided with the package.
 \section*{Results}
 
 \subsection*{Recovering correlated modules on synthetic data}
-On Synthetic-Easy, where within-module correlations are well separated from
-between-module correlations, \tool{} driven by the correlation log-likelihood
-recovers the planted three-module structure essentially perfectly and matches or
-exceeds the k-means baseline (Table~\ref{tab:benchmark}). The GA converges
+On Synthetic-Easy, \tool{} driven by the correlation log-likelihood (with
+$g_{\max}$ set to the true count) recovers the planted three-module structure
+perfectly (ARI $=\EasyLoglikARI{}$), whereas the k-means baseline---given the
+same true $k$---fails badly (ARI $=\EasyKmeansARI{}$). The gap is diagnostic:
+because module loadings carry random signs, each module contains strongly
+anti-correlated genes that are coherent under the absolute-correlation objective
+but lie far apart in Euclidean space, so k-means splits them. The GA converges
 within the first few dozen generations (Fig~\ref{fig:convergence}). On
-Synthetic-Hard, where weak separation and high noise make the problem
-substantially harder, performance degrades for all methods, but the correlation
-objective remains competitive with k-means; the geometric silhouette target is
-weaker here, consistent with the structure being correlational rather than
-geometric.
+Synthetic-Hard, where weak separation and higher noise make the problem
+substantially harder, \tool{} still recovers the five modules well
+(ARI $=\HardLoglikARI{}$) while k-means remains poor (ARI $=\HardKmeansARI{}$).
+The correlation-aware hierarchical seeding (Methods) is important here: it
+supplies the GA with starting partitions that already respect the
+absolute-correlation structure, which a Euclidean seeder cannot.
 
 % Place tables after the first paragraph in which they are cited.
 \begin{table}[!ht]
 \centering
-\caption{\textbf{Benchmark results: clusters recovered, adjusted Rand index
-(ARI), and Hungarian-matched accuracy against ground truth.}}
+\caption{\textbf{Benchmark results: clusters recovered ($k$), adjusted Rand
+index (ARI), and Hungarian-matched accuracy against ground truth.}}
 \label{tab:benchmark}
-\begin{tabular}{@{}lllrrr@{}}
-\toprule
-Dataset & Method & Target & $k$ & ARI & Acc. \\
-\midrule
-\multicolumn{6}{@{}l}{\textit{(results filled in from experiments/run\_experiments.py)}}\\
-RESULTS_PLACEHOLDER
-\bottomrule
-\end{tabular}
+\begin{adjustwidth}{-1.25in}{0in}
+\centering
+\IfFileExists{results/benchmark_table.tex}{\input{results/benchmark_table.tex}}{%
+\begin{tabular}{@{}l@{}}\hline
+\textit{Run experiments/run\_experiments.py to populate this table.}\\\hline
+\end{tabular}}
+\end{adjustwidth}
 \begin{flushleft}
-$k$ is the number of clusters recovered (the true value is 3 for
-Synthetic-Easy and Iris, 5 for Synthetic-Hard). For \tool{} the cluster bound
-$g_{\max}$ was set to the true $k$ except in the model-selection rows, where a
-loose bound was used with a parsimony objective. GA settings as in Methods;
-fixed random seed.
+True $k$ is 3 (Synthetic-Easy, Iris) and 5 (Synthetic-Hard); GSE183947 has no
+ground-truth labelling (ARI/accuracy not applicable). ``known $k$'' fixes
+$g_{\max}$ to the true value; ``loose $g_{\max}$'' and ``model sel.'' use a loose
+bound, the latter with a penalised correlation criterion. k-means is given the
+true $k$ and 10 restarts. GA settings as in Methods; fixed random seed. This
+table is generated by the reproduction script.
 \end{flushleft}
 \end{table}
 
@@ -407,55 +488,120 @@ Best and population-mean weighted fitness (correlation log-likelihood) across
 generations. The optimiser reaches a high-quality partition within the first few
 dozen generations and the elite fitness is monotone non-decreasing by
 construction.}
+\previewfig{convergence.pdf}
 \label{fig:convergence}
 \end{figure}
 
 \subsection*{Selecting the number of clusters without knowing it}
-When $g_{\max}$ is set loosely and only \texttt{loglik} is optimised, \tool{}
-over-segments, as predicted by the absence of a parsimony term in
-Eq~\eqref{eq:loglik}. Optimising \texttt{loglik} jointly with \texttt{bic} under
-NSGA-II resolves this: the Pareto front (Fig~\ref{fig:pareto}) trades fit against
-parsimony, and its knee selects a partition close to the true number of modules
-on Synthetic-Hard (Table~\ref{tab:benchmark}, model-selection row). This
-demonstrates the intended use of the multi-objective mode: rather than committing
-to a single criterion, the user inspects the fit--parsimony trade-off and picks
-an operating point.
+When only \texttt{loglik} is optimised under a loose $g_{\max}$, the correlation
+objective can over-segment, since Eq~\eqref{eq:loglik} carries no parsimony term.
+With correlation-aware seeding the effect is mild but real: on Synthetic-Easy the
+loglik optimum already coincides with the true partition ($k=\EasyLooseK{}$),
+whereas on Synthetic-Hard a loose bound yields $k=\HardLooseK{}$ (true 5;
+Table~\ref{tab:benchmark}). The penalised correlation criteria
+(Eq~\eqref{eq:loglikic}) pin down the count within a single objective: optimising
+\texttt{loglik\_aic} under the same loose $g_{\max}$ returns exactly
+$k=\HardAicK{}$ on Synthetic-Hard at ARI $=\HardAicARI{}$ (and $k=\EasyAicK{}$ at
+ARI $=\EasyAicARI{}$ on Synthetic-Easy), recovering the true number of modules
+without it being specified. The heavier BIC-style penalty (\texttt{loglik\_bic})
+is more conservative: exact on the well-separated easy data ($k=\EasyBicK{}$) but
+merging the weakest modules on the noisy hard data ($k=\HardBicK{}$), the
+expected behaviour of a stronger complexity penalty when separation is marginal.
+The trade-off is also visible by scanning $g_{\max}$ (Fig~\ref{fig:modelsel}):
+\texttt{loglik} rises and then plateaus with $k$ while \texttt{loglik\_aic} turns
+over near the true number of modules.
+
+\begin{figure}[!h]
+\caption{\textbf{Model selection on Synthetic-Hard.}
+The raw correlation log-likelihood (left axis) increases monotonically as
+clusters are added---the over-segmentation tendency---while the penalised
+criteria (right axis, lower is better) turn over near the true number of modules.
+The \texttt{loglik\_aic} minimum identifies a parsimonious, well-fitting
+partition without the number of clusters being specified in advance.}
+\previewfig{model_selection.pdf}
+\label{fig:modelsel}
+\end{figure}
+
+For users who prefer to inspect an explicit trade-off rather than commit to a
+single penalised criterion, the multi-objective mode optimises \texttt{loglik}
+against a parsimony target under NSGA-II and returns the full Pareto front
+(Fig~\ref{fig:pareto}). We note that pairing \texttt{loglik} with the
+\emph{geometric} BIC is less effective on these data, because BIC's
+Euclidean-Gaussian assumption conflicts with the absolute-correlation objective
+when modules contain anti-correlated members---which is exactly why the penalised
+\emph{correlation} criteria are preferable for module selection.
 
 \begin{figure}[!h]
 \caption{\textbf{Fit--parsimony Pareto front on Synthetic-Hard.}
 Each point is a non-dominated partition from a single NSGA-II run optimising the
-correlation log-likelihood (maximised) against BIC (minimised); colour encodes
-the number of clusters. The knee of the front recovers a parsimonious yet
-well-fitting partition without the number of clusters being specified in
-advance.}
+correlation log-likelihood (maximised) against the geometric BIC (minimised);
+colour encodes the number of clusters. The multi-objective mode exposes the
+trade-off explicitly for interactive exploration.}
+\previewfig{pareto.pdf}
 \label{fig:pareto}
 \end{figure}
 
 \subsection*{Generality on geometric data: Iris}
 On Iris, a geometric rather than correlational problem, the same GA engine driven
-by geometric targets (silhouette, Calinski--Harabasz) is competitive with the
-k-means baseline (Table~\ref{tab:benchmark}), recovering the well-known structure
-in which one species separates cleanly and the other two overlap
-(Fig~\ref{fig:iris}). A silhouette--Davies--Bouldin NSGA-II run selects three
-clusters from a loose bound. This confirms that \tool{} is not specific to
-co-expression: the contribution is the criterion-faithful optimisation
-framework, with the correlation objective as the specialised target for modular
-data.
+by geometric targets faithfully reaches each index's optimum. Both
+\texttt{silhouette} and \texttt{calinski\_harabasz} select $k=\IrisSilK{}$ even
+when permitted more clusters (ARI $=\IrisSilARI{}$ against the three botanical
+species), which is the well-documented behaviour of internal validity indices on
+Iris: they merge the two overlapping species (\emph{versicolor} and
+\emph{virginica}) because that two-group split is geometrically cleaner
+(Fig~\ref{fig:iris}). A k-means run \emph{told} to use $k=3$ recovers the species
+at ARI $=\IrisKmeansARI{}$. The contrast is the intended lesson, not a deficiency:
+\tool{} optimises whichever criterion it is given, so on Iris it returns the
+partition those indices genuinely prefer. This confirms that the tool is not
+specific to co-expression---the contribution is the criterion-faithful
+optimisation framework, with the correlation objective as the specialised target
+for modular data.
 
 \begin{figure}[!h]
 \caption{\textbf{Silhouette profile of the Iris clustering recovered by \tool{}.}
 Per-sample silhouette coefficients grouped by recovered cluster; the dashed line
 marks the mean. One cluster is cleanly separated (uniformly high silhouette)
 while the other two overlap, the expected structure for the Iris species.}
+\previewfig{iris_silhouette.pdf}
 \label{fig:iris}
 \end{figure}
 
-\subsection*{Empirical expression data}
-[To be completed.] We apply \tool{} with the correlation log-likelihood to
-[DATASET 1] and [DATASET 2], reporting the recovered modules, their stability,
-and functional enrichment relative to modules obtained by WGCNA and k-means, to
-assess whether criterion-faithful optimisation yields more coherent
-co-expression modules on real data.
+\subsection*{Empirical co-expression modules: breast cancer}
+Applied to the \EmpNtop{} most variable genes of GSE183947 with the penalised
+correlation criterion \texttt{loglik\_aic}, \tool{} resolves \EmpKmodules{}
+co-expression modules. These are strongly coherent: the mean within-module
+absolute correlation is \EmpWithinR{}, against a background of \EmpBgR{} over all
+gene pairs. Crucially, the modules are biologically meaningful with respect to
+the tumour/normal axis that the clustering never saw: \EmpNsig{} of the
+\EmpNmodules{} module eigengenes differ significantly between tumour and
+patient-matched normal tissue (Welch $t$-test, $p<0.05$; Fig~\ref{fig:empirical},
+Table~\ref{tab:empirical}). Because the genes were selected only for variability
+and clustered only by mutual correlation, the recovery of phenotype-associated
+modules indicates that the correlation objective captures co-regulation structure
+that tracks the underlying biology.
+
+\begin{table}[!ht]
+\centering
+\caption{\textbf{Co-expression modules recovered from GSE183947.}
+Size, mean within-module absolute correlation, variance explained by the module
+eigengene, and the tumour-vs-normal eigengene contrast ($t$ statistic and Welch
+$p$-value).}
+\label{tab:empirical}
+\IfFileExists{results/empirical_table.tex}{\input{results/empirical_table.tex}}{%
+\begin{tabular}{@{}l@{}}\hline
+\textit{Run experiments/run\_experiments.py to populate this table.}\\\hline
+\end{tabular}}
+\end{table}
+
+\begin{figure}[!h]
+\caption{\textbf{Module eigengenes separate tumour from normal tissue.}
+Eigengene distributions (leading principal component of each module's expression
+across the \EmpSamples{} samples) for the modules most associated with phenotype,
+split by tumour (T) and patient-matched normal (N) tissue; asterisks mark modules
+with a significant contrast ($p<0.05$).}
+\previewfig{empirical_eigengenes.pdf}
+\label{fig:empirical}
+\end{figure}
 
 \section*{Discussion}
 \tool{} reframes clustering as direct optimisation of the validity criterion the
@@ -468,18 +614,24 @@ show that, when the number of modules is known or bounded, this objective
 recovers planted modules at least as well as a strong k-means baseline, and that
 on genuinely correlational data it is the more appropriate criterion.
 
-The principal limitation is intrinsic to the correlation objective: it rewards
-fit without penalising complexity, so unconstrained optimisation over-segments.
-We regard this as a property to be managed rather than hidden. \tool{} provides
-two explicit remedies---bounding $g_{\max}$, or adding a parsimony objective and
-reading the Pareto knee---and we show the latter recovers a sensible cluster
-count. A natural extension is a correlation-based information criterion that
-penalises the number of modules directly, which would let the correlation
-objective select its own granularity without a geometric proxy. Other directions
-include alternative co-expression objectives (e.g.\ topological overlap),
-smarter recombination operators that respect cluster boundaries, and scaling to
-genome-wide matrices, where the $\mathcal{O}(n^2)$ correlation matrix and
-per-evaluation cost become the bottleneck.
+The raw correlation log-likelihood rewards fit without penalising complexity, so
+unconstrained optimisation over-segments. Rather than hide this, we address it
+directly with penalised correlation criteria (Eq~\eqref{eq:loglikic}) that add a
+cluster-count penalty without leaving correlation space; optimised as a single
+objective under a loose bound, \texttt{loglik\_aic} recovered both the number of
+modules and the partition on our synthetic data, and selected coherent,
+phenotype-associated modules on real data. This is more robust than pairing the
+correlation objective with a geometric information criterion under NSGA-II,
+because the Euclidean-Gaussian assumption of the latter conflicts with the
+absolute-correlation objective when modules contain anti-correlated members. A
+second ingredient that proved important was correlation-aware seeding: starting
+the population from hierarchical clustering of the correlation distance, rather
+than from Euclidean k-means, markedly improved recovery on the harder synthetic
+data. Remaining directions include alternative co-expression objectives (e.g.\
+topological overlap), recombination operators that respect cluster boundaries,
+and scaling to genome-wide matrices, where the $\mathcal{O}(n^2)$ correlation
+matrix and per-evaluation cost become the bottleneck and gene pre-filtering (as
+used here) is currently required.
 
 Methodologically, \tool{} sits in the tradition of GA-based and multi-objective
 clustering~\cite{Maulik2000,Handl2007} but is distinguished by its

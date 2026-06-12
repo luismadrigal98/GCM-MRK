@@ -15,3 +15,11 @@ paper/results/benchmark.json
 paper/gcmrk_paper.aux
 paper/gcmrk_paper.log
 paper/gcmrk_paper.out
+paper/gcmrk_paper.bbl
+paper/gcmrk_paper.blg
+paper/results/empirical_modules.csv
+paper/results/benchmark_table.tex
+paper/results/empirical_table.tex
+paper/figures/empirical_eigengenes.pdf
+paper/figures/model_selection.pdf
+paper/gcmrk_paper.pdf

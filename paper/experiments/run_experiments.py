@@ -367,6 +367,134 @@ def fig_empirical_eigengenes(module_rows, eigengenes, is_tumor):
 
 
 # --------------------------------------------------------------------------- #
+# LaTeX auto-generation: the paper \input's these so re-running updates numbers.
+# --------------------------------------------------------------------------- #
+def _fmt(x, nd=2):
+    if isinstance(x, (int, np.integer)):
+        return str(int(x))
+    if isinstance(x, float) or isinstance(x, (np.floating,)):
+        return f"{float(x):.{nd}f}"
+    return str(x)
+
+
+def _find(rows, dataset, target=None, contains=None):
+    for r in rows:
+        if r["dataset"] != dataset:
+            continue
+        if target is not None and r["target"] != target:
+            continue
+        if contains is not None and contains not in r["k_setting"]:
+            continue
+        return r
+    return None
+
+
+def _macro(name, value):
+    # LaTeX command names must be letters only.
+    return f"\\newcommand{{\\{name}}}{{{value}}}\n"
+
+
+def write_latex(rows, meta, module_rows, scan_hard, kbic, kaic):
+    """Emit results_macros.tex (scalars) and benchmark_table.tex (table body)."""
+    M = ""
+    se, sh, ir = meta["synthetic_easy"], meta["synthetic_hard"], meta["iris"]
+    M += _macro("EasyGenes", se["shape"][0]) + _macro("EasySamples", se["shape"][1])
+    M += _macro("EasyWithinR", _fmt(se["within_r"])) + _macro("EasyBetweenR", _fmt(se["between_r"]))
+    M += _macro("HardGenes", sh["shape"][0]) + _macro("HardSamples", sh["shape"][1])
+    M += _macro("HardWithinR", _fmt(sh["within_r"])) + _macro("HardBetweenR", _fmt(sh["between_r"]))
+    M += _macro("IrisSamples", ir["shape"][0]) + _macro("IrisFeatures", ir["shape"][1])
+
+    def ari(row):
+        return _fmt(row["ari"]) if row and isinstance(row["ari"], float) else "NA"
+
+    M += _macro("EasyLoglikARI", ari(_find(rows, "Synthetic-Easy", "loglik", "known")))
+    M += _macro("EasyKmeansARI", ari(_find(rows, "Synthetic-Easy", "WCSS")))
+    M += _macro("HardLoglikARI", ari(_find(rows, "Synthetic-Hard", "loglik", "known")))
+    M += _macro("HardKmeansARI", ari(_find(rows, "Synthetic-Hard", "WCSS")))
+
+    el = _find(rows, "Synthetic-Easy", "loglik", "loose")
+    hl = _find(rows, "Synthetic-Hard", "loglik", "loose")
+    M += _macro("EasyLooseK", el["k_found"] if el else "NA")
+    M += _macro("HardLooseK", hl["k_found"] if hl else "NA")
+
+    for tag, ds in [("Easy", "Synthetic-Easy"), ("Hard", "Synthetic-Hard")]:
+        rb = _find(rows, ds, "loglik_bic")
+        ra = _find(rows, ds, "loglik_aic")
+        if rb:
+            M += _macro(tag + "BicK", rb["k_found"]) + _macro(tag + "BicARI", ari(rb))
+        if ra:
+            M += _macro(tag + "AicK", ra["k_found"]) + _macro(tag + "AicARI", ari(ra))
+
+    M += _macro("ScanHardKbic", kbic) + _macro("ScanHardKaic", kaic)
+
+    M += _macro("IrisKmeansARI", ari(_find(rows, "Iris", "WCSS")))
+    rs = _find(rows, "Iris", "silhouette")
+    rc = _find(rows, "Iris", "calinski_harabasz")
+    if rs:
+        M += _macro("IrisSilK", rs["k_found"]) + _macro("IrisSilARI", ari(rs))
+    if rc:
+        M += _macro("IrisCHK", rc["k_found"]) + _macro("IrisCHARI", ari(rc))
+
+    emp = meta.get("empirical", {})
+    if "k_modules" in emp:
+        M += _macro("EmpFullGenes", emp["shape_full"][0])
+        M += _macro("EmpSamples", emp["shape_full"][1])
+        M += _macro("EmpNtop", emp["n_top_genes"])
+        M += _macro("EmpKmodules", emp["k_modules"])
+        M += _macro("EmpNmodules", emp["n_modules"])
+        M += _macro("EmpWithinR", _fmt(emp["mean_within_abs_corr"]))
+        M += _macro("EmpBgR", _fmt(emp["background_abs_corr"]))
+        M += _macro("EmpNsig", emp["modules_assoc_phenotype_p05"])
+
+    (RESULTS / "results_macros.tex").write_text(M)
+
+    # ----- benchmark table (full tabular; \input as a whole) ----- #
+    # The full environment is emitted (not just rows) so the paper can \input it
+    # at top level: \input-ing a row fragment *inside* a tabular breaks under the
+    # template's global \raggedright, whereas \input-ing a complete tabular works.
+    def cell(v):
+        if v == "" or v is None:
+            return "--"
+        if isinstance(v, float):
+            return f"{v:.3f}"
+        return str(v)
+
+    body = ["\\begin{tabular}{@{}llllrrr@{}}", "\\hline",
+            "Dataset & Method & Target & Setting & $k$ & ARI & Acc. \\\\", "\\hline"]
+    last_ds = None
+    for r in rows:
+        ds = r["dataset"] if r["dataset"] != last_ds else ""
+        if ds and last_ds is not None:
+            body.append("\\hline")
+        last_ds = r["dataset"]
+        method = r["method"].replace("GCM-MRK", "\\tool{}").replace("_", "\\_")
+        target = r["target"].replace("_", "\\_")
+        setting = r["k_setting"].replace("_", "\\_")
+        body.append(
+            f"{ds} & {method} & \\texttt{{{target}}} & {setting} & "
+            f"{r['k_found']} & {cell(r['ari'])} & {cell(r['accuracy'])} \\\\"
+        )
+    body += ["\\hline", "\\end{tabular}"]
+    (RESULTS / "benchmark_table.tex").write_text("\n".join(body) + "\n")
+
+    # ----- empirical module table (full tabular) ----- #
+    if module_rows:
+        mb = ["\\begin{tabular}{@{}lrrrrr@{}}", "\\hline",
+              "Module & Size & Within $\\lvert r\\rvert$ & Eig.\\ var. & "
+              "$t$ (T vs N) & $p$ \\\\", "\\hline"]
+        for m in sorted(module_rows, key=lambda x: x["tumor_normal_p"]):
+            p = m["tumor_normal_p"]
+            pstr = "$<$0.001" if p < 1e-3 else f"{p:.3f}"
+            mb.append(
+                f"M{m['module']} & {m['size']} & {m['within_abs_corr']:.2f} & "
+                f"{m['eigengene_var_explained']:.2f} & {m['tumor_normal_t']:.1f} & "
+                f"{pstr} \\\\"
+            )
+        mb += ["\\hline", "\\end{tabular}"]
+        (RESULTS / "empirical_table.tex").write_text("\n".join(mb) + "\n")
+
+
+# --------------------------------------------------------------------------- #
 # Main
 # --------------------------------------------------------------------------- #
 def main():
@@ -435,7 +563,11 @@ def main():
         fig_empirical_eigengenes(module_rows, eigengenes, is_tumor)
         print(f"empirical: {meta['empirical']}")
 
+    # Auto-generate the LaTeX the paper \input's, so re-running updates the paper.
+    write_latex(rows, meta, module_rows, scan_hard, kbic, kaic)
+
     print(f"\nWrote results to {RESULTS} and figures to {FIGURES}")
+    print(f"Wrote LaTeX macros + table bodies to {RESULTS}/*.tex")
 
 
 if __name__ == "__main__":
