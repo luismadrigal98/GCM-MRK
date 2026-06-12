@@ -7,3 +7,8 @@ dist/
 .pytest_cache/
 .venv/
 venv/
+paper/figures/convergence.pdf
+paper/figures/iris_silhouette.pdf
+paper/figures/pareto.pdf
+paper/results/benchmark.csv
+paper/results/benchmark.json

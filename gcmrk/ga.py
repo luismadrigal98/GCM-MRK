@@ -100,16 +100,32 @@ class _Evaluator:
 
 
 def _normalise_for_sum(raw: np.ndarray, metrics: Sequence[MetricSpec]) -> np.ndarray:
-    """Squash each metric to a comparable scale before weighting.
+    """Map each metric to a value suitable for the direction-weighted sum.
 
-    Metrics live on wildly different scales (silhouette in [-1, 1], BIC in the
-    thousands).  For the single-objective weighted sum we map each through a
-    bounded transform so no single metric dominates purely by magnitude.
+    With a single target there is nothing to scale-balance against, so the raw
+    value is passed through unchanged: the weighted sum then ranks partitions by
+    the objective itself.  Squashing it would be actively harmful -- a bounded
+    transform such as ``tanh(val / (|val| + 1))`` saturates for large
+    magnitudes, collapsing the difference between a good and a slightly better
+    partition to almost nothing and starving the GA of selection pressure.
+
+    With several targets the metrics live on wildly different scales (silhouette
+    in ``[-1, 1]``, BIC in the thousands), so each non-silhouette metric is
+    squashed through a bounded, order-preserving transform so that no single
+    metric dominates the sum purely by magnitude.  (Multi-objective search should
+    normally use ``mode="nsga2"``, which compares raw scores and never calls
+    this function.)
+
+    In all cases a non-finite score (a degenerate partition) is mapped to a
+    large penalty in the unfavourable direction.
     """
     out = np.empty_like(raw)
+    single = len(metrics) == 1
     for i, (val, m) in enumerate(zip(raw, metrics)):
         if not np.isfinite(val):
             out[i] = -1e6 * m.weight  # heavily penalise degenerate partitions
+        elif single:
+            out[i] = val  # rank by the objective directly
         elif m.name == "silhouette":
             out[i] = val  # already in [-1, 1]
         else:

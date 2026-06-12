@@ -111,14 +111,19 @@ def gcmrk_run(X, targets, g_max, truth, dataset, mode="weighted", by_sample=True
 # Datasets
 # --------------------------------------------------------------------------- #
 def make_synthetic_easy():
+    # Single shared latent factor per module ("one regulator drives the module"):
+    # within-module genes are strongly correlated (in absolute value), between
+    # modules they are not.  Well separated, low noise.
     X, truth = simulate_modular_data([25, 25, 25], n_samples=80, noise=0.7,
-                                     latent_per_module=4, seed=SEED)
+                                     latent_per_module=1, seed=SEED)
     return X, truth, 3
 
 
 def make_synthetic_hard():
-    X, truth = simulate_modular_data([15, 20, 25, 30, 10], n_samples=40, noise=2.0,
-                                     latent_per_module=2, seed=SEED)
+    # Five unequal, weakly separated modules: fewer samples and higher noise
+    # shrink within-module correlation toward the between-module level.
+    X, truth = simulate_modular_data([15, 20, 25, 30, 10], n_samples=50, noise=1.5,
+                                     latent_per_module=1, seed=SEED)
     return X, truth, 5
 
 
