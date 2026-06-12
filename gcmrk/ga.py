@@ -25,7 +25,7 @@ import numpy as np
 
 from .metrics import MetricSpec
 from .partition import random_partition, repair
-from .seeding import kmeans_seeds
+from .seeding import correlation_seeds, kmeans_seeds
 
 __all__ = ["GAConfig", "GAResult", "evolve"]
 
@@ -259,6 +259,12 @@ def evolve(X, cor, metrics: Sequence[MetricSpec], config: GAConfig,
     # Bootstrap with k-means partitions across candidate cluster counts.
     if config.kmeans_restarts > 0 and X is not None:
         for s in kmeans_seeds(X, config.g_max, rng, restarts=config.kmeans_restarts):
+            population.append(repair(s, config.g_max, config.all_in_clusters, rng))
+    # Correlation-aware seeds: hierarchical clustering of the correlation matrix.
+    # Essential for the correlation objective, where Euclidean k-means splits
+    # coherent but anti-correlated elements.
+    if cor is not None:
+        for s in correlation_seeds(cor, config.g_max):
             population.append(repair(s, config.g_max, config.all_in_clusters, rng))
     while len(population) < config.population_size:
         population.append(

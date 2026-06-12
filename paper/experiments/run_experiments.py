@@ -1,50 +1,63 @@
 """Reproduce all benchmark experiments reported in the GCM-MRK paper.
 
-Runs metric-guided clustering (GCM-MRK) and a k-means baseline on:
+Datasets
+--------
+* Synthetic-Easy  -- 3 well-separated correlated modules (single latent factor).
+* Synthetic-Hard  -- 5 unequal, weakly-separated correlated modules.
+* Iris            -- the classic 3-class geometric benchmark.
+* GSE183947       -- breast-cancer RNA-seq (30 tumor / 30 paired normal); gene
+                     co-expression modules and their association with phenotype.
 
-* Synthetic-Easy   -- 3 well-separated correlated modules.
-* Synthetic-Hard   -- 5 unequal, weakly-separated correlated modules.
-* Iris             -- the classic 3-class geometric benchmark.
+For the synthetic data and Iris it reports, per method, the number of clusters
+recovered, the adjusted Rand index (ARI) and Hungarian-matched accuracy against
+ground truth, and runtime.  It covers three regimes:
 
-For every (dataset, method) pair it reports the number of clusters recovered,
-the adjusted Rand index (ARI) and Hungarian-matched accuracy against the ground
-truth, and wall-clock runtime.  It also runs an NSGA-II model-selection demo
-(loglik vs BIC) on the synthetic data and saves convergence / Pareto figures.
+  1. Recovery with the number of clusters known (single-objective).
+  2. Over-segmentation when ``loglik`` is optimised under a loose ``g_max``.
+  3. Model selection with k unknown, via the penalised correlation criteria
+     (``loglik_bic`` / ``loglik_aic``, single objective) and via NSGA-II.
 
-Outputs (written next to this script under ../results and ../figures):
-    results/benchmark.csv          tidy results table
-    results/benchmark.json         same, with run metadata
-    figures/convergence.pdf        GA fitness trajectory (synthetic-easy)
-    figures/pareto.pdf             loglik-vs-BIC Pareto front (synthetic-hard)
-    figures/iris_silhouette.pdf    silhouette profile of the recovered iris clusters
+Outputs (under ../results and ../figures):
+  results/benchmark.csv / .json      tidy results + metadata
+  results/empirical_modules.csv      gene-module summary for GSE183947
+  figures/convergence.pdf            GA fitness trajectory (Synthetic-Easy)
+  figures/model_selection.pdf        loglik & penalised criteria vs k (Synthetic-Hard)
+  figures/pareto.pdf                 NSGA-II loglik-vs-BIC front (Synthetic-Hard)
+  figures/iris_silhouette.pdf        silhouette profile of the Iris clustering
+  figures/empirical_eigengenes.pdf   module eigengenes, tumor vs normal
 
-Run:  python3 run_experiments.py
+Run from the repo root:  PYTHONPATH=. python3 paper/experiments/run_experiments.py
 """
 
 from __future__ import annotations
 
+import csv
 import json
 import time
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from scipy.optimize import linear_sum_assignment
+from scipy.stats import ttest_ind
 
 from sklearn.datasets import load_iris
 from sklearn.metrics import adjusted_rand_score
 
 from gcmrk import cluster, simulate_modular_data
 from gcmrk.data import normalize_data, pearson_correlation
+from gcmrk.metrics import loglik_bic, loglik_aic, log_likelihood_correlation
 from gcmrk.seeding import kmeans
 
 HERE = Path(__file__).resolve().parent
 RESULTS = HERE.parent / "results"
 FIGURES = HERE.parent / "figures"
+DATA = HERE.parent / "data"
 RESULTS.mkdir(exist_ok=True)
 FIGURES.mkdir(exist_ok=True)
 
@@ -55,12 +68,9 @@ GA_KW = dict(generations=120, population_size=200, seed=SEED, kmeans_restarts=2)
 # --------------------------------------------------------------------------- #
 # Evaluation helpers
 # --------------------------------------------------------------------------- #
-def matched_accuracy(truth: np.ndarray, pred: np.ndarray) -> float:
-    """Clustering accuracy under the optimal label permutation (Hungarian)."""
-    truth = np.asarray(truth)
-    pred = np.asarray(pred)
-    t_lab = np.unique(truth)
-    p_lab = np.unique(pred)
+def matched_accuracy(truth, pred) -> float:
+    truth = np.asarray(truth); pred = np.asarray(pred)
+    t_lab = np.unique(truth); p_lab = np.unique(pred)
     cost = np.zeros((t_lab.size, p_lab.size), dtype=int)
     for i, t in enumerate(t_lab):
         for j, p in enumerate(p_lab):
@@ -69,59 +79,60 @@ def matched_accuracy(truth: np.ndarray, pred: np.ndarray) -> float:
     return cost[row, col].sum() / truth.size
 
 
-def n_clusters(labels: np.ndarray) -> int:
-    return int(np.unique(np.asarray(labels)[np.asarray(labels) != 0]).size)
+def n_clusters(labels) -> int:
+    a = np.asarray(labels)
+    return int(np.unique(a[a != 0]).size)
 
 
 def evaluate(truth, pred, runtime, dataset, method, target, k_setting):
     return {
-        "dataset": dataset,
-        "method": method,
-        "target": target,
-        "k_setting": k_setting,
-        "k_found": n_clusters(pred),
+        "dataset": dataset, "method": method, "target": target,
+        "k_setting": k_setting, "k_found": n_clusters(pred),
         "ari": round(float(adjusted_rand_score(truth, pred)), 4),
         "accuracy": round(float(matched_accuracy(truth, pred)), 4),
         "runtime_s": round(float(runtime), 2),
     }
 
 
-def kmeans_baseline(X, k, truth, dataset):
-    """k-means with the data row-standardised the same way GCM-MRK normalises it."""
-    Xn = normalize_data(X, by_sample=True)
+def kmeans_baseline(X, k, truth, dataset, by_sample=True):
+    Xn = normalize_data(X, by_sample=by_sample)
     t0 = time.perf_counter()
-    rng = np.random.default_rng(SEED)
-    labels = kmeans(Xn, k, rng, n_init=10, max_iter=100)
-    dt = time.perf_counter() - t0
-    return evaluate(truth, labels, dt, dataset, "k-means", "inertia", f"k={k}")
+    labels = kmeans(Xn, k, np.random.default_rng(SEED), n_init=10, max_iter=100)
+    return evaluate(truth, labels, time.perf_counter() - t0, dataset,
+                    "k-means", "WCSS", f"k={k}")
 
 
-def gcmrk_run(X, targets, g_max, truth, dataset, mode="weighted", by_sample=True):
+def gcmrk_run(X, targets, g_max, truth, dataset, mode="weighted", by_sample=True,
+              k_setting=None):
     t0 = time.perf_counter()
     res = cluster(X, targets=list(targets), g_max=g_max, mode=mode,
                   by_sample=by_sample, **GA_KW)
     dt = time.perf_counter() - t0
-    row = evaluate(truth, res.labels, dt, dataset,
-                   "GCM-MRK" + ("/nsga2" if mode == "nsga2" else ""),
-                   "+".join(targets), f"g_max={g_max}")
+    method = "GCM-MRK/nsga2" if mode == "nsga2" else "GCM-MRK"
+    row = evaluate(truth, res.labels, dt, dataset, method, "+".join(targets),
+                   k_setting or f"g_max={g_max}")
     return row, res
+
+
+def module_separation(X, truth):
+    cor = pearson_correlation(normalize_data(X, by_sample=True), rowvar=True)
+    n = len(truth)
+    same = truth[:, None] == truth[None, :]
+    iu = np.triu_indices(n, 1)
+    c = np.abs(cor[iu]); s = same[iu]
+    return float(c[s].mean()), float(c[~s].mean())
 
 
 # --------------------------------------------------------------------------- #
 # Datasets
 # --------------------------------------------------------------------------- #
 def make_synthetic_easy():
-    # Single shared latent factor per module ("one regulator drives the module"):
-    # within-module genes are strongly correlated (in absolute value), between
-    # modules they are not.  Well separated, low noise.
     X, truth = simulate_modular_data([25, 25, 25], n_samples=80, noise=0.7,
                                      latent_per_module=1, seed=SEED)
     return X, truth, 3
 
 
 def make_synthetic_hard():
-    # Five unequal, weakly separated modules: fewer samples and higher noise
-    # shrink within-module correlation toward the between-module level.
     X, truth = simulate_modular_data([15, 20, 25, 30, 10], n_samples=50, noise=1.5,
                                      latent_per_module=1, seed=SEED)
     return X, truth, 5
@@ -132,145 +143,299 @@ def make_iris():
     return iris.data.astype(float), iris.target, 3
 
 
-def module_separation(X, truth):
-    """Mean within- vs between-module absolute correlation (difficulty proxy)."""
-    cor = pearson_correlation(X, rowvar=True)
-    n = len(truth)
-    same = truth[:, None] == truth[None, :]
-    iu = np.triu_indices(n, 1)
-    c = np.abs(cor[iu])
-    s = same[iu]
-    return float(c[s].mean()), float(c[~s].mean())
+# --------------------------------------------------------------------------- #
+# Experiment blocks
+# --------------------------------------------------------------------------- #
+def synthetic_block(X, truth, k_true, name, rows, meta_key, meta, res_store):
+    w, b = module_separation(X, truth)
+    meta[meta_key] = {"shape": list(X.shape), "k_true": k_true,
+                      "within_r": round(w, 3), "between_r": round(b, 3)}
+    # baseline
+    rows.append(kmeans_baseline(X, k_true, truth, name))
+    # recovery with known k
+    r_rec, res_rec = gcmrk_run(X, ["loglik"], k_true, truth, name,
+                               k_setting=f"known k={k_true}")
+    rows.append(r_rec)
+    res_store[name + "_recovery"] = res_rec
+    # over-segmentation: loglik under a loose bound
+    rows.append(gcmrk_run(X, ["loglik"], 10, truth, name,
+                          k_setting="loose g_max=10")[0])
+    # model selection, single objective, loose bound
+    rows.append(gcmrk_run(X, ["loglik_bic"], 10, truth, name,
+                          k_setting="model sel. g_max=10")[0])
+    rows.append(gcmrk_run(X, ["loglik_aic"], 10, truth, name,
+                          k_setting="model sel. g_max=10")[0])
+
+
+def model_selection_scan(X, truth, name, k_range=range(2, 11)):
+    """Single-objective loglik at each k; report loglik and penalised criteria."""
+    cor = pearson_correlation(normalize_data(X, by_sample=True), rowvar=True)
+    out = []
+    for k in k_range:
+        res = cluster(X, targets=["loglik"], g_max=k, generations=100,
+                      population_size=150, seed=SEED, kmeans_restarts=2)
+        out.append({
+            "k": k, "k_found": n_clusters(res.labels),
+            "loglik": float(log_likelihood_correlation(cor, res.labels)),
+            "loglik_bic": float(loglik_bic(cor, res.labels)),
+            "loglik_aic": float(loglik_aic(cor, res.labels)),
+            "ari": float(adjusted_rand_score(truth, res.labels)),
+        })
+    return out
 
 
 # --------------------------------------------------------------------------- #
-# Main experiment driver
+# Empirical: GSE183947 breast-cancer RNA-seq
 # --------------------------------------------------------------------------- #
-def main():
-    rows = []
-    meta = {"seed": SEED, "ga": GA_KW}
+def empirical_block(rows, meta, n_top=200, g_max=12):
+    path = DATA / "GSE183947_fpkm.csv"
+    if not path.exists():
+        meta["empirical"] = {"status": "skipped (data file absent)"}
+        return None, None
+    df = pd.read_csv(path, index_col=0)
+    genes = df.index.to_numpy()
+    is_tumor = np.array([c.startswith("CA.") for c in df.columns])
+    L = np.log2(df.values + 1.0)                      # genes x samples
+    # top-variable genes
+    v = L.var(axis=1)
+    idx = np.argsort(v)[::-1][:n_top]
+    G = L[idx]                                        # n_top genes x samples
+    gnames = genes[idx]
+    cor = pearson_correlation(normalize_data(G, by_sample=True), rowvar=True)
+    iu = np.triu_indices(n_top, 1)
+    bg = float(np.abs(cor[iu]).mean())
 
-    # ---- Synthetic-Easy --------------------------------------------------- #
-    Xe, te, ke = make_synthetic_easy()
-    w, b = module_separation(Xe, te)
-    meta["synthetic_easy"] = {"shape": list(Xe.shape), "k_true": ke,
-                              "within_r": round(w, 3), "between_r": round(b, 3)}
-    rows.append(kmeans_baseline(Xe, ke, te, "Synthetic-Easy"))
-    r, res_easy = gcmrk_run(Xe, ["loglik"], ke, te, "Synthetic-Easy")
-    rows.append(r)
-    rows.append(gcmrk_run(Xe, ["silhouette"], ke, te, "Synthetic-Easy")[0])
+    # model-selection by the penalised correlation criterion
+    res = cluster(G, targets=["loglik_aic"], g_max=g_max, by_sample=True, **GA_KW)
+    labels = np.asarray(res.labels)
+    k = n_clusters(labels)
 
-    # ---- Synthetic-Hard --------------------------------------------------- #
-    Xh, th, kh = make_synthetic_hard()
-    w, b = module_separation(Xh, th)
-    meta["synthetic_hard"] = {"shape": list(Xh.shape), "k_true": kh,
-                              "within_r": round(w, 3), "between_r": round(b, 3)}
-    rows.append(kmeans_baseline(Xh, kh, th, "Synthetic-Hard"))
-    rows.append(gcmrk_run(Xh, ["loglik"], kh, th, "Synthetic-Hard")[0])
-    rows.append(gcmrk_run(Xh, ["silhouette"], kh, th, "Synthetic-Hard")[0])
-    # Model selection without knowing k: NSGA-II loglik vs BIC, loose g_max.
-    r_ms, res_ms = gcmrk_run(Xh, ["loglik", "bic"], 10, th, "Synthetic-Hard",
-                             mode="nsga2")
-    rows.append(r_ms)
+    # per-module coherence and eigengene-phenotype association
+    Gs = normalize_data(G, by_sample=True)
+    module_rows = []
+    eigengenes = {}
+    for c in sorted(set(labels)):
+        ii = np.where(labels == c)[0]
+        if ii.size < 2:
+            continue
+        sub = np.abs(cor[np.ix_(ii, ii)])
+        within = (sub.sum() - ii.size) / (ii.size ** 2 - ii.size)
+        # eigengene = first principal component across samples
+        block = Gs[ii]                                # genes_in_module x samples
+        block = block - block.mean(axis=1, keepdims=True)
+        u, s, vt = np.linalg.svd(block, full_matrices=False)
+        eig = vt[0]                                   # length = n_samples
+        # orient so tumor mean >= normal mean for interpretability
+        if eig[is_tumor].mean() < eig[~is_tumor].mean():
+            eig = -eig
+        t_stat, p_val = ttest_ind(eig[is_tumor], eig[~is_tumor], equal_var=False)
+        eigengenes[int(c)] = eig
+        module_rows.append({
+            "module": int(c), "size": int(ii.size),
+            "within_abs_corr": round(float(within), 3),
+            "eigengene_var_explained": round(float(s[0] ** 2 / (s ** 2).sum()), 3),
+            "tumor_normal_t": round(float(t_stat), 2),
+            "tumor_normal_p": float(p_val),
+            "example_genes": ",".join(map(str, gnames[ii[:5]])),
+        })
 
-    # ---- Iris ------------------------------------------------------------- #
-    Xi, ti, ki = make_iris()
-    meta["iris"] = {"shape": list(Xi.shape), "k_true": ki}
-    rows.append(kmeans_baseline(Xi, ki, ti, "Iris"))
-    # Iris is geometric/low-dimensional -> use geometric targets.
-    r_sil, res_iris = gcmrk_run(Xi, ["silhouette"], ki, ti, "Iris", by_sample=False)
-    rows.append(r_sil)
-    rows.append(gcmrk_run(Xi, ["calinski_harabasz"], ki, ti, "Iris",
-                          by_sample=False)[0])
-    # Model selection on iris: silhouette vs DB, loose g_max.
-    rows.append(gcmrk_run(Xi, ["silhouette", "davies_bouldin"], 8, ti, "Iris",
-                          mode="nsga2", by_sample=False)[0])
+    with open(RESULTS / "empirical_modules.csv", "w", newline="") as fh:
+        wr = csv.DictWriter(fh, fieldnames=list(module_rows[0].keys()))
+        wr.writeheader(); wr.writerows(module_rows)
 
-    # ---- Write tidy results ---------------------------------------------- #
-    fieldnames = ["dataset", "method", "target", "k_setting", "k_found",
-                  "ari", "accuracy", "runtime_s"]
-    import csv
-    with open(RESULTS / "benchmark.csv", "w", newline="") as fh:
-        w_csv = csv.DictWriter(fh, fieldnames=fieldnames)
-        w_csv.writeheader()
-        w_csv.writerows(rows)
-    with open(RESULTS / "benchmark.json", "w") as fh:
-        json.dump({"meta": meta, "rows": rows}, fh, indent=2)
-
-    print(f"{'dataset':16s} {'method':14s} {'target':22s} {'k':>3s} "
-          f"{'ARI':>6s} {'acc':>6s} {'t(s)':>6s}")
-    for r in rows:
-        print(f"{r['dataset']:16s} {r['method']:14s} {r['target']:22s} "
-              f"{r['k_found']:3d} {r['ari']:6.3f} {r['accuracy']:6.3f} "
-              f"{r['runtime_s']:6.1f}")
-
-    # ---- Figures ---------------------------------------------------------- #
-    make_convergence_figure(res_easy)
-    make_pareto_figure(res_ms)
-    make_iris_silhouette_figure(Xi, res_iris.labels)
-    print(f"\nWrote results to {RESULTS} and figures to {FIGURES}")
+    n_sig = sum(1 for m in module_rows if m["tumor_normal_p"] < 0.05)
+    meta["empirical"] = {
+        "dataset": "GSE183947", "shape_full": list(df.shape),
+        "n_top_genes": n_top, "g_max": g_max, "k_modules": k,
+        "background_abs_corr": round(bg, 3),
+        "mean_within_abs_corr": round(
+            float(np.mean([m["within_abs_corr"] for m in module_rows])), 3),
+        "modules_assoc_phenotype_p05": n_sig,
+        "n_modules": len(module_rows),
+    }
+    rows.append({
+        "dataset": "GSE183947", "method": "GCM-MRK", "target": "loglik_aic",
+        "k_setting": f"top{n_top}, g_max={g_max}", "k_found": k,
+        "ari": "", "accuracy": "", "runtime_s": "",
+    })
+    return module_rows, eigengenes
 
 
-def make_convergence_figure(res):
+# --------------------------------------------------------------------------- #
+# Figures
+# --------------------------------------------------------------------------- #
+def fig_convergence(res):
     gens = [h["gen"] for h in res.history]
-    best = [h["max"] for h in res.history]
-    avg = [h["avg"] for h in res.history]
     fig, ax = plt.subplots(figsize=(4.2, 3.0))
-    ax.plot(gens, best, label="best", lw=1.8)
-    ax.plot(gens, avg, label="population mean", lw=1.2, ls="--")
-    ax.set_xlabel("generation")
-    ax.set_ylabel("weighted fitness (loglik)")
+    ax.plot(gens, [h["max"] for h in res.history], label="best", lw=1.8)
+    ax.plot(gens, [h["avg"] for h in res.history], label="population mean",
+            lw=1.2, ls="--")
+    ax.set_xlabel("generation"); ax.set_ylabel("weighted fitness (loglik)")
     ax.legend(frameon=False, fontsize=8)
-    fig.tight_layout()
-    fig.savefig(FIGURES / "convergence.pdf")
-    plt.close(fig)
+    fig.tight_layout(); fig.savefig(FIGURES / "convergence.pdf"); plt.close(fig)
 
 
-def make_pareto_figure(res):
+def fig_model_selection(scan, k_true):
+    ks = [s["k_found"] for s in scan]
+    fig, ax1 = plt.subplots(figsize=(4.6, 3.0))
+    ax1.plot(ks, [s["loglik"] for s in scan], "o-", color="C0",
+             label="loglik (fit)")
+    ax1.set_xlabel("number of clusters k")
+    ax1.set_ylabel("correlation log-likelihood", color="C0")
+    ax1.tick_params(axis="y", labelcolor="C0")
+    ax2 = ax1.twinx()
+    ax2.plot(ks, [s["loglik_bic"] for s in scan], "s--", color="C1",
+             label="loglik_bic")
+    ax2.plot(ks, [s["loglik_aic"] for s in scan], "^--", color="C2",
+             label="loglik_aic")
+    ax2.set_ylabel("penalised criterion (lower = better)")
+    kbic = min(scan, key=lambda s: s["loglik_bic"])["k_found"]
+    kaic = min(scan, key=lambda s: s["loglik_aic"])["k_found"]
+    ax2.axvline(kaic, color="C2", lw=0.8, alpha=0.6)
+    ax1.axvline(k_true, color="k", ls=":", lw=1, label=f"true k={k_true}")
+    lines = ax1.get_lines() + ax2.get_lines()
+    ax1.legend(lines, [l.get_label() for l in lines], frameon=False, fontsize=7,
+               loc="center right")
+    fig.tight_layout(); fig.savefig(FIGURES / "model_selection.pdf"); plt.close(fig)
+    return kbic, kaic
+
+
+def fig_pareto(res):
     if not res.pareto_front:
         return
-    ll = [s["scores"]["loglik"] for s in res.pareto_front]
-    bic = [s["scores"]["bic"] for s in res.pareto_front]
-    kk = [n_clusters(s["labels"]) for s in res.pareto_front]
+    ll = np.array([s["scores"]["loglik"] for s in res.pareto_front])
+    bic = np.array([s["scores"]["bic"] for s in res.pareto_front])
+    kk = np.array([n_clusters(s["labels"]) for s in res.pareto_front])
     order = np.argsort(ll)
-    ll = np.array(ll)[order]; bic = np.array(bic)[order]; kk = np.array(kk)[order]
     fig, ax = plt.subplots(figsize=(4.2, 3.0))
-    sc = ax.scatter(ll, bic, c=kk, cmap="viridis", s=40, edgecolor="k", lw=0.4)
+    sc = ax.scatter(ll[order], bic[order], c=kk[order], cmap="viridis", s=40,
+                    edgecolor="k", lw=0.4)
     ax.set_xlabel("correlation log-likelihood (maximise)")
     ax.set_ylabel("BIC (minimise)")
-    cb = fig.colorbar(sc, ax=ax)
-    cb.set_label("clusters")
-    fig.tight_layout()
-    fig.savefig(FIGURES / "pareto.pdf")
-    plt.close(fig)
+    fig.colorbar(sc, ax=ax, label="clusters")
+    fig.tight_layout(); fig.savefig(FIGURES / "pareto.pdf"); plt.close(fig)
 
 
-def make_iris_silhouette_figure(X, labels):
-    from scipy.spatial.distance import squareform, pdist
+def fig_iris_silhouette(X, labels):
+    from scipy.spatial.distance import pdist, squareform
     Xn = normalize_data(X, by_sample=False)
     D = squareform(pdist(Xn))
-    labels = np.asarray(labels)
-    uniq = np.unique(labels)
+    labels = np.asarray(labels); uniq = np.unique(labels)
     sil = np.zeros(len(labels))
     for i in range(len(labels)):
         own = labels == labels[i]
         a = D[i, own].sum() / max(1, own.sum() - 1)
         b = min(D[i, labels == c].mean() for c in uniq if c != labels[i])
         sil[i] = (b - a) / max(a, b)
-    fig, ax = plt.subplots(figsize=(4.2, 3.0))
-    y = 0
+    fig, ax = plt.subplots(figsize=(4.2, 3.0)); y = 0
     for c in uniq:
-        vals = np.sort(sil[labels == c])
-        ax.barh(range(y, y + len(vals)), vals, height=1.0)
+        vals = np.sort(sil[labels == c]); ax.barh(range(y, y + len(vals)), vals,
+                                                   height=1.0)
         y += len(vals) + 5
     ax.axvline(sil.mean(), color="k", ls="--", lw=1,
                label=f"mean = {sil.mean():.2f}")
     ax.set_xlabel("silhouette coefficient")
     ax.set_ylabel("samples (grouped by cluster)")
     ax.legend(frameon=False, fontsize=8, loc="lower right")
-    fig.tight_layout()
-    fig.savefig(FIGURES / "iris_silhouette.pdf")
+    fig.tight_layout(); fig.savefig(FIGURES / "iris_silhouette.pdf"); plt.close(fig)
+
+
+def fig_empirical_eigengenes(module_rows, eigengenes, is_tumor):
+    if not eigengenes:
+        return
+    # show the modules most associated with phenotype
+    order = sorted(module_rows, key=lambda m: m["tumor_normal_p"])[:6]
+    fig, ax = plt.subplots(figsize=(5.0, 3.0))
+    pos = 0; ticks = []; ticklab = []
+    for m in order:
+        eig = eigengenes[m["module"]]
+        for grp, mask, off, col in [("T", is_tumor, 0, "C3"),
+                                    ("N", ~is_tumor, 1, "C0")]:
+            ax.boxplot(eig[mask], positions=[pos + off], widths=0.6,
+                       patch_artist=True,
+                       boxprops=dict(facecolor=col, alpha=0.6),
+                       medianprops=dict(color="k"), showfliers=False)
+        ticks.append(pos + 0.5)
+        star = "*" if m["tumor_normal_p"] < 0.05 else ""
+        ticklab.append(f"M{m['module']}{star}")
+        pos += 3
+    ax.set_xticks(ticks); ax.set_xticklabels(ticklab)
+    ax.set_ylabel("module eigengene")
+    ax.set_xlabel("module (T=tumor red, N=normal blue; * p<0.05)")
+    fig.tight_layout(); fig.savefig(FIGURES / "empirical_eigengenes.pdf")
     plt.close(fig)
+
+
+# --------------------------------------------------------------------------- #
+# Main
+# --------------------------------------------------------------------------- #
+def main():
+    rows = []; meta = {"seed": SEED, "ga": GA_KW}; res_store = {}
+
+    Xe, te, ke = make_synthetic_easy()
+    synthetic_block(Xe, te, ke, "Synthetic-Easy", rows, "synthetic_easy", meta,
+                    res_store)
+    Xh, th, kh = make_synthetic_hard()
+    synthetic_block(Xh, th, kh, "Synthetic-Hard", rows, "synthetic_hard", meta,
+                    res_store)
+
+    # NSGA-II multi-objective demo on the hard data (for the Pareto figure/row).
+    r_mo, res_mo = gcmrk_run(Xh, ["loglik", "bic"], 10, th, "Synthetic-Hard",
+                             mode="nsga2", k_setting="nsga2 g_max=10")
+    rows.append(r_mo)
+
+    # Iris (geometric).
+    Xi, ti, ki = make_iris()
+    meta["iris"] = {"shape": list(Xi.shape), "k_true": ki}
+    rows.append(kmeans_baseline(Xi, ki, ti, "Iris", by_sample=False))
+    r_sil, res_iris = gcmrk_run(Xi, ["silhouette"], 6, ti, "Iris",
+                                by_sample=False, k_setting="g_max=6")
+    rows.append(r_sil)
+    rows.append(gcmrk_run(Xi, ["calinski_harabasz"], 6, ti, "Iris",
+                          by_sample=False, k_setting="g_max=6")[0])
+    rows.append(gcmrk_run(Xi, ["silhouette", "davies_bouldin"], 8, ti, "Iris",
+                          mode="nsga2", by_sample=False,
+                          k_setting="nsga2 g_max=8")[0])
+
+    # Model-selection scan (for the figure + selected-k table values).
+    scan_hard = model_selection_scan(Xh, th, "Synthetic-Hard")
+    meta["model_selection_scan_hard"] = scan_hard
+
+    # Empirical.
+    module_rows, eigengenes = empirical_block(rows, meta)
+
+    # ---- write tidy results ---- #
+    fieldnames = ["dataset", "method", "target", "k_setting", "k_found",
+                  "ari", "accuracy", "runtime_s"]
+    with open(RESULTS / "benchmark.csv", "w", newline="") as fh:
+        wr = csv.DictWriter(fh, fieldnames=fieldnames); wr.writeheader()
+        wr.writerows(rows)
+    with open(RESULTS / "benchmark.json", "w") as fh:
+        json.dump({"meta": meta, "rows": rows}, fh, indent=2)
+
+    print(f"{'dataset':16s} {'method':14s} {'target':18s} {'setting':20s} "
+          f"{'k':>2s} {'ARI':>6s} {'acc':>6s}")
+    for r in rows:
+        ari = r["ari"]; acc = r["accuracy"]
+        ari = f"{ari:6.3f}" if isinstance(ari, float) else f"{str(ari):>6s}"
+        acc = f"{acc:6.3f}" if isinstance(acc, float) else f"{str(acc):>6s}"
+        print(f"{r['dataset']:16s} {r['method']:14s} {r['target']:18s} "
+              f"{r['k_setting']:20s} {r['k_found']:2d} {ari} {acc}")
+
+    # ---- figures ---- #
+    fig_convergence(res_store["Synthetic-Easy_recovery"])
+    kbic, kaic = fig_model_selection(scan_hard, kh)
+    print(f"\nmodel-selection scan (hard): loglik_bic picks k={kbic}, "
+          f"loglik_aic picks k={kaic} (true {kh})")
+    fig_pareto(res_mo)
+    fig_iris_silhouette(Xi, res_iris.labels)
+    if module_rows is not None:
+        df = pd.read_csv(DATA / "GSE183947_fpkm.csv", index_col=0, nrows=1)
+        is_tumor = np.array([c.startswith("CA.") for c in df.columns])
+        fig_empirical_eigengenes(module_rows, eigengenes, is_tumor)
+        print(f"empirical: {meta['empirical']}")
+
+    print(f"\nWrote results to {RESULTS} and figures to {FIGURES}")
 
 
 if __name__ == "__main__":

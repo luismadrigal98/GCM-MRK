@@ -13,8 +13,10 @@ as much as the geometric ones.
 from __future__ import annotations
 
 import numpy as np
+from scipy.cluster.hierarchy import fcluster, linkage
+from scipy.spatial.distance import squareform
 
-__all__ = ["kmeans", "kmeans_seeds"]
+__all__ = ["kmeans", "kmeans_seeds", "correlation_seeds"]
 
 
 def kmeans(X: np.ndarray, k: int, rng: np.random.Generator,
@@ -87,4 +89,36 @@ def kmeans_seeds(X: np.ndarray, g_max: int, rng: np.random.Generator,
     for k in range(2, max(2, g_max) + 1):
         for _ in range(restarts):
             seeds.append(kmeans(X, k, rng))
+    return seeds
+
+
+def correlation_seeds(cor: np.ndarray, g_max: int) -> list:
+    """Seed partitions from hierarchical clustering of the correlation matrix.
+
+    For a correlation-based objective, Euclidean k-means is a poor seeder:
+    elements that are strongly *anti*-correlated (and so coherent under the
+    absolute-correlation log-likelihood) are far apart in Euclidean space and
+    get split.  This routine instead clusters on the correlation distance
+    ``d = 1 - |R|`` with agglomerative linkage -- the classical co-expression
+    clustering strategy -- which produces seeds that already respect the
+    correlation structure the GA is asked to optimise.
+
+    Two linkage methods (average and complete) are used for diversity; for each,
+    one partition per ``k`` in ``2..g_max`` is returned as a 1-based label
+    vector.
+    """
+    cor = np.asarray(cor, dtype=float)
+    n = cor.shape[0]
+    if n < 2:
+        return [np.ones(n, dtype=int)]
+    dist = 1.0 - np.abs(cor)
+    np.fill_diagonal(dist, 0.0)
+    dist = np.clip((dist + dist.T) / 2.0, 0.0, None)  # symmetric, non-negative
+    condensed = squareform(dist, checks=False)
+
+    seeds = []
+    for method in ("average", "complete"):
+        Z = linkage(condensed, method=method)
+        for k in range(2, max(2, g_max) + 1):
+            seeds.append(fcluster(Z, t=k, criterion="maxclust").astype(int))
     return seeds
