@@ -99,6 +99,11 @@
 \providecommand{\HierSelK}{4.0}\providecommand{\HierSelARI}{0.75}
 \providecommand{\NoiseGeneMemeticARI}{0.85}\providecommand{\NoiseGeneHierARI}{0.60}
 
+% Iris optimiser-validation macros.
+\InputIfFileExists{results/iris_macros.tex}{}{}
+\providecommand{\IrisTrueSil}{0.38}\providecommand{\IrisKmTwoSil}{0.58}
+\providecommand{\IrisKmThreeSil}{0.46}\providecommand{\IrisGcmrkSil}{0.58}
+
 \begin{document}
 \vspace*{0.2in}
 
@@ -651,21 +656,27 @@ $\NoiseGeneMemeticARI{}$ against $\NoiseGeneHierARI{}$ for hierarchical clusteri
 letting them pollute real modules, whereas greedy linkage forces them into the
 nearest module and degrades the recovered structure.
 
-\subsection*{Generality on geometric data: Iris}
-On Iris, a geometric rather than correlational problem, the same GA engine driven
-by geometric targets faithfully reaches each index's optimum. Both
-\texttt{silhouette} and \texttt{calinski\_harabasz} select $k=\IrisSilK{}$ even
-when permitted more clusters (ARI $=\IrisSilARI{}$ against the three botanical
-species), which is the well-documented behaviour of internal validity indices on
-Iris: they merge the two overlapping species (\emph{versicolor} and
-\emph{virginica}) because that two-group split is geometrically cleaner
-(Fig~\ref{fig:iris}). A k-means run \emph{told} to use $k=3$ recovers the species
-at ARI $=\IrisKmeansARI{}$. The contrast is the intended lesson, not a deficiency:
-\tool{} optimises whichever criterion it is given, so on Iris it returns the
-partition those indices genuinely prefer. This confirms that the tool is not
-specific to co-expression---the contribution is the criterion-faithful
-optimisation framework, with the correlation objective as the specialised target
-for modular data.
+\subsection*{Optimiser validation on geometric data: Iris}
+We include Iris not as a recovery benchmark---it is geometric rather than
+correlational, outside the correlation objective's domain---but to verify that
+the GA is a faithful, competent optimiser of \emph{any} geometric index it is
+given. It is: driven by \texttt{silhouette} it returns a partition with
+silhouette $\IrisGcmrkSil{}$, matching exactly the optimum found by k-means at
+$k=2$ ($\IrisKmTwoSil{}$), so the optimiser reaches the index's best value rather
+than a local one.
+
+That this partition has $k=\IrisSilK{}$ rather than three clusters is a property
+of the \emph{index}, not the optimiser: on Iris the three-species labelling has
+silhouette only $\IrisTrueSil{}$, \emph{below} both the two-cluster split
+($\IrisKmTwoSil{}$) and the best three-cluster k-means partition
+($\IrisKmThreeSil{}$), because \emph{versicolor} and \emph{virginica} overlap so
+heavily that merging them is geometrically cleaner (Fig~\ref{fig:iris}). No
+silhouette-maximising method can return the three species here; \tool{} correctly
+returns what the criterion prefers (ARI $=\IrisSilARI{}$ against the species,
+matching k-means at the same $k$). The lesson is that the choice of criterion,
+not the optimiser, determines the answer---which is precisely the control \tool{}
+gives the user, and the reason the correlation objective matters for data where a
+geometric index would be the wrong question.
 
 \begin{figure}[!h]
 \caption{\textbf{Silhouette profile of the Iris clustering recovered by \tool{}.}

@@ -63,7 +63,12 @@ refresh the paper after changing the analysis: re-run the experiments (or
   `results/results_macros.tex`, `results/benchmark_table.tex`,
   `results/empirical_table.tex`, and the corresponding figures.
 
-Run both from the repo root with `PYTHONPATH=.`, then compile.
+- `experiments/iris_validation.py` — Iris as optimiser validation: writes
+  `results/iris_macros.tex` with the silhouette values showing GCM-MRK reaches the
+  k-means k=2 optimum and that the true 3-species labelling has a lower silhouette
+  (so the k=2 outcome is the index's doing, not the optimiser's).
+
+Run all three from the repo root with `PYTHONPATH=.`, then compile.
 
 ## Status / TODO
 
