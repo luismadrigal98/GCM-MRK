@@ -369,6 +369,24 @@ geometric indices, per-feature standardization is the appropriate choice. The
 element-by-element correlation matrix $\mathbf{R}$ is computed once and reused
 across all evaluations of $\mathcal{L}$.
 
+\subsection*{Dimensionality-reduction visualization}
+Visual inspection of clustering results is essential for communicating and
+sanity-checking a partition.  \tool{} provides built-in tools for projecting the
+clustered data into two (or three) dimensions, with the cluster labels shown as
+colours.  Two embedding methods are always available (no extra dependencies):
+\emph{principal component analysis} (PCA), a linear projection preserving maximal
+variance, and \emph{correlation multidimensional scaling} (correlation MDS), a
+classical MDS embedding~\cite{Torgerson1952} on the correlation distance matrix
+$1 - \lvert\mathbf{R}\rvert$.  The second method is particularly informative for
+the correlation objective because it projects the elements into the same distance
+space the log-likelihood operates in: if modules are well-separated in
+correlation, they appear well-separated in the MDS embedding.  For users with
+additional packages installed, t-SNE~\cite{vanderMaaten2008} and
+UMAP~\cite{McInnes2018} are also supported and may better resolve local
+neighbourhood structure in large or high-dimensional datasets.  These tools are
+exposed both through the Python API (\texttt{reduce\_dimensions} and
+\texttt{plot\_clusters}) and the command line (\texttt{gcmrk visualize}).
+
 \subsection*{Genetic algorithm}
 \tool{} evolves a population of partitions with a self-contained GA
 (Fig~\ref{fig:convergence}). The components are:
@@ -725,6 +743,43 @@ with a significant contrast (Benjamini--Hochberg $q<0.05$).}
 \label{fig:empirical}
 \end{figure}
 
+\subsection*{Visualizing cluster structure in reduced dimensions}
+To provide visual confirmation that the recovered modules occupy distinct regions
+of the space in which the objective operates, we embed each clustering result
+into two dimensions using PCA and correlation MDS
+($1 - \lvert\mathbf{R}\rvert$; see Methods).  On Synthetic-Easy the three
+recovered modules form well-separated clouds in both embeddings
+(Fig~\ref{fig:dimred_synth}), consistent with the perfect ARI.  On
+Synthetic-Hard, where noise and unequal module sizes degrade separation, PCA
+shows considerable overlap because co-expressed but anti-correlated genes are
+geometrically distant; the correlation MDS, which measures distance in the
+same absolute-correlation space as the objective, reveals clearer module
+boundaries.  For the empirical breast-cancer data, the correlation-MDS
+embedding of the \EmpKmodules{} modules shows that even on real gene expression
+data the recovered modules occupy coherent, distinguishable regions of
+correlation space (Fig~\ref{fig:dimred_emp}).  These visualizations are produced
+automatically by the software and are available to users for any dataset.
+
+\begin{figure}[!h]
+\caption{\textbf{Dimensionality-reduction visualization of synthetic
+clustering.} Recovered modules projected into two dimensions by PCA (left) and
+correlation MDS (right) on Synthetic-Easy.  Diamonds mark cluster centroids.
+The correlation-MDS embedding uses the distance space native to the
+correlation objective and shows clean separation.}
+\previewfig{dimred_synthetic_easy.pdf}
+\label{fig:dimred_synth}
+\end{figure}
+
+\begin{figure}[!h]
+\caption{\textbf{Dimensionality-reduction visualization of empirical modules.}
+The \EmpKmodules{} co-expression modules recovered from GSE183947 projected into
+two dimensions by PCA (left) and correlation MDS (right).  Module boundaries are
+more distinct in the correlation distance space, confirming that the objective
+captures structure beyond what Euclidean geometry reveals.}
+\previewfig{dimred_empirical.pdf}
+\label{fig:dimred_emp}
+\end{figure}
+
 \section*{Discussion}
 \tool{} reframes co-expression module detection as maximum-likelihood inference
 under an explicit generative model and shows that solving that inference problem
@@ -765,7 +820,11 @@ clustering~\cite{Maulik2000,Handl2007} but is distinguished by a co-expression
 objective with an explicit likelihood, principled in-model selection, and a
 memetic optimizer that demonstrably beats the greedy clustering such pipelines
 rely on---behind a single swappable-metric interface with a minimal dependency
-footprint.
+footprint.  As a practical complement, the built-in dimensionality-reduction
+tools (PCA and correlation MDS, with optional t-SNE and UMAP) let users visually
+inspect and communicate the clustering structure, and the correlation-MDS
+embedding is particularly informative because it projects elements into the same
+distance space the objective operates in.
 
 \section*{Conclusion}
 We introduced \tool{}, a dependency-light Python tool that detects co-expression

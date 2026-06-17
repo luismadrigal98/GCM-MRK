@@ -53,6 +53,7 @@ from gcmrk import cluster, simulate_modular_data
 from gcmrk.data import normalize_data, pearson_correlation
 from gcmrk.metrics import loglik_bic, loglik_aic, log_likelihood_correlation
 from gcmrk.seeding import kmeans
+from gcmrk.visualize import reduce_dimensions, plot_clusters
 
 HERE = Path(__file__).resolve().parent
 RESULTS = HERE.parent / "results"
@@ -192,7 +193,7 @@ def empirical_block(rows, meta, n_top=200, g_max=12):
     path = DATA / "GSE183947_fpkm.csv"
     if not path.exists():
         meta["empirical"] = {"status": "skipped (data file absent)"}
-        return None, None
+        return None, None, None, None
     df = pd.read_csv(path, index_col=0)
     genes = df.index.to_numpy()
     is_tumor = np.array([c.startswith("CA.") for c in df.columns])
@@ -272,7 +273,7 @@ def empirical_block(rows, meta, n_top=200, g_max=12):
         "k_setting": f"top{n_top}, g_max={g_max}", "k_found": k,
         "ari": "", "accuracy": "", "runtime_s": "",
     })
-    return module_rows, eigengenes
+    return module_rows, eigengenes, G, labels
 
 
 # --------------------------------------------------------------------------- #
@@ -377,6 +378,42 @@ def fig_empirical_eigengenes(module_rows, eigengenes, is_tumor):
     ax.set_ylabel("module eigengene")
     ax.set_xlabel("module (T=tumor red, N=normal blue; * BH $q<0.05$)")
     fig.tight_layout(); fig.savefig(FIGURES / "empirical_eigengenes.pdf")
+    plt.close(fig)
+
+
+def fig_dimred_synthetic(X, labels, truth, name):
+    """PCA + correlation-MDS embeddings of a synthetic clustering result."""
+    fig, axes = plt.subplots(1, 2, figsize=(9.0, 3.8))
+    for ax, method, title in zip(
+        axes,
+        ["pca", "cor_mds"],
+        ["PCA", "Correlation MDS (1−|R|)"],
+    ):
+        X2 = reduce_dimensions(X, labels, method=method)
+        plot_clusters(X2, labels, method=method, ax=ax, title=title,
+                      truth=truth, show_legend=(method == "pca"))
+    fig.suptitle(f"{name}: recovered clusters", fontsize=11, fontweight="bold")
+    fig.tight_layout(rect=[0, 0, 1, 0.94])
+    tag = name.lower().replace("-", "_").replace(" ", "_")
+    fig.savefig(FIGURES / f"dimred_{tag}.pdf")
+    plt.close(fig)
+
+
+def fig_dimred_empirical(G, labels):
+    """PCA + correlation-MDS of the GSE183947 gene modules."""
+    fig, axes = plt.subplots(1, 2, figsize=(9.0, 3.8))
+    for ax, method, title in zip(
+        axes,
+        ["pca", "cor_mds"],
+        ["PCA", "Correlation MDS (1−|R|)"],
+    ):
+        X2 = reduce_dimensions(G, labels, method=method, by_sample=True)
+        plot_clusters(X2, labels, method=method, ax=ax, title=title,
+                      show_legend=(method == "pca"))
+    fig.suptitle("GSE183947: co-expression modules in reduced dimensions",
+                 fontsize=11, fontweight="bold")
+    fig.tight_layout(rect=[0, 0, 1, 0.94])
+    fig.savefig(FIGURES / "dimred_empirical.pdf")
     plt.close(fig)
 
 
@@ -544,7 +581,7 @@ def main():
     meta["model_selection_scan_hard"] = scan_hard
 
     # Empirical.
-    module_rows, eigengenes = empirical_block(rows, meta)
+    module_rows, eigengenes, G_emp, labels_emp = empirical_block(rows, meta)
 
     # ---- write tidy results ---- #
     fieldnames = ["dataset", "method", "target", "k_setting", "k_found",
@@ -576,6 +613,20 @@ def main():
         is_tumor = np.array([c.startswith("CA.") for c in df.columns])
         fig_empirical_eigengenes(module_rows, eigengenes, is_tumor)
         print(f"empirical: {meta['empirical']}")
+
+    # Dimensionality-reduction visualizations.
+    fig_dimred_synthetic(Xe, res_store["Synthetic-Easy_recovery"].labels, te,
+                         "Synthetic-Easy")
+    # For Synthetic-Hard, use the recovery result if available, else run it.
+    if "Synthetic-Hard_recovery" in res_store:
+        sh_labels = res_store["Synthetic-Hard_recovery"].labels
+    else:
+        _, sh_res = gcmrk_run(Xh, ["loglik"], kh, th, "Synthetic-Hard",
+                              k_setting=f"known k={kh}")
+        sh_labels = sh_res.labels
+    fig_dimred_synthetic(Xh, sh_labels, th, "Synthetic-Hard")
+    if module_rows is not None and G_emp is not None and labels_emp is not None:
+        fig_dimred_empirical(G_emp, labels_emp)
 
     # Auto-generate the LaTeX the paper \input's, so re-running updates the paper.
     write_latex(rows, meta, module_rows, scan_hard, kbic, kaic)

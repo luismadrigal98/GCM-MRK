@@ -104,6 +104,53 @@ for sol in mo.pareto_front:
     print(sol["scores"], "->", sol["labels"])
 ```
 
+## Visualization
+
+GCM-MRK includes built-in tools for visualizing clustering results in a
+reduced-dimensional embedding.  Four methods are supported:
+
+| Method | Dependency | Character |
+|--------|-----------|-----------|
+| `pca` | numpy (always available) | Linear; preserves global variance |
+| `cor_mds` | scipy (always available) | Classical MDS on `1 − |R|` — the correlation distance native to the log-likelihood objective |
+| `tsne` | scikit-learn (optional) | Non-linear; preserves local neighbourhoods |
+| `umap` | umap-learn (optional) | Non-linear; balances local and global structure |
+
+Install optional backends with `pip install gcmrk[viz]`.
+
+### Command-line visualization
+
+```bash
+# Visualize an existing clustering result
+gcmrk visualize --data sim.csv --labels labels.txt \
+    --methods pca cor_mds --out clusters.pdf
+
+# Or auto-generate a plot immediately after clustering
+gcmrk cluster --data sim.csv --targets loglik --g-max 3 \
+    --out labels.txt --plot --plot-out clusters.pdf
+```
+
+### Python API
+
+```python
+from gcmrk import cluster, simulate_modular_data
+from gcmrk.visualize import reduce_dimensions, plot_clusters, plot_embedding_grid
+
+data, truth = simulate_modular_data([20, 20, 20], n_samples=50, seed=5)
+result = cluster(data, targets=["loglik"], g_max=3,
+                 generations=100, population_size=200, seed=0)
+
+# Single-method embedding
+X_2d = reduce_dimensions(data, result.labels, method="cor_mds")
+fig = plot_clusters(X_2d, result.labels, method="cor_mds",
+                    title="Correlation MDS", truth=truth)
+fig.savefig("clusters_mds.pdf")
+
+# Multi-panel grid comparing all available methods
+fig = plot_embedding_grid(data, result.labels, truth=truth)
+fig.savefig("clusters_grid.pdf")
+```
+
 ## How it works
 
 1. **Initialization** — the population is seeded with k-means partitions and
@@ -162,6 +209,7 @@ gcmrk/
   ga.py          genetic algorithm engine (weighted + NSGA-II)
   data.py        loading, normalization, correlation
   simulate.py    synthetic modular-data generator
+  visualize.py   dimensionality-reduction visualization (PCA, MDS, t-SNE, UMAP)
   core.py        cluster() — the high-level entry point
   cli.py         command-line interface
 tests/           unittest suite (run: python -m unittest discover -s tests)
