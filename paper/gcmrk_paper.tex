@@ -114,17 +114,14 @@
 \newline
 \\
 Luis Javier Madrigal-Roca\textsuperscript{1*},
-Author Two\textsuperscript{1},
-Author Three\textsuperscript{2}
+John K. Kelly\textsuperscript{1}
 \\
 \bigskip
-\textbf{1} Department/Program, Institution Name, City, State, Country
-\\
-\textbf{2} Department/Program, Institution Name, City, State, Country
+\textbf{1} Department of Ecology and Evolutionary Biology, University of Kansas
 \\
 \bigskip
 
-* madrigalrocalj@gmail.com
+* madrigalrocalj@yahoo.com
 
 \end{flushleft}
 
@@ -135,11 +132,11 @@ something else and only measure correlation afterwards. We present \tool{}, an
 open-source Python tool that closes this gap by treating module detection as
 maximum-likelihood inference and solving it globally. We show that the project's
 correlation objective is, up to a constant and the sample-size factor, the
-profile log-likelihood of an explicit generative model---a block-diagonal
+profile log-likelihood of an explicit generative model: a block-diagonal
 one-factor Gaussian in which each module is a single regulator with
-equal-magnitude $\pm$ loadings---which puts model selection on principled footing
+equal-magnitude $\pm$ loadings. This explicitly puts model selection on principled footing
 through a genuine BIC/AIC in correlation space. \tool{} maximizes this likelihood
-with a memetic genetic algorithm: a population-based search hybridised with a
+with a memetic genetic algorithm: a population-based search hybridized with a
 greedy local refinement that reassigns genes after the fact, a move the
 agglomerative clustering at the core of co-expression pipelines cannot make.
 Across a replicated noise sweep, \tool{} reproducibly surpasses hierarchical
@@ -155,7 +152,7 @@ one swappable-metric interface with single- and multi-objective modes.
 When biologists group genes by how similarly they are expressed, they usually
 run a standard clustering method and then score the result with a separate
 quality measure. The method, however, was never trying to do well on that
-measure---it optimizes its own internal objective. We built a tool, \tool{},
+measure because it optimizes its own internal objective. We built a tool, \tool{},
 that removes this gap: the user picks the quality measure they actually care
 about, and the tool searches directly for the grouping that scores best on it.
 The search is performed by a genetic algorithm, a population-based optimizer
@@ -177,10 +174,10 @@ co-expressed genes into putative regulatory modules~\cite{Eisen1998,Wolfe2005}
 to organizing cells, samples, or conditions. The dominant practice is
 two-staged: a fixed algorithm such as k-means~\cite{MacQueen1967} or
 hierarchical clustering~\cite{Eisen1998} produces a partition, and a
-cluster-validity index---the silhouette~\cite{Rousseeuw1987}, the
+cluster-validity index like the silhouette~\cite{Rousseeuw1987}, the
 Davies--Bouldin index~\cite{DaviesBouldin1979}, the Calinski--Harabasz
 criterion~\cite{CalinskiHarabasz1974}, or an information criterion such as
-BIC~\cite{Schwarz1978}---is then used to \emph{evaluate} that partition, often
+BIC~\cite{Schwarz1978} is then used to \emph{evaluate} that partition, often
 to choose the number of clusters. The objective the algorithm optimizes (for
 k-means, within-cluster sum of squares) and the objective by which the result is
 ultimately judged are therefore distinct. When the two disagree, the reported

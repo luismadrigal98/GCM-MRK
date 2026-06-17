@@ -30,3 +30,6 @@ paper/results/decisive.json
 paper/results/decisive_macros.tex
 paper/results/modelsel_table.tex
 paper/results/perf_table.tex
+paper/figures/dimred_empirical.pdf
+paper/figures/dimred_synthetic_easy.pdf
+paper/figures/dimred_synthetic_hard.pdf
