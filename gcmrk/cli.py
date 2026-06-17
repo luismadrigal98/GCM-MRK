@@ -19,18 +19,32 @@ Multi-objective (Pareto) clustering on two competing targets::
 Generate synthetic modular data to experiment with::
 
     gcmrk simulate --modules 30 30 40 --samples 100 --out sim.csv
+
+Visualize a clustering result in a reduced-dimensional embedding::
+
+    gcmrk visualize --data expr.csv --labels labels.txt \
+        --methods pca cor_mds --out clusters.pdf
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 
 import numpy as np
 
 from .core import cluster
+from .data import load_matrix, normalize_data, pearson_correlation
 from .metrics import METRICS
 from .simulate import simulate_modular_data
+from .visualize import (
+    METHODS as VIZ_METHODS,
+    available_methods,
+    plot_clusters,
+    plot_embedding_grid,
+    reduce_dimensions,
+)
 
 
 def _add_cluster_parser(sub):
@@ -83,6 +97,17 @@ def _add_cluster_parser(sub):
                         "to this file, one partition per line.")
     p.add_argument("--quiet", action="store_true",
                    help="Suppress per-generation progress output.")
+    # Visualization shortcut: auto-generate an embedding plot after clustering.
+    p.add_argument("--plot", action="store_true",
+                   help="Generate a dimensionality-reduction scatter plot of "
+                        "the resulting clusters (PCA + correlation MDS).")
+    p.add_argument("--plot-out", default=None,
+                   help="Output path for the --plot figure (default: "
+                        "<out_basename>_viz.pdf or clusters_viz.pdf).")
+    p.add_argument("--plot-methods", nargs="+", default=None,
+                   metavar="METHOD",
+                   help="Embedding methods for --plot (default: pca cor_mds). "
+                        f"Available: {', '.join(VIZ_METHODS)}.")
     return p
 
 
@@ -106,6 +131,41 @@ def _add_simulate_parser(sub):
     return p
 
 
+def _add_visualize_parser(sub):
+    p = sub.add_parser(
+        "visualize",
+        help="Visualize clustering results in a reduced-dimensional embedding.",
+        description="Project data into 2-D (or 3-D) space using PCA, "
+                    "correlation MDS, t-SNE, or UMAP and produce a scatter "
+                    "plot coloured by cluster labels.",
+    )
+    p.add_argument("--data", required=True,
+                   help="Path to the data matrix (CSV/TSV).")
+    p.add_argument("--labels", required=True,
+                   help="Path to a label file (one integer per line).")
+    p.add_argument("--methods", nargs="+", default=["pca", "cor_mds"],
+                   metavar="METHOD",
+                   help="Embedding method(s) to use. "
+                        f"Available: {', '.join(VIZ_METHODS)}. "
+                        "Default: pca cor_mds.")
+    p.add_argument("--truth", default=None,
+                   help="Optional path to ground-truth labels for overlay.")
+    p.add_argument("--out", default=None,
+                   help="Output figure path (PDF/PNG/SVG). "
+                        "If omitted, the figure is displayed interactively.")
+    p.add_argument("--n-components", type=int, default=2, choices=[2, 3],
+                   help="Dimensionality of the embedding (default 2).")
+    p.add_argument("--title", default=None, help="Custom figure title.")
+    p.add_argument("--sep", default=",", help="Field separator (default ',').")
+    p.add_argument("--no-normalize", action="store_true",
+                   help="Do not standardize the data.")
+    p.add_argument("--by-feature", action="store_true",
+                   help="Normalize per feature (column) instead of per sample (row).")
+    p.add_argument("--seed", type=int, default=None,
+                   help="Random seed for stochastic embeddings (t-SNE, UMAP).")
+    return p
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="gcmrk",
@@ -115,6 +175,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     _add_cluster_parser(sub)
     _add_simulate_parser(sub)
+    _add_visualize_parser(sub)
     sub.add_parser("metrics", help="List available performance-target metrics.")
     return parser
 
@@ -164,6 +225,35 @@ def _run_cluster(args) -> int:
                 fh.write(",".join(str(int(x)) for x in entry["labels"]) + "\n")
         print(f"Pareto front ({len(result.pareto_front)} solutions) written to "
               f"{args.pareto_out}", file=sys.stderr)
+
+    # Auto-visualization when --plot is given.
+    if args.plot:
+        import matplotlib
+        matplotlib.use("Agg")
+
+        X = load_matrix(args.data, sep=args.sep)
+        if not args.no_normalize:
+            X = normalize_data(X, by_sample=not args.by_feature)
+
+        methods = args.plot_methods or ["pca", "cor_mds"]
+        fig = plot_embedding_grid(
+            X, result.labels, methods=methods,
+            by_sample=not args.by_feature,
+            suptitle="Cluster visualization",
+        )
+
+        if args.plot_out:
+            plot_path = args.plot_out
+        elif args.out:
+            base, _ = os.path.splitext(args.out)
+            plot_path = base + "_viz.pdf"
+        else:
+            plot_path = "clusters_viz.pdf"
+        fig.savefig(plot_path, dpi=200, bbox_inches="tight")
+        import matplotlib.pyplot as plt
+        plt.close(fig)
+        print(f"Visualization written to {plot_path}", file=sys.stderr)
+
     return 0
 
 
@@ -181,6 +271,52 @@ def _run_simulate(args) -> int:
     return 0
 
 
+def _run_visualize(args) -> int:
+    """Execute the ``gcmrk visualize`` subcommand."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    X = load_matrix(args.data, sep=args.sep)
+    if not args.no_normalize:
+        X = normalize_data(X, by_sample=not args.by_feature)
+
+    labels = np.loadtxt(args.labels, dtype=int)
+    if labels.size != X.shape[0]:
+        print(f"Error: label file has {labels.size} entries but data has "
+              f"{X.shape[0]} rows.", file=sys.stderr)
+        return 1
+
+    truth = None
+    if args.truth:
+        truth = np.loadtxt(args.truth, dtype=int)
+
+    methods = [m for m in args.methods if m in available_methods()]
+    unavailable = [m for m in args.methods if m not in available_methods()]
+    if unavailable:
+        print(f"Warning: skipping unavailable methods: {', '.join(unavailable)}",
+              file=sys.stderr)
+    if not methods:
+        print("Error: no embedding methods available.", file=sys.stderr)
+        return 1
+
+    fig = plot_embedding_grid(
+        X, labels, methods=methods, truth=truth,
+        n_components=args.n_components,
+        by_sample=not args.by_feature,
+        seed=args.seed,
+        suptitle=args.title,
+    )
+
+    if args.out:
+        fig.savefig(args.out, dpi=200, bbox_inches="tight")
+        plt.close(fig)
+        print(f"Figure saved to {args.out}", file=sys.stderr)
+    else:
+        plt.show()
+    return 0
+
+
 def _run_metrics() -> int:
     print("Available performance-target metrics:\n")
     for name, spec in METRICS.items():
@@ -195,6 +331,8 @@ def main(argv=None) -> int:
         return _run_cluster(args)
     if args.command == "simulate":
         return _run_simulate(args)
+    if args.command == "visualize":
+        return _run_visualize(args)
     if args.command == "metrics":
         return _run_metrics()
     return 1

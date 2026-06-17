@@ -20,6 +20,12 @@ from .metrics import METRICS, MetricSpec, get_metric
 from .partition import consolidate_labels, random_partition, read_partitions, repair
 from .data import load_matrix, normalize_data, pearson_correlation
 from .simulate import simulate_modular_data
+from .visualize import (
+    available_methods,
+    plot_clusters,
+    plot_embedding_grid,
+    reduce_dimensions,
+)
 
 __version__ = "1.0.0"
 
@@ -39,5 +45,9 @@ __all__ = [
     "normalize_data",
     "pearson_correlation",
     "simulate_modular_data",
+    "available_methods",
+    "plot_clusters",
+    "plot_embedding_grid",
+    "reduce_dimensions",
     "__version__",
 ]
