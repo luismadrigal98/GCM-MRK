@@ -126,23 +126,18 @@ John K. Kelly\textsuperscript{1}
 \end{flushleft}
 
 \section*{Abstract}
-Gene co-expression analysis defines a ``good'' module by a correlation criterion,
-yet standard pipelines detect modules with greedy algorithms that optimize
-something else and only measure correlation afterwards. We present a genetic clustering machine (\tool{}), an open-source Python tool that closes this gap by treating module detection as maximum-likelihood inference and solving it globally. We show that the project's correlation objective is, up to a constant and the sample-size factor, the
-profile log-likelihood of an explicit generative model: a block-diagonal
-one-factor Gaussian in which each module is a single regulator with
-equal-magnitude $\pm$ loadings. This explicitly puts model selection on principled footing
-through a genuine BIC/AIC in correlation space. \tool{} maximizes this likelihood
-with a memetic genetic algorithm: a population-based search hybridized with a
+Gene co-expression analyses identify ``good'' modules by a correlation criterion.
+However, standard pipelines detect modules with greedy algorithms that optimize
+other quantities and only measure correlation afterwards. We present a method called Genetic Clustering by Metric(\tool{} hereafter), an open-source Python tool that closes this gap by treating module detection as maximum-likelihood inference and solving it globally. In \tool{}, the correlation objective is, up to a constant and the sample-size factor, the profile log-likelihood of an explicit generative model: a block-diagonal one-factor Gaussian in which each module is a single regulator with
+equal-magnitude $\pm$ loadings. This bases model selection on a principled footing through a genuine BIC/AIC in correlation space. \tool{} maximizes this likelihood with a memetic genetic algorithm: a population-based search hybridized with a
 greedy local refinement that reassigns genes after the fact, a move the
 agglomerative clustering at the core of co-expression pipelines cannot make.
 Across a replicated noise sweep, \tool{} reproducibly surpasses hierarchical
 correlation clustering and k-means with the lowest variance, and an ablation
 shows the local-search step is responsible; the advantage persists when the
-number of modules is unknown and when unstructured genes must be ignored. The
-same engine faithfully optimizes geometric indices on the Iris benchmark, and on
-breast-cancer RNA-seq it recovers coherent modules whose eigengenes track
-tumour-versus-normal status. \tool{} depends only on NumPy and SciPy and exposes
+number of modules is unknown and when unstructured genes must be ignored. GCM faithfully optimizes geometric indices on the Iris benchmark dataset. For a
+breast-cancer RNA-seq it recovers coherent modules that predict
+tumor-versus-normal status. \tool{} depends only on NumPy and SciPy and exposes
 one swappable-metric interface with single- and multi-objective modes.
 
 \section*{Author summary}
@@ -167,12 +162,12 @@ optimize for, their own definition of a good cluster.
 
 \section*{Introduction}
 
-The advent of high-throughput technologies for profiling gene expression has revolutionized the field of molecular biology, enabling researchers to capture the intricate patterns of gene regulation and unravel the underlying genetic networks. However, the sheer volume and complexity of gene expression data pose significant challenges in extracting meaningful insights \cite{lorenaComplexityGeneExpression2008}. One critical step in this process is the clustering of genes based on their expression profiles, which aims to group together genes exhibiting similar patterns of expression across various experimental conditions or time points \cite{saelensComprehensiveEvaluationModule2018}. Clustering is a foundational step in computational biology, from grouping co-expressed genes into putative regulatory modules~\cite{Eisen1998,Wolfe2005} to shedding light on regulatory pathways mechanisms \cite{vengatharajulooGeneCoExpressionNetwork2023}, disease-associated genes \cite{vandamGeneCoexpressionAnalysis2017}, and potential therapeutic targets \cite{hasankhaniDifferentialCoExpressionNetwork2021}. By partitioning a set of objects into groups based on similarity, cluster analysis identifies intrinsic structures in data to gain insight \cite{hruschka2004, pirim2012}.  
+High-throughput technologies for profiling gene expression have revolutionized the field of molecular biology, enabling researchers to capture the intricate patterns of gene regulation and unravel the underlying genetic networks. However, the sheer volume and complexity of gene expression data pose significant challenges in extracting meaningful insights \cite{lorenaComplexityGeneExpression2008}. One critical step in this process is the clustering of genes based on their expression profiles, which aims to group together genes exhibiting similar patterns of expression across various experimental conditions or time points \cite{saelensComprehensiveEvaluationModule2018}. Clustering is a foundational step in computational biology, from grouping co-expressed genes into putative regulatory modules~\cite{Eisen1998,Wolfe2005} to shedding light on regulatory pathways mechanisms \cite{vengatharajulooGeneCoExpressionNetwork2023}, disease-associated genes \cite{vandamGeneCoexpressionAnalysis2017}, and potential therapeutic targets \cite{hasankhaniDifferentialCoExpressionNetwork2021}. By partitioning a set of objects into groups based on similarity, cluster analysis identifies intrinsic structures in data to gain insight \cite{hruschka2004, pirim2012}.  
 
-The dominant practice is two-staged: a fixed algorithm such as k-means~\cite{MacQueen1967} or hierarchical clustering~\cite{Eisen1998} produces a partition, and a cluster-validity index like the silhouette~\cite{Rousseeuw1987}, the
-Davies--Bouldin index~\cite{DaviesBouldin1979}, the Calinski--Harabasz
+The dominant practice has two stages. First, a fixed algorithm such as k-means~\cite{MacQueen1967} or hierarchical clustering~\cite{Eisen1998} produces a partition. Second,a cluster-validity index like the silhouette~\cite{Rousseeuw1987}, 
+the Davies--Bouldin index~\cite{DaviesBouldin1979}, the Calinski--Harabasz
 criterion~\cite{CalinskiHarabasz1974}, or an information criterion such as
-BIC~\cite{Schwarz1978} is then used to \emph{evaluate} that partition, often
+BIC~\cite{Schwarz1978} is used to \emph{evaluate} that partition, often
 to choose the number of clusters. The objective the algorithm optimizes (for
 k-means, within-cluster sum of squares) and the objective by which the result is
 ultimately judged are therefore distinct. When the two disagree, the reported
@@ -190,7 +185,7 @@ framed~\cite{Saelens2018}. Yet the correlation-based quality of the final
 modules is still, in most pipelines, assessed only after the clustering
 algorithm has finished optimizing a different, geometric objective.
 
-We argue for inverting the workflow: make the validity metric itself the
+We argue for inverting the workflow by making the validity metric itself the
 optimization target. Concretely, the user specifies the scalar criterion that
 defines a good partition for their problem, and a search procedure evolves a
 partition to optimize that criterion directly. This is attractive whenever the
@@ -217,17 +212,15 @@ while stochastic Bayesian approaches (such as Reversible Jump MCMC) could theore
  the extreme computational overhead of exhaustive Bayesian sampling or the restrictive assumptions 
  of gradient-based methods.
 
-Here we present \tool{} (Genetic Clustering by Metric---Madrigal-Roca and
-Kelly), an open-source Python package that clusters data by directly optimizing a
-chosen cluster-validity metric with a memetic genetic algorithm (GA). Genetic algorithms (GAs) could be a promising solution for clustering tasks \cite{katoch2021}, particularly in the context of gene expression data \cite{pirim2012}. Other attempts have been made to use evolutionary algorithms in this or similar contexts, with overall promising results \cite{hageman2008, hruschka2006, korkmaz2006, weiEntropyClusteringAnalysis2008}. GAs are optimization algorithms that mimic the principles of natural selection and evolution, making them well-suited for complex, multi-objective problems where traditional methods may struggle to find optimal solutions \cite{wirsanskyHGA2020}. 
+Here we present \tool{} (Genetic Clustering by Metric), an open-source Python package that clusters data by directly optimizing a chosen cluster-validity metric with a memetic genetic algorithm (GA), which is an evolutionary algorithm hybridized with a problem-specific local search that refines each candidate solution within its own ``lifetime,''. This strategy was introduced by Moscato~\cite{Moscato2000} and surveyed by Neri and Cotta~\cite{NeriCotta2012}. Genetic algorithms (GAs) could be a promising solution for clustering tasks \cite{katoch2021}, particularly in the context of gene expression data \cite{pirim2012}. Other attempts have been made to use evolutionary algorithms in this or similar contexts, with overall promising results \cite{hageman2008, hruschka2006, korkmaz2006, weiEntropyClusteringAnalysis2008}. GAs are optimization algorithms that mimic the principles of natural selection and evolution, making them well-suited for complex, multi-objective problems where traditional methods may struggle to find optimal solutions \cite{wirsanskyHGA2020}. 
 
 \tool{} makes three contributions. First, we show that the project's correlation
 objective is, up to a constant and the sample-size factor, the profile
-log-likelihood of an explicit generative model---a block-diagonal one-factor
-Gaussian in which each module is a single regulator with equal-magnitude $\pm$
-loadings---so that module detection becomes maximum-likelihood inference and the
+log-likelihood of an explicit block-diagonal one-factor
+Gaussian, in which each module is a single regulator with equal-magnitude $\pm$
+loadings, so that module detection becomes maximum-likelihood inference and the
 number of modules is chosen by a genuine BIC/AIC in correlation space, not a
-heuristic. Second, we hybridise the GA with an efficient memetic local search and
+heuristic. Second, we hybridize the GA with an efficient memetic local search and
 show, with a replicated benchmark, that this global optimizer reproducibly
 surpasses the greedy agglomerative clustering at the core of standard
 co-expression pipelines, with an ablation attributing the gain to the
@@ -255,11 +248,7 @@ population of partitions to optimize these scores in their natural direction
 (maximize or minimize).
 
 \subsection*{Performance-target metrics}
-\tool{} treats every metric as an interchangeable ``performance target''.
-Table~\ref{tab:metrics} lists the built-in targets, the input each consumes, and
-its optimization direction. They fall into two families: correlation-based
-objectives designed for modular data, and standard geometric/probabilistic
-indices.
+\tool{} treats every metric as an interchangeable ``performance target'' or fitness measure \cite{wirsanskyHGA2020}. Table~\ref{tab:metrics} lists the built-in targets, the input format each one is design to work with, and its optimization direction. They fall into two families: correlation-based objectives designed for modular data, and standard geometric/probabilistic indices.
 
 \paragraph*{A generative model for correlation modules.}
 The correlation objective is the maximum log-likelihood of an explicit
@@ -448,10 +437,7 @@ reassignment probability 0.05, tournament size 3, and elitism 5, with a fixed
 random seed for reproducibility.
 
 \subsection*{Choosing the number of clusters}
-Because $\mathcal{L}$ (Eq~\eqref{eq:loglik}) has no parsimony term, \tool{}
-offers three routes to the right number of clusters. (i) \emph{Constrain}
-$g_{\max}$ to the expected number of modules. (ii) \emph{Optimize a penalized
-correlation criterion} (\texttt{loglik\_aic} or \texttt{loglik\_bic},
+Because $\mathcal{L}$ (Eq~\eqref{eq:loglik}) has no parsimony term (penalization against more clusters), \tool{} offers three routes to the right number of clusters. (i) \emph{Constrain} $g_{\max}$ to the expected number of modules. (ii) \emph{Optimize a penalized correlation criterion} (\texttt{loglik\_aic} or \texttt{loglik\_bic},
 Eq~\eqref{eq:loglikic}) as a single objective under a loose $g_{\max}$; this
 selects $K$ within correlation space and is our recommended default when $K$ is
 unknown. Equivalently, one can scan $g_{\max}$ with \texttt{loglik} and pick the
@@ -506,11 +492,7 @@ $k$; and k-means. We also evaluate model selection with $k$ unknown
 the same penalized criterion) and robustness to unstructured ``noise'' genes
 that belong to no module.
 
-Agreement with ground truth is the adjusted Rand index
-(ARI)~\cite{HubertArabie1985}; for the single-dataset summaries
-(Table~\ref{tab:benchmark}) we also report Hungarian-matched accuracy. Results
-are reported as mean $\pm$ SD over the random datasets. All code to reproduce the
-experiments, figures, and tables is provided with the package.
+We use the adjusted Rand index (ARI)~\cite{HubertArabie1985} wirsanskyHGA2020; for the single-dataset summaries (Table~\ref{tab:benchmark}) we also report Hungarian-matched accuracy. Results are reported as mean $\pm$ SD over the random datasets. All code to reproduce the experiments, figures, and tables is provided with the package.
 
 \section*{Results}
 
@@ -786,42 +768,33 @@ captures structure beyond what Euclidean geometry reveals.}
 
 \section*{Discussion}
 \tool{} reframes co-expression module detection as maximum-likelihood inference
-under an explicit generative model and shows that solving that inference problem
-globally pays off. The correlation objective is not a heuristic: it is, up to a
+under an explicit generative model. Solving that inference problem is
+globally effective. The correlation objective is not a heuristic: it is, up to a
 constant and the sample-size factor, the profile log-likelihood of a
 block-diagonal one-factor Gaussian model in which each module is driven by a
-single regulator with equal-magnitude $\pm$ loadings (\nameref{S1_Appendix}).
-This footing makes its model selection principled, in the sense that the number of modules is chosen by a genuine BIC/AIC over the $d$ samples (Eq~\eqref{eq:loglikic}), and
-explains why pairing it with a \emph{geometric} information criterion fails:
-those assume Euclidean-Gaussian clusters, which the absolute-correlation model
-contradicts whenever modules contain anti-correlated genes.
+single regulator with equal-magnitude $\pm$ loadings \cite{bartholomew2011} (\nameref{S1_Appendix}). This footing makes its model selection principled, in the sense that the number of modules is chosen by BIC/AIC over the $d$ samples (Eq~\eqref{eq:loglikic}), and explains why pairing it with a \emph{geometric} information criterion fails: those assume Euclidean-Gaussian clusters, which the absolute-correlation model contradicts whenever modules contain anti-correlated genes.
 
 Given the model, the contribution that matters in practice is optimization
 quality. Greedy agglomerative clustering on the correlation distance---the core
 of widely used co-expression pipelines (is a strong seed but a poor optimizer):
 once it merges two genes it can never separate them. Our replicated benchmark
-shows that hybridising the GA with a memetic local search, which reassigns genes
+shows that hybridizing the GA with a memetic local search, which reassigns genes
 after the fact, surpasses hierarchical clustering across the noise range and does
 so consistently (lowest variance), and an ablation attributes most of the gain to
 the local-search step specifically. The same advantage holds when the number of
 modules is unknown and when unstructured genes must be ignored. In other words,
-the planted partition is the likelihood optimum, and the value of the method is
-that it actually reaches it.
+the true (simulated) module structure is the likelihood optimum, and the value of
+the method is that it actually reaches it.
 
 The approach has clear limits. Local search is what makes the optimizer
-competitive, so on problems where the objective does not decompose into cheap
-incremental moves it would be less efficient; and scaling to genome-wide matrices
-is bounded by the $\mathcal{O}(n^2)$ correlation matrix and per-evaluation cost,
-so gene pre-filtering (as used here) is currently required. Natural extensions
-include richer within-module models (multi-factor or shrinkage-regularised
-free correlation, with the correspondingly larger parameter counts in the
-information criteria), correlation-aware crossover, and approximate or
+competitive, so on problems where the objective does not decompose into
+incremental moves that are numerically inexpensive, it will be less efficient. Scaling to genome-wide matrices is bounded by the $\mathcal{O}(n^2)$ correlation matrix and per-evaluation cost, so gene pre-filtering (as used here) is currently required. Natural extensions include richer within-module models (multi-factor or shrinkage-regularized free correlation, with the correspondingly larger parameter counts in the information criteria), correlation-aware crossover, and approximate or
 sketched correlation for very large $n$.
 
 Methodologically, \tool{} sits in the tradition of GA-based and multi-objective
 clustering~\cite{Maulik2000,Handl2007} but is distinguished by a co-expression
 objective with an explicit likelihood, principled in-model selection, and a
-memetic optimizer that demonstrably beats the greedy clustering such pipelines
+memetic optimizer that demonstrably is better than the greedy clustering such pipelines
 rely on---behind a single swappable-metric interface with a minimal dependency
 footprint.  As a practical complement, the built-in dimensionality-reduction
 tools (PCA and correlation MDS, with optional t-SNE and UMAP) let users visually
@@ -903,8 +876,11 @@ the effect of population size, generations, and mutation rate on recovered ARI.
 (\texttt{experiments/run\_experiments.py}), and the generated results tables and
 figures.
 
+\paragraph*{Code}
+\textbf{https://github.com/luismadrigal98/GCM-MRK}
+
 \section*{Acknowledgments}
-This section is intended only for general acknowledgments and thanks.
+We thank all the class of Simulation in Python offered in the University of Kansas, where all this project of evolving solutions using evolutionary algorithms (the simulation bit) started.
 
 \nolinenumbers
 
