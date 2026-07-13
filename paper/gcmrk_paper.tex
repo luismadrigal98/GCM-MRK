@@ -54,7 +54,7 @@
 \lfoot{\today}
 
 % Shorthand
-\newcommand{\tool}{GCM-MRK}
+\newcommand{\tool}{GCM}
 
 % Local-preview figures.  PLOS requires figures to be uploaded separately and
 % removed from the manuscript PDF before submission; set \showfigsfalse for the
@@ -128,10 +128,7 @@ John K. Kelly\textsuperscript{1}
 \section*{Abstract}
 Gene co-expression analysis defines a ``good'' module by a correlation criterion,
 yet standard pipelines detect modules with greedy algorithms that optimize
-something else and only measure correlation afterwards. We present \tool{}, an
-open-source Python tool that closes this gap by treating module detection as
-maximum-likelihood inference and solving it globally. We show that the project's
-correlation objective is, up to a constant and the sample-size factor, the
+something else and only measure correlation afterwards. We present a genetic clustering machine (\tool{}), an open-source Python tool that closes this gap by treating module detection as maximum-likelihood inference and solving it globally. We show that the project's correlation objective is, up to a constant and the sample-size factor, the
 profile log-likelihood of an explicit generative model: a block-diagonal
 one-factor Gaussian in which each module is a single regulator with
 equal-magnitude $\pm$ loadings. This explicitly puts model selection on principled footing
@@ -169,12 +166,10 @@ optimize for, their own definition of a good cluster.
 \linenumbers
 
 \section*{Introduction}
-Clustering is a foundational step in computational biology, from grouping
-co-expressed genes into putative regulatory modules~\cite{Eisen1998,Wolfe2005}
-to organizing cells, samples, or conditions. The dominant practice is
-two-staged: a fixed algorithm such as k-means~\cite{MacQueen1967} or
-hierarchical clustering~\cite{Eisen1998} produces a partition, and a
-cluster-validity index like the silhouette~\cite{Rousseeuw1987}, the
+
+The advent of high-throughput technologies for profiling gene expression has revolutionized the field of molecular biology, enabling researchers to capture the intricate patterns of gene regulation and unravel the underlying genetic networks. However, the sheer volume and complexity of gene expression data pose significant challenges in extracting meaningful insights \cite{lorenaComplexityGeneExpression2008}. One critical step in this process is the clustering of genes based on their expression profiles, which aims to group together genes exhibiting similar patterns of expression across various experimental conditions or time points \cite{saelensComprehensiveEvaluationModule2018}. Clustering is a foundational step in computational biology, from grouping co-expressed genes into putative regulatory modules~\cite{Eisen1998,Wolfe2005} to shedding light on regulatory pathways mechanisms \cite{vengatharajulooGeneCoExpressionNetwork2023}, disease-associated genes \cite{vandamGeneCoexpressionAnalysis2017}, and potential therapeutic targets \cite{hasankhaniDifferentialCoExpressionNetwork2021}. By partitioning a set of objects into groups based on similarity, cluster analysis identifies intrinsic structures in data to gain insight \cite{hruschka2004, pirim2012}.  
+
+The dominant practice is two-staged: a fixed algorithm such as k-means~\cite{MacQueen1967} or hierarchical clustering~\cite{Eisen1998} produces a partition, and a cluster-validity index like the silhouette~\cite{Rousseeuw1987}, the
 Davies--Bouldin index~\cite{DaviesBouldin1979}, the Calinski--Harabasz
 criterion~\cite{CalinskiHarabasz1974}, or an information criterion such as
 BIC~\cite{Schwarz1978} is then used to \emph{evaluate} that partition, often
@@ -209,8 +204,9 @@ built around a correlation objective.
 
 Here we present \tool{} (Genetic Clustering by Metric---Madrigal-Roca and
 Kelly), an open-source Python package that clusters data by directly optimizing a
-chosen cluster-validity metric with a memetic genetic algorithm (GA). \tool{}
-makes three contributions. First, we show that the project's correlation
+chosen cluster-validity metric with a memetic genetic algorithm (GA). Genetic algorithms (GAs) could be a promising solution for clustering tasks \cite{katoch2021}, particularly in the context of gene expression data \cite{pirim2012}. Other attempts have been made to use evolutionary algorithms in this or similar contexts, with overall promising results \cite{hageman2008, hruschka2006, korkmaz2006, weiEntropyClusteringAnalysis2008}. GAs are optimization algorithms that mimic the principles of natural selection and evolution, making them well-suited for complex, multi-objective problems where traditional methods may struggle to find optimal solutions \cite{wirsanskyHGA2020}. 
+
+\tool{} makes three contributions. First, we show that the project's correlation
 objective is, up to a constant and the sample-size factor, the profile
 log-likelihood of an explicit generative model---a block-diagonal one-factor
 Gaussian in which each module is a single regulator with equal-magnitude $\pm$
@@ -262,7 +258,7 @@ module are correlated, genes in different modules independent. Within a module
 $s$ we adopt the canonical single-regulator (one-factor) structure with
 equal-magnitude loadings of arbitrary sign, $x_g = \sigma_g f_s + \varepsilon_g$
 with $\sigma_g\in\{\pm\lambda_s\}$, so that any two genes in the module share
-$\lvert\mathrm{corr}\rvert = \rho_s$. This is exactly the textbook notion of a
+$\lvert\mathrm{corr}\rvert = \rho_s$. This is exactly the core assumption of a
 co-expression module (one regulator, up- or down-regulating its targets).
 
 \paragraph*{The likelihood reduces to the project's objective.}
@@ -296,8 +292,7 @@ numerical stability.
 
 \paragraph*{Model selection: information criteria.}
 The raw likelihood favours more modules, since splitting a coherent module into
-coherent sub-modules need not lower $\mathcal{L}$. Because each module carries a
-single coherence parameter $\rho_s$, the model with $K$ modules has $K$ free
+coherent sub-modules does not necessarily lower $\mathcal{L}$. Because each module carries a single coherence parameter $\rho_s$, the model with $K$ modules has $K$ free
 parameters, and the standard information criteria over the $d$ samples are
 \begin{equation}
 \label{eq:loglikic}
@@ -310,7 +305,7 @@ likelihood scales with the sample size $d$ while the penalty does not, so more
 samples correctly license more modules. This is distinct from the geometric
 \texttt{bic}/\texttt{aic} targets, whose Euclidean-Gaussian assumption conflicts
 with the absolute-correlation objective when modules contain anti-correlated
-members --- precisely the regime in which the correlation criteria are the right
+members, which is precisely the regime in which the correlation criteria are the right
 choice.
 
 \paragraph*{Geometric and probabilistic indices.}
@@ -453,7 +448,7 @@ whereas the penalized correlation criteria avoid that assumption.
 
 \subsection*{Benchmark datasets and evaluation}
 We evaluate on three datasets with known ground truth and one empirical
-expression dataset (a second is planned).
+expression dataset.
 
 \emph{Synthetic-Easy} and \emph{Synthetic-Hard} are generated by \tool{}'s
 modular simulator: each module is driven by a shared latent factor (with random
@@ -467,7 +462,7 @@ between-module $\EasyBetweenR{}$). Synthetic-Hard has five unequal modules
 higher noise, giving weak separation (within $\HardWithinR{}$ versus between
 $\HardBetweenR{}$).
 
-\emph{Iris}~\cite{Fisher1936} is the classic \IrisSamples{}-sample,
+\emph{Iris} \cite{Fisher1936} is the classic \IrisSamples{}-sample,
 \IrisFeatures{}-feature, 3-class benchmark; it is low-dimensional and geometric
 rather than correlational, and we use it to show that the same engine, driven by
 geometric targets, faithfully optimizes those indices on data outside the
@@ -481,7 +476,7 @@ variable genes into co-expression modules, and assess each module both by its
 internal correlation coherence and by whether its eigengene (the leading
 principal component of the module's expression across samples) distinguishes
 tumour from normal tissue (Welch $t$-test), linking the recovered modules to the
-clinical phenotype. A second empirical dataset will be added.
+clinical phenotype.
 
 \emph{Decisive benchmark.} To test whether globally optimizing the block
 likelihood actually improves on greedy alternatives, we run a replicated
@@ -523,8 +518,7 @@ absolute-correlation structure, which a Euclidean seeder cannot.
 \subsection*{Global optimization beats greedy clustering, and local search is why}
 The central methodological question is whether globally optimizing the block
 likelihood improves on the greedy agglomerative clustering it is seeded from. The
-replicated noise sweep (Fig~\ref{fig:perfnoise}, Table~\ref{tab:perf}) answers
-yes, decisively and reproducibly. At the hard noise level ($\sigma=1.5$, mean
+replicated noise sweep (Fig~\ref{fig:perfnoise}, Table~\ref{tab:perf}) shows that the answer is yes, decisively and reproducibly. At the hard noise level ($\sigma=1.5$, mean
 over \NSeeds{} datasets), \tool{} attains ARI $\MemeticHardARI{}$ versus
 $\HierAvgHardARI{}$ for average-linkage hierarchical clustering at the true $k$
 and $\KmeansHardARI{}$ for k-means, and its variance across datasets is the
@@ -533,8 +527,7 @@ The gap widens as noise grows. An ablation pins the cause on the memetic local
 search: disabling it drops \tool{} to ARI $\NoLocalHardARI{}$
 (Fig~\ref{fig:ablation}). The genetic operators and correlation-aware seeds alone
 already match or modestly exceed hierarchical clustering, but it is the
-hill-climb---reassigning elements after the fact, a move greedy agglomeration
-cannot make---that produces the decisive margin and the low variance.
+hill-climb with the designed reassignment of elements \textit{a posteriori} (a move greedy agglomeration cannot make) the feature that produces the decisive margin and the low variance.
 
 % Place tables after the first paragraph in which they are cited.
 \begin{table}[!ht]
@@ -585,8 +578,7 @@ True $k$ is 3 (Synthetic-Easy, Iris) and 5 (Synthetic-Hard); GSE183947 has no
 ground-truth labelling (ARI/accuracy not applicable). ``known $k$'' fixes
 $g_{\max}$ to the true value; ``loose $g_{\max}$'' and ``model sel.'' use a loose
 bound, the latter with a penalized correlation criterion. k-means is given the
-true $k$ and 10 restarts. GA settings as in Methods; fixed random seed. This
-table is generated by the reproduction script.
+true $k$ and 10 restarts. GA settings as in Methods; fixed random seed.
 \end{flushleft}
 \end{table}
 
@@ -614,7 +606,7 @@ dataset $k=\HardAicK{}$ at ARI $=\HardAicARI{}$. The decisive test is replicatio
 over \NSeeds{} datasets \texttt{loglik\_aic} selects $\MemeticSelK{}$ modules on
 average at ARI $\MemeticSelARI{}$, closer to the truth and more accurate than
 hierarchical clustering whose cut minimizes the same criterion ($\HierSelK{}$
-modules, ARI $\HierSelARI{}$; Table~\ref{tab:modelsel}) --- so the advantage of
+modules, ARI $\HierSelARI{}$; Table~\ref{tab:modelsel}). So, the advantage of
 global optimization persists when the module count must be inferred. The
 fit--parsimony trade-off is also visible by scanning $g_{\max}$
 (Fig~\ref{fig:modelsel}): \texttt{loglik} rises and plateaus with $k$ while the
@@ -689,7 +681,7 @@ heavily that merging them is geometrically cleaner (Fig~\ref{fig:iris}). No
 silhouette-maximizing method can return the three species here; \tool{} correctly
 returns what the criterion prefers (ARI $=\IrisSilARI{}$ against the species,
 matching k-means at the same $k$). The lesson is that the choice of criterion,
-not the optimizer, determines the answer---which is precisely the control \tool{}
+not the optimizer, determines the answer, which is precisely the control \tool{}
 gives the user, and the reason the correlation objective matters for data where a
 geometric index would be the wrong question.
 
@@ -784,15 +776,14 @@ globally pays off. The correlation objective is not a heuristic: it is, up to a
 constant and the sample-size factor, the profile log-likelihood of a
 block-diagonal one-factor Gaussian model in which each module is driven by a
 single regulator with equal-magnitude $\pm$ loadings (\nameref{S1_Appendix}).
-This footing makes its model selection principled---the number of modules is
-chosen by a genuine BIC/AIC over the $d$ samples (Eq~\eqref{eq:loglikic})---and
+This footing makes its model selection principled, in the sense that the number of modules is chosen by a genuine BIC/AIC over the $d$ samples (Eq~\eqref{eq:loglikic}), and
 explains why pairing it with a \emph{geometric} information criterion fails:
 those assume Euclidean-Gaussian clusters, which the absolute-correlation model
 contradicts whenever modules contain anti-correlated genes.
 
 Given the model, the contribution that matters in practice is optimization
 quality. Greedy agglomerative clustering on the correlation distance---the core
-of widely used co-expression pipelines---is a strong seed but a poor optimizer:
+of widely used co-expression pipelines (is a strong seed but a poor optimizer):
 once it merges two genes it can never separate them. Our replicated benchmark
 shows that hybridising the GA with a memetic local search, which reassigns genes
 after the fact, surpasses hierarchical clustering across the noise range and does
@@ -830,7 +821,7 @@ Gaussian model with a memetic genetic algorithm. Placing the correlation
 objective on a likelihood footing makes its model selection principled, and
 hybridising the search with a greedy local refinement lets it reproducibly
 surpass the greedy agglomerative clustering on which standard co-expression
-pipelines rely---an advantage we establish with a replicated benchmark and an
+pipelines rely. This advantage we establish with a replicated benchmark and an
 ablation, and that persists under unknown module count and unstructured-gene
 contamination. The same engine generalizes to geometric indices and recovers
 phenotype-associated modules in breast-cancer RNA-seq. The software,
