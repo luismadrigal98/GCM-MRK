@@ -202,6 +202,21 @@ evolutionary computation~\cite{Maulik2000,Handl2007}, but it is rarely packaged
 as a practical, dependency-light tool aimed at the co-expression use case and
 built around a correlation objective.
 
+While traditional numerical optimizers---such as Newton-Raphson, Powell's method, or the Simplex 
+algorithm---are highly effective for continuous parameter estimation, they are fundamentally 
+ill-suited for this clustering framework. These methods require a continuous search space and 
+differentiable objective functions to calculate valid step directions. In contrast, identifying 
+optimal partitions is an inherently discrete, combinatorial problem. Our objective functions are 
+highly discontinuous with respect to categorical cluster labels, resulting in a rugged fitness 
+landscape riddled with local optima where gradient-based methods become trapped. Furthermore, 
+while stochastic Bayesian approaches (such as Reversible Jump MCMC) could theoretically navigate
+ this discrete landscape by jumping between partition states, the computational time cost of 
+ sufficiently sampling such a vast combinatorial space is prohibitive for large datasets. 
+ The Genetic Algorithm provides the necessary robustness to directly evolve discrete partition 
+ vectors, efficiently navigating the non-differentiable landscape via crossover and mutation without 
+ the extreme computational overhead of exhaustive Bayesian sampling or the restrictive assumptions 
+ of gradient-based methods.
+
 Here we present \tool{} (Genetic Clustering by Metric---Madrigal-Roca and
 Kelly), an open-source Python package that clusters data by directly optimizing a
 chosen cluster-validity metric with a memetic genetic algorithm (GA). Genetic algorithms (GAs) could be a promising solution for clustering tasks \cite{katoch2021}, particularly in the context of gene expression data \cite{pirim2012}. Other attempts have been made to use evolutionary algorithms in this or similar contexts, with overall promising results \cite{hageman2008, hruschka2006, korkmaz2006, weiEntropyClusteringAnalysis2008}. GAs are optimization algorithms that mimic the principles of natural selection and evolution, making them well-suited for complex, multi-objective problems where traditional methods may struggle to find optimal solutions \cite{wirsanskyHGA2020}. 
