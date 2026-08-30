@@ -149,9 +149,12 @@ def simulate_counts(sizes, n_samples=50, noise=1.0, dispersion=0.3,
     for i, module in enumerate(labels):
         sign = rng.choice([-1.0, 1.0])
         gene_mean = base_mean * rng.lognormal(0.0, 0.5)
-        # latent modulates log-expression; `noise` scales gene-specific jitter
+        # latent modulates log-expression; the 0.8 factor scales `noise` onto
+        # the log-expression scale so that a given sigma yields a
+        # within-minus-between correlation contrast comparable to the other
+        # generators; without it this generator stays saturated.
         log_mu = np.log(gene_mean) + 0.8 * sign * latents[module - 1] \
-            + rng.normal(0.0, 0.3 * noise, size=n_samples)
+            + rng.normal(0.0, 0.8 * noise, size=n_samples)
         mu = np.exp(np.clip(log_mu, -20, 20))
         # NB via gamma-Poisson mixture
         shape = 1.0 / dispersion
