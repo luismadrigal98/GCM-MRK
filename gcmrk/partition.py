@@ -39,6 +39,20 @@ def consolidate_labels(labels):
     >>> consolidate_labels([9, 9, 2, 2, 4])
     [3, 3, 1, 1, 2]
     """
+    # Fast path: an integer numpy array (what the GA and local search always
+    # pass) needs no per-element type validation, and the relabelling vectorizes.
+    # The elementwise check below is a Python loop over every label and was a
+    # material share of total runtime when called once per individual.
+    if (isinstance(labels, np.ndarray) and labels.ndim == 1
+            and np.issubdtype(labels.dtype, np.integer) and labels.size
+            and labels.min() >= 0):
+        uniq, inv = np.unique(labels, return_inverse=True)
+        if uniq[0] == 0:
+            new = np.arange(uniq.size)           # 0 -> 0, rest 1, 2, ...
+        else:
+            new = np.arange(1, uniq.size + 1)
+        return new[inv].tolist()
+
     labels = list(labels)
     if not all(isinstance(x, (int, np.integer)) or
                (isinstance(x, float) and float(x).is_integer())

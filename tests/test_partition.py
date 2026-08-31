@@ -78,3 +78,44 @@ class TestReadPartitions(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestConsolidateFastPath(unittest.TestCase):
+    """The vectorized numpy path must agree with the generic Python path.
+
+    `consolidate_labels` takes a fast route for integer numpy arrays because it
+    is called once per individual per generation; these lock the two paths
+    together so the optimization cannot silently diverge.
+    """
+
+    def _both(self, values):
+        arr = np.asarray(values, dtype=int)
+        return partition.consolidate_labels(list(values)), partition.consolidate_labels(arr)
+
+    def test_paths_agree_on_documented_examples(self):
+        for values in ([6, 2, 0, 2, 1], [9, 9, 2, 2, 4]):
+            slow, fast = self._both(values)
+            self.assertEqual(slow, fast)
+
+    def test_paths_agree_on_random_partitions(self):
+        rng = np.random.default_rng(0)
+        for _ in range(50):
+            values = rng.integers(0, 7, size=rng.integers(2, 40)).tolist()
+            slow, fast = self._both(values)
+            self.assertEqual(slow, fast, msg=f"diverged on {values}")
+
+    def test_paths_agree_without_unassigned(self):
+        rng = np.random.default_rng(1)
+        for _ in range(50):
+            values = rng.integers(1, 9, size=rng.integers(2, 40)).tolist()
+            slow, fast = self._both(values)
+            self.assertEqual(slow, fast, msg=f"diverged on {values}")
+
+    def test_fast_path_returns_plain_list(self):
+        out = partition.consolidate_labels(np.array([3, 3, 1]))
+        self.assertIsInstance(out, list)
+        self.assertTrue(all(isinstance(x, int) for x in out))
+
+    def test_non_integer_input_still_rejected(self):
+        with self.assertRaises(TypeError):
+            partition.consolidate_labels([1.5, 2])

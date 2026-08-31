@@ -126,6 +126,11 @@ class CorrelationRefiner:
         Z[np.where(assigned)[0], [col[int(c)] for c in labels[assigned]]] = 1.0
         S = A @ Z
 
+        # A cluster's own term depends only on its (size, |corr| sum), so it is
+        # cached and refreshed on an accepted move rather than recomputed for
+        # every candidate destination.  `_term` is the hottest call in the run.
+        term = {c: _term(sizes[c], C[c]) for c in clusters}
+
         for _ in range(self.max_pass):
             improved = False
             for i in range(self.n):
@@ -133,7 +138,7 @@ class CorrelationRefiner:
                 if a == 0:
                     continue
                 r_a = float(S[i, col[a]]) - A[i, i]
-                term_a_old = _term(sizes[a], C[a])
+                term_a_old = term[a]
                 na_new = sizes[a] - 1
                 Ca_new = C[a] - 2.0 * r_a - A[i, i]
                 term_a_new = _term(na_new, Ca_new)
@@ -150,7 +155,7 @@ class CorrelationRefiner:
                     if b == a or sizes[b] == 0:
                         continue
                     r_b = float(S[i, col[b]])
-                    term_b_old = _term(sizes[b], C[b])
+                    term_b_old = term[b]
                     nb_new = sizes[b] + 1
                     Cb_new = C[b] + 2.0 * r_b + A[i, i]
                     term_b_new = _term(nb_new, Cb_new)
@@ -170,6 +175,8 @@ class CorrelationRefiner:
                     C[a] = Ca_new
                     sizes[best_b] = nb_new
                     C[best_b] = Cb_new
+                    term[a] = _term(na_new, Ca_new)
+                    term[best_b] = _term(nb_new, Cb_new)
                     # Element i left a and joined best_b: shift its column of
                     # affinities between the two clusters.
                     S[:, col[a]] -= A[:, i]
