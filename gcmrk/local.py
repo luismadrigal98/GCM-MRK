@@ -22,10 +22,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from .metrics import _PERFECT_FIT_CAP
+from .metrics import _PERFECT_FIT_CAP, _factor_block_term, factor_rank
+from .metrics import FACTOR_METRICS
 from .partition import consolidate_labels
 
-__all__ = ["CorrelationRefiner"]
+__all__ = ["CorrelationRefiner", "FactorRefiner"]
 
 
 def _term(ns: int, cs: float) -> float:
@@ -153,6 +154,148 @@ class CorrelationRefiner:
                     C[a] = Ca_new
                     sizes[best_b] = nb_new
                     C[best_b] = Cb_new
+                    improved = True
+            if not improved:
+                break
+
+        return np.asarray(consolidate_labels(labels), dtype=int)
+
+
+class FactorRefiner:
+    """Greedy reassignment refinement for the ``loglik_factor`` family.
+
+    The exchangeable objective decomposes into per-cluster ``(size, |corr| sum)``
+    terms, which :class:`CorrelationRefiner` updates in ``O(cluster size)`` per
+    move.  The factor model has no such decomposition: moving one element changes
+    the block's eigenvalues, so the affected blocks must be re-solved.  We
+    re-solve only the two clusters a move touches, and only for their top ``q``
+    eigenvalues, which keeps a full sweep at ``O(n K q n_m^2)``.
+
+    That is materially heavier than the exchangeable refiner.  Above
+    ``max_elements`` rows the refinement is skipped rather than allowed to
+    dominate the run; the GA still optimizes the factor objective, just without
+    the hill-climb.
+
+    Parameters
+    ----------
+    cor:
+        The **signed** correlation matrix.  The factor model represents
+        anti-correlated module members through negative loadings, so unlike the
+        exchangeable objective it must not be given ``|R|``.
+    metric_name:
+        ``"loglik_factor"``, ``"loglik_factor_bic"`` or ``"loglik_factor_aic"``,
+        optionally with an ``@q`` rank suffix.
+    n_samples:
+        Number of samples (columns); scales the likelihood against the penalty.
+    """
+
+    def __init__(self, cor: np.ndarray, metric_name: str, n_samples: int,
+                 g_max: int, all_in_clusters: bool, max_pass: int = 10,
+                 max_elements: int = 1500, n_candidates: int = 3):
+        self.R = np.asarray(cor, dtype=float)
+        self.absR = np.abs(self.R)
+        self.n_candidates = max(int(n_candidates), 1)
+        self.n = self.R.shape[0]
+        self.q = factor_rank(metric_name)
+        self.d = int(n_samples)
+        self.g_max = g_max
+        self.all_in_clusters = all_in_clusters
+        self.max_pass = max_pass
+        self.max_elements = max_elements
+
+        base = metric_name.partition("@")[0]
+        if base == "loglik_factor":
+            self.half_penalty = 0.0
+        elif base == "loglik_factor_bic":
+            self.half_penalty = 0.5 * float(np.log(max(self.d, 2)))
+        elif base == "loglik_factor_aic":
+            self.half_penalty = 1.0
+        else:
+            raise ValueError(f"factor local search not defined for {metric_name!r}")
+
+    @staticmethod
+    def supports(metric_names) -> bool:
+        return all(m.partition("@")[0] in FACTOR_METRICS for m in metric_names)
+
+    def _term(self, idx: np.ndarray) -> float:
+        """Log-likelihood contribution of the block spanned by ``idx``."""
+        if idx.size <= 1:
+            return 0.0
+        return _factor_block_term(self.R[np.ix_(idx, idx)], self.q, self.d)
+
+    def _params(self, n_m: int) -> int:
+        if n_m <= 1:
+            return 0
+        qe = min(self.q, n_m - 1)
+        if qe < 1:
+            return 0
+        return n_m * qe - qe * (qe - 1) // 2 + 1
+
+    def _affinity(self, labels, cluster_ids):
+        """Mean |correlation| between every element and every cluster.
+
+        Used only to rank candidate destinations, never to score a move: a full
+        eigen-solve still decides. Screening to the ``n_candidates`` most
+        plausible targets is what keeps the sweep affordable, since a gene is
+        essentially never best placed in a module it correlates weakly with.
+        """
+        ind = np.zeros((self.n, len(cluster_ids)))
+        for j, c in enumerate(cluster_ids):
+            ind[labels == c, j] = 1.0
+        counts = np.maximum(ind.sum(axis=0), 1.0)
+        return (self.absR @ ind) / counts
+
+    def refine(self, labels: np.ndarray) -> np.ndarray:
+        labels = np.asarray(labels, dtype=int).copy()
+        if self.n > self.max_elements:
+            return labels
+        clusters = [int(c) for c in np.unique(labels) if c != 0]
+        if len(clusters) < 2:
+            return labels
+
+        members = {c: np.where(labels == c)[0] for c in clusters}
+        term = {c: self._term(members[c]) for c in clusters}
+
+        for _ in range(self.max_pass):
+            improved = False
+            live = [c for c in members if members[c].size > 0]
+            if len(live) < 2:
+                break
+            aff = self._affinity(labels, live)
+            order = np.argsort(-aff, axis=1)[:, :self.n_candidates]
+
+            for i in range(self.n):
+                a = int(labels[i])
+                if a == 0:
+                    continue
+                idx_a_new = members[a][members[a] != i]
+                if idx_a_new.size == 0 and sum(
+                        1 for c in members if members[c].size > 0) <= 2:
+                    continue
+                term_a_new = self._term(idx_a_new)
+                d_params_a = self._params(idx_a_new.size) - self._params(members[a].size)
+
+                best_gain, best_b, best_pack = 1e-9, None, None
+                for j in order[i]:
+                    b = live[j]
+                    if b == a or members[b].size == 0:
+                        continue
+                    idx_b_new = np.append(members[b], i)
+                    term_b_new = self._term(idx_b_new)
+                    d_params = d_params_a + (self._params(idx_b_new.size)
+                                             - self._params(members[b].size))
+                    gain = ((term_a_new - term[a]) + (term_b_new - term[b])
+                            - self.half_penalty * d_params)
+                    if gain > best_gain:
+                        best_gain = gain
+                        best_b = b
+                        best_pack = (idx_a_new, term_a_new, idx_b_new, term_b_new)
+
+                if best_b is not None:
+                    idx_a_new, term_a_new, idx_b_new, term_b_new = best_pack
+                    labels[i] = best_b
+                    members[a], term[a] = idx_a_new, term_a_new
+                    members[best_b], term[best_b] = idx_b_new, term_b_new
                     improved = True
             if not improved:
                 break

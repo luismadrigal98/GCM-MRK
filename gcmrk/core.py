@@ -11,7 +11,7 @@ from .ga import GAConfig, GAResult, evolve
 from .metrics import get_metric
 from .partition import read_partitions
 
-__all__ = ["cluster"]
+__all__ = ["cluster", "cluster_factor_auto"]
 
 
 def cluster(
@@ -100,3 +100,55 @@ def cluster(
 
     return evolve(X, cor, specs, config, seeds=seeds,
                   unassigned_penalty=unassigned_penalty)
+
+
+def cluster_factor_auto(data, ranks: Sequence[int] = (1, 2, 3),
+                        criterion: str = "bic", **kwargs):
+    """Cluster with the factor block model, choosing the rank ``q`` from the data.
+
+    The rank-``q`` objective is powerful but sensitive: setting ``q`` above the
+    true number of factors per module is worse than leaving it at 1.  Because the
+    factor model's parameter count scales with module size, its information
+    criteria are comparable *across* ranks, so ``q`` can simply be selected by
+    running each candidate and keeping the best-scoring fit.
+
+    This runs one full optimization per rank in ``ranks`` and returns the result
+    minimizing ``loglik_factor_bic`` (or ``loglik_factor_aic``).  Prefer ``bic``:
+    ``aic`` tends to select one rank too many.
+
+    Parameters
+    ----------
+    data:
+        File path or array-like; rows are elements, columns features.
+    ranks:
+        Candidate factor ranks to compare.
+    criterion:
+        ``"bic"`` (default) or ``"aic"``.
+    Remaining keyword arguments are passed through to :func:`cluster`; do not
+    pass ``targets``, which this function sets itself.
+
+    Returns
+    -------
+    GAResult
+        The winning run, with two extra attributes recorded in ``scores``:
+        ``factor_rank`` (the selected ``q``) and the criterion value.
+    """
+    if criterion not in ("bic", "aic"):
+        raise ValueError("criterion must be 'bic' or 'aic'")
+    if "targets" in kwargs:
+        raise TypeError("cluster_factor_auto sets `targets` itself; "
+                        "pass `ranks` to control the search instead")
+    ranks = [int(q) for q in ranks]
+    if not ranks or any(q < 1 for q in ranks):
+        raise ValueError("ranks must be a non-empty sequence of integers >= 1")
+
+    metric = f"loglik_factor_{criterion}"
+    best, best_score, best_q = None, np.inf, None
+    for q in ranks:
+        result = cluster(data, targets=[f"{metric}@{q}"], **kwargs)
+        score = float(result.scores[f"{metric}@{q}"])
+        if score < best_score:
+            best, best_score, best_q = result, score, q
+
+    best.scores["factor_rank"] = best_q
+    return best

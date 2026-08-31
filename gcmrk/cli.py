@@ -11,6 +11,10 @@ Cluster a CSV, maximizing the silhouette score, into at most 6 clusters::
     gcmrk cluster --data expr.csv --targets silhouette --g-max 6 \
         --generations 100 --population 200 --out labels.txt
 
+Cluster with the free-loading factor block model at rank 3::
+
+    gcmrk cluster --data expr.csv --targets loglik_factor@3 --g-max 6
+
 Multi-objective (Pareto) clustering on two competing targets::
 
     gcmrk cluster --data expr.csv --targets loglik davies_bouldin \
@@ -36,7 +40,7 @@ import numpy as np
 
 from .core import cluster
 from .data import load_matrix, normalize_data, pearson_correlation
-from .metrics import METRICS
+from .metrics import FACTOR_METRICS, METRICS
 from .simulate import simulate_modular_data
 from .visualize import (
     METHODS as VIZ_METHODS,
@@ -322,6 +326,19 @@ def _run_metrics() -> int:
     for name, spec in METRICS.items():
         arrow = "maximize" if spec.direction == "max" else "minimize"
         print(f"  {name:18s} [{arrow:8s}] {spec.description}")
+    print("\nFactor-model metrics accept a rank suffix '@q' (default 1):\n")
+    print(f"  {', '.join(FACTOR_METRICS)}")
+    print("""
+  q is the number of latent factors per module.  Use q=1 for modules with a
+  single regulator but unequal response strength, and larger q where modules
+  span several factors.  Choosing q too large is worse than leaving it at 1,
+  so prefer loglik_factor_bic / loglik_factor_aic to compare ranks:
+
+      for q in 1 2 3; do
+          gcmrk cluster --data expr.csv --targets loglik_factor_bic@$q ...
+      done
+
+  and keep the rank with the lowest criterion.""")
     return 0
 
 

@@ -20,6 +20,7 @@ whether they are being maximized or minimized.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import partial
 from typing import Callable, Dict
 
 import numpy as np
@@ -29,6 +30,11 @@ __all__ = [
     "log_likelihood_correlation",
     "loglik_bic",
     "loglik_aic",
+    "factor_loglik",
+    "factor_bic",
+    "factor_aic",
+    "factor_rank",
+    "FACTOR_METRICS",
     "silhouette",
     "davies_bouldin",
     "calinski_harabasz",
@@ -196,6 +202,152 @@ def loglik_aic(cor: np.ndarray, labels, n_samples: int) -> float:
     """
     return _penalized_correlation_loglik(cor, labels, n_samples,
                                          penalty_per_cluster=2.0)
+
+
+# --------------------------------------------------------------------------- #
+# Free-loading factor block model (the `loglik_factor` branch)
+# --------------------------------------------------------------------------- #
+# Smallest eigenvalue / residual variance we will take a logarithm of.
+_EIG_FLOOR = 1e-9
+
+
+def _top_eigenvalues(block: np.ndarray, q: int) -> np.ndarray:
+    """The ``q`` largest eigenvalues of a symmetric block, descending."""
+    n = block.shape[0]
+    q = min(q, n - 1)
+    if q < 1:
+        return np.empty(0)
+    if n <= 64:
+        # For small blocks the full solver beats the subset driver's overhead.
+        e = np.linalg.eigvalsh(block)[::-1][:q]
+    else:
+        from scipy.linalg import eigh
+        e = eigh(block, eigvals_only=True, subset_by_index=[n - q, n - 1])[::-1]
+    return np.maximum(e, _EIG_FLOOR)
+
+
+def _factor_block_term(block: np.ndarray, q: int, d: int) -> float:
+    r"""Probabilistic-PCA log-likelihood of one module's correlation block.
+
+    Models the block as :math:`q` free-loading factors plus isotropic residual,
+    :math:`\Sigma = \Lambda\Lambda^{\top} + \sigma^2 I`.  At the maximum-likelihood
+    solution (Tipping & Bishop) the profile log-likelihood over ``d`` samples
+    depends on the block only through its leading eigenvalues:
+
+    .. math::
+        \ell_m = -\tfrac{d}{2}\Big[\sum_{i\le q}\log e_i
+                 + (n_m-q)\log\sigma^2 + n_m\Big],
+        \qquad \sigma^2 = \frac{n_m - \sum_{i\le q} e_i}{n_m - q},
+
+    using :math:`\operatorname{tr}(R_m) = n_m` for a correlation block.  Only the
+    top ``q`` eigenvalues are needed, which is what keeps this affordable inside
+    the GA's inner loop.
+
+    Unlike :func:`log_likelihood_correlation`, this uses the **signed**
+    correlation matrix: a factor with mixed-sign loadings reproduces an
+    anti-correlated module natively, so no absolute value is required.  It also
+    drops the exchangeability assumption --- module members may carry different
+    loading magnitudes, which is what the equal-magnitude model cannot express.
+    """
+    n = block.shape[0]
+    if n <= q or n <= 1:
+        return 0.0
+    e = _top_eigenvalues(block, q)
+    if e.size == 0:
+        return 0.0
+    qe = int(e.size)
+    resid = float(n) - float(e.sum())
+    if resid <= _EIG_FLOOR:
+        # Perfect low-rank fit: the likelihood diverges to +inf.  Award the same
+        # large finite value the exchangeable objective uses, so a perfect module
+        # is strongly rewarded rather than crashing the metric.
+        return _PERFECT_FIT_CAP
+    sigma2 = resid / (n - qe)
+    term = float(np.log(e).sum()) + (n - qe) * float(np.log(sigma2)) + n
+    if not np.isfinite(term):
+        return _PERFECT_FIT_CAP
+    return -0.5 * d * term
+
+
+def factor_loglik(cor: np.ndarray, labels, n_samples: int, q: int = 1) -> float:
+    """Log-likelihood of the rank-``q`` free-loading block model (maximize).
+
+    The ``loglik`` objective assumes each module is one latent factor with
+    equal-magnitude :math:`\\pm` loadings, so it sees a block only through its
+    mean absolute correlation and treats all member pairs as exchangeable.  That
+    is efficient when the assumption holds and actively misleading when it does
+    not: modules whose members carry unequal loadings (hub-and-spoke) or that
+    span several factors score worse than tighter spurious groupings.
+
+    This objective replaces that block model with ``q`` freely-loaded factors,
+    fitted per module by :func:`_factor_block_term`.  Use ``q=1`` for modules
+    with one regulator but heterogeneous response strength, and larger ``q``
+    where modules are driven by several factors.  ``q`` is selectable through the
+    metric name, e.g. ``loglik_factor@3``.
+    """
+    cor = np.asarray(cor, dtype=float)
+    labels = _as_labels(labels)
+    if cor.ndim != 2 or cor.shape[0] != cor.shape[1]:
+        raise ValueError("cor must be a square 2-D matrix")
+    if cor.shape[0] != labels.size:
+        raise ValueError("cor and labels must have compatible shapes")
+
+    q = max(int(q), 1)
+    d = int(n_samples)
+    total = 0.0
+    for s in np.unique(labels[_assigned_mask(labels)]):
+        idx = np.where(labels == s)[0]
+        if idx.size <= 1:
+            continue
+        total += _factor_block_term(cor[np.ix_(idx, idx)], q, d)
+    return total
+
+
+def _factor_n_params(labels: np.ndarray, q: int) -> int:
+    r"""Free parameters of the rank-``q`` block model.
+
+    A module of :math:`n_m` variables contributes :math:`n_m q - q(q-1)/2`
+    loadings (discounting rotational redundancy) plus one residual variance.
+    Unlike the exchangeable model's single parameter per module, this **scales
+    with module size**, so the information criteria below penalize splitting a
+    module far more realistically.
+    """
+    total = 0
+    for s in np.unique(labels[_assigned_mask(labels)]):
+        n_m = int(np.sum(labels == s))
+        if n_m <= 1:
+            continue
+        qe = min(int(q), n_m - 1)
+        if qe < 1:
+            continue
+        total += n_m * qe - qe * (qe - 1) // 2 + 1
+    return int(total)
+
+
+def _penalized_factor_loglik(cor, labels, n_samples, *, penalty_per_param,
+                             q) -> float:
+    cor = np.asarray(cor, dtype=float)
+    labels = _as_labels(labels)
+    ll = factor_loglik(cor, labels, n_samples, q=q)
+    if not np.isfinite(ll):
+        return np.inf
+    p = _factor_n_params(labels, q)
+    if p < 1:
+        return np.inf
+    return -2.0 * ll + penalty_per_param * p
+
+
+def factor_bic(cor: np.ndarray, labels, n_samples: int, q: int = 1) -> float:
+    """BIC for the rank-``q`` free-loading block model (lower is better)."""
+    d = max(int(n_samples), 2)
+    return _penalized_factor_loglik(cor, labels, n_samples,
+                                    penalty_per_param=float(np.log(d)), q=q)
+
+
+def factor_aic(cor: np.ndarray, labels, n_samples: int, q: int = 1) -> float:
+    """AIC for the rank-``q`` free-loading block model (lower is better)."""
+    return _penalized_factor_loglik(cor, labels, n_samples,
+                                    penalty_per_param=2.0, q=q)
 
 
 # --------------------------------------------------------------------------- #
@@ -450,11 +602,58 @@ METRICS: Dict[str, MetricSpec] = {
         "aic", "min", "X", aic,
         "Akaike Information Criterion (Gaussian mixture).",
     ),
+    "loglik_factor": MetricSpec(
+        "loglik_factor", "max", "cor", factor_loglik,
+        "Rank-q free-loading block model (use loglik_factor@q to set q).",
+        wants_n=True,
+    ),
+    "loglik_factor_bic": MetricSpec(
+        "loglik_factor_bic", "min", "cor", factor_bic,
+        "BIC for the rank-q free-loading block model.",
+        wants_n=True,
+    ),
+    "loglik_factor_aic": MetricSpec(
+        "loglik_factor_aic", "min", "cor", factor_aic,
+        "AIC for the rank-q free-loading block model.",
+        wants_n=True,
+    ),
 }
+
+#: Metrics whose name accepts a trailing ``@q`` to set the factor rank.
+FACTOR_METRICS = ("loglik_factor", "loglik_factor_bic", "loglik_factor_aic")
+
+
+def factor_rank(name: str) -> int:
+    """The factor rank encoded in a metric name (``loglik_factor@3`` -> 3)."""
+    base, sep, arg = name.partition("@")
+    if sep and base in FACTOR_METRICS:
+        return max(int(arg), 1)
+    return 1
 
 
 def get_metric(name: str) -> MetricSpec:
-    """Look up a metric by name, with a helpful error on typos."""
+    """Look up a metric by name, with a helpful error on typos.
+
+    Factor metrics accept a rank suffix: ``loglik_factor@3`` optimizes the
+    rank-3 model.  Without a suffix the rank is 1.
+    """
+    base, sep, arg = name.partition("@")
+    if sep:
+        if base not in FACTOR_METRICS:
+            raise KeyError(
+                f"Metric {base!r} takes no '@' argument. "
+                f"Parameterizable metrics: {', '.join(FACTOR_METRICS)}"
+            )
+        try:
+            q = int(arg)
+        except ValueError:
+            raise KeyError(f"Factor rank in {name!r} must be an integer")
+        if q < 1:
+            raise KeyError(f"Factor rank in {name!r} must be >= 1")
+        spec = METRICS[base]
+        return MetricSpec(name, spec.direction, spec.needs,
+                          partial(spec.func, q=q), spec.description,
+                          wants_n=spec.wants_n)
     try:
         return METRICS[name]
     except KeyError:

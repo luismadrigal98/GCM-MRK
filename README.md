@@ -38,6 +38,9 @@ be on `PYTHONPATH`, e.g. run from the repo root).
 | `loglik` | maximize | correlation matrix | Correlation-based log-likelihood; rewards within-cluster correlation. The project's bespoke objective, suited to co-expression / modular data. |
 | `loglik_bic` | minimize | correlation matrix | `loglik` penalized by `K·log(n)`; selects the number of modules within correlation space. |
 | `loglik_aic` | minimize | correlation matrix | `loglik` penalized by `2K`; lighter penalty, tolerates a few more modules. |
+| `loglik_factor` | maximize | correlation matrix | Rank-`q` **free-loading** block model. Unlike `loglik`, module members may carry unequal loadings. Set the rank with `loglik_factor@q`. |
+| `loglik_factor_bic` | minimize | correlation matrix | BIC for the rank-`q` factor model; parameter count scales with module size. |
+| `loglik_factor_aic` | minimize | correlation matrix | AIC for the rank-`q` factor model. |
 | `silhouette` | maximize | data matrix | Mean silhouette in `[-1, 1]`; geometric (Euclidean) separation. |
 | `davies_bouldin` | minimize | data matrix | Compactness vs separation ratio. |
 | `calinski_harabasz` | maximize | data matrix | Variance-ratio criterion. |
@@ -45,6 +48,53 @@ be on `PYTHONPATH`, e.g. run from the repo root).
 | `aic` | minimize | data matrix | Gaussian-mixture AIC; rewards parsimony. |
 
 Run `gcmrk metrics` for this list at any time.
+
+### Choosing between `loglik` and `loglik_factor`
+
+The two correlation objectives assume different things about what a module *is*.
+
+`loglik` models a module as **one latent factor with equal-magnitude ± loadings**.
+It sees a module only through its mean absolute correlation and treats all member
+pairs as interchangeable. That is the efficient choice when the assumption holds,
+and it is the faster of the two.
+
+`loglik_factor` models a module as **`q` freely-loaded factors**. Members may
+carry different loading magnitudes, and anti-correlated members are represented
+by negative loadings rather than an absolute value. Use it when:
+
+- module members respond to a shared regulator at *different strengths*
+  (hub-and-spoke structure), or
+- modules are driven by *several* factors, in which case set `q` accordingly.
+
+The rank matters, and setting it too high is worse than leaving it at 1. To pick
+it from the data, compare ranks under the information criterion — whose parameter
+count scales with module size, unlike the exchangeable model's one-per-module:
+
+```bash
+for q in 1 2 3; do
+    gcmrk cluster --data expr.csv --targets loglik_factor_bic@$q \
+        --g-max 8 --out labels_q$q.txt
+done
+```
+
+and keep the rank with the lowest criterion. From Python this is one call:
+
+```python
+from gcmrk import cluster_factor_auto
+
+result = cluster_factor_auto(data, ranks=(1, 2, 3), g_max=8)
+print(result.scores["factor_rank"])   # the q that was selected
+```
+
+On synthetic data spanning one-factor, multi-factor, hub-and-spoke and
+network-derived modules, BIC-selected rank matched the best attainable rank in
+every case — so auto-selection costs a few extra runs but not accuracy.
+
+Expect `loglik_factor` to cost
+roughly 3-4x the runtime of `loglik`: its local search must re-solve the affected
+blocks' leading eigenvalues per candidate move, where the exchangeable objective
+updates in constant time. Above ~1500 elements the hill-climb is skipped
+automatically and the GA optimizes the objective without refinement.
 
 ## Command-line usage
 

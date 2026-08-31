@@ -23,7 +23,7 @@ from typing import List, Optional, Sequence
 
 import numpy as np
 
-from .local import CorrelationRefiner
+from .local import CorrelationRefiner, FactorRefiner
 from .metrics import MetricSpec
 from .partition import random_partition, repair
 from .seeding import correlation_seeds, kmeans_seeds
@@ -264,12 +264,21 @@ def evolve(X, cor, metrics: Sequence[MetricSpec], config: GAConfig,
     # matrix is present.  ``refine`` is the identity otherwise.
     refine = (lambda labels: labels)
     metric_names = [m.name for m in metrics]
-    if (config.local_search and cor is not None
-            and CorrelationRefiner.supports(metric_names)):
-        refiner = CorrelationRefiner(
-            np.abs(np.asarray(cor, dtype=float)), metric_names[0],
-            evaluator.n_samples, config.g_max, config.all_in_clusters)
-        refine = refiner.refine
+    if config.local_search and cor is not None:
+        cor_arr = np.asarray(cor, dtype=float)
+        if CorrelationRefiner.supports(metric_names):
+            # Exchangeable objective: scores blocks through |R| only.
+            refiner = CorrelationRefiner(
+                np.abs(cor_arr), metric_names[0],
+                evaluator.n_samples, config.g_max, config.all_in_clusters)
+            refine = refiner.refine
+        elif FactorRefiner.supports(metric_names):
+            # Factor objective: needs the *signed* matrix, since anti-correlated
+            # module members are represented by negative loadings.
+            refiner = FactorRefiner(
+                cor_arr, metric_names[0],
+                evaluator.n_samples, config.g_max, config.all_in_clusters)
+            refine = refiner.refine
 
     # --- initial population ------------------------------------------------ #
     population: List[np.ndarray] = []

@@ -14,7 +14,7 @@ Quick start
 >>> result.labels            # best partition found  # doctest: +SKIP
 """
 
-from .core import cluster
+from .core import cluster, cluster_factor_auto
 from .ga import GAConfig, GAResult, evolve
 from .metrics import METRICS, MetricSpec, get_metric
 from .partition import consolidate_labels, random_partition, read_partitions, repair
@@ -31,6 +31,7 @@ __version__ = "1.0.0"
 
 __all__ = [
     "cluster",
+    "cluster_factor_auto",
     "evolve",
     "GAConfig",
     "GAResult",
