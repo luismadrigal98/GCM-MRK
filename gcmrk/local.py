@@ -20,6 +20,8 @@ rather than recomputing the whole score; a full sweep is ``O(n^2)``.
 
 from __future__ import annotations
 
+from math import isfinite as _isfinite, log as _log
+
 import numpy as np
 
 from .metrics import _PERFECT_FIT_CAP, _factor_block_term, factor_rank
@@ -34,15 +36,22 @@ def _term(ns: int, cs: float) -> float:
 
     Mirrors :func:`gcmrk.metrics.log_likelihood_correlation` exactly so that the
     incremental score matches the metric the GA reports.
+
+    Uses :mod:`math` rather than numpy: these are Python scalars, and this is the
+    hottest function in the package (millions of calls per run), where numpy's
+    per-call scalar overhead dominates.
     """
     if ns <= 1:
         return 0.0
     denom = float(ns) * ns - cs
-    if denom <= 0.0:
+    if denom <= 0.0 or cs <= 0.0:
         return _PERFECT_FIT_CAP
-    log_term = np.log(ns / cs) + (ns - 1) * np.log((float(ns) * ns - ns) / denom)
-    if np.isfinite(log_term):
-        return float(log_term)
+    try:
+        log_term = _log(ns / cs) + (ns - 1) * _log((float(ns) * ns - ns) / denom)
+    except (ValueError, ZeroDivisionError):
+        return _PERFECT_FIT_CAP
+    if _isfinite(log_term):
+        return log_term
     return _PERFECT_FIT_CAP
 
 
@@ -96,19 +105,26 @@ class CorrelationRefiner:
     def refine(self, labels: np.ndarray) -> np.ndarray:
         labels = np.asarray(labels, dtype=int).copy()
         A = self.A
-        clusters = [c for c in np.unique(labels) if c != 0]
+        clusters = [int(c) for c in np.unique(labels) if c != 0]
         if len(clusters) < 2:
             return labels
 
-        # Per-cluster member counts and within-cluster |corr| sums (incl diagonal).
+        col = {c: j for j, c in enumerate(clusters)}
         sizes = {c: int(np.sum(labels == c)) for c in clusters}
         C = {}
         for c in clusters:
             idx = np.where(labels == c)[0]
             C[c] = float(A[np.ix_(idx, idx)].sum())
 
-        score_ll = self._loglik(sizes, C)
-        score_k = self._k(sizes)
+        # Affinity matrix: S[i, j] is the summed |corr| between element i and
+        # every member of cluster j.  Computing it once as a single matmul and
+        # updating it in O(n) per accepted move replaces the O(n) masked sum
+        # this loop previously did for every (element, candidate cluster) pair,
+        # which dominated the runtime.
+        Z = np.zeros((self.n, len(clusters)))
+        assigned = labels != 0
+        Z[np.where(assigned)[0], [col[int(c)] for c in labels[assigned]]] = 1.0
+        S = A @ Z
 
         for _ in range(self.max_pass):
             improved = False
@@ -116,7 +132,7 @@ class CorrelationRefiner:
                 a = int(labels[i])
                 if a == 0:
                     continue
-                r_a = float(A[i, labels == a].sum()) - A[i, i]   # excl. self
+                r_a = float(S[i, col[a]]) - A[i, i]
                 term_a_old = _term(sizes[a], C[a])
                 na_new = sizes[a] - 1
                 Ca_new = C[a] - 2.0 * r_a - A[i, i]
@@ -133,7 +149,7 @@ class CorrelationRefiner:
                 for b in sizes:
                     if b == a or sizes[b] == 0:
                         continue
-                    r_b = float(A[i, labels == b].sum())
+                    r_b = float(S[i, col[b]])
                     term_b_old = _term(sizes[b], C[b])
                     nb_new = sizes[b] + 1
                     Cb_new = C[b] + 2.0 * r_b + A[i, i]
@@ -154,6 +170,10 @@ class CorrelationRefiner:
                     C[a] = Ca_new
                     sizes[best_b] = nb_new
                     C[best_b] = Cb_new
+                    # Element i left a and joined best_b: shift its column of
+                    # affinities between the two clusters.
+                    S[:, col[a]] -= A[:, i]
+                    S[:, col[best_b]] += A[:, i]
                     improved = True
             if not improved:
                 break

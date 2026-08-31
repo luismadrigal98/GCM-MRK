@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import partial
+from math import isfinite as _isfinite, log as _log
 from typing import Callable, Dict
 
 import numpy as np
@@ -105,29 +106,35 @@ def log_likelihood_correlation(cor: np.ndarray, labels) -> float:
 
     log_likelihood = 0.0
     for s in np.unique(labels):
-        filter_s = labels == s
-        ns = int(np.sum(filter_s))
+        idx = np.where(labels == s)[0]
+        ns = int(idx.size)
         if ns <= 1:
             # A singleton carries no within-cluster correlation information.
             continue
         # Sum of absolute correlations within the cluster (includes the
         # diagonal of ones, i.e. each element's self-correlation).  Because the
         # diagonal contributes ``ns`` ones, ``cs`` is bounded in ``[ns, ns**2]``.
-        cs = float(np.sum(np.abs(cor[np.outer(filter_s, filter_s)])))
+        # Indexing the block directly allocates ns**2 rather than the n**2
+        # boolean mask a `np.outer` selection would build, which matters a great
+        # deal on genome-scale inputs.
+        cs = float(np.abs(cor[np.ix_(idx, idx)]).sum())
         # ``denom`` -> 0 as the cluster becomes perfectly correlated (cs -> ns**2).
         # In that limit the log term diverges to +inf, i.e. the *best* possible
         # fit.  We must NOT let this raise (a Python-scalar division by zero is
         # not caught by ``np.errstate``) nor silently drop the cluster: instead
         # we award a large finite cap so a perfect cluster is rewarded, not lost.
         denom = float(ns) * ns - cs
-        if denom <= 0.0:
+        if denom <= 0.0 or cs <= 0.0:
             log_likelihood += _PERFECT_FIT_CAP
             continue
-        with np.errstate(divide="ignore", invalid="ignore"):
-            log_term = np.log(ns / cs) + (ns - 1) * np.log(
+        try:
+            log_term = _log(ns / cs) + (ns - 1) * _log(
                 (float(ns) * ns - ns) / denom
             )
-        if np.isfinite(log_term):
+        except (ValueError, ZeroDivisionError):
+            log_likelihood += _PERFECT_FIT_CAP
+            continue
+        if _isfinite(log_term):
             log_likelihood += log_term
         else:
             # Numerical overflow in the limit -> treat as a perfect-fit cluster.
