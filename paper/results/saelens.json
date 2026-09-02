@@ -1,0 +1,123 @@
+{
+ "meta": {
+  "benchmark": "Saelens et al. 2018 (Nat Commun 9:1090)",
+  "n_top": 150,
+  "min_known": 5,
+  "max_known_frac": 0.25,
+  "preferred_sources": {
+   "human_gtex": [
+    "human_regcircuit_5"
+   ],
+   "human_tcga": [
+    "human_regcircuit_5"
+   ],
+   "human_seek_gpl5175": [
+    "human_regcircuit_5"
+   ],
+   "human_seek_gpl8300": [
+    "human_regcircuit_5"
+   ]
+  },
+  "ga": {
+   "generations": 60,
+   "population_size": 100,
+   "seed": 0
+  },
+  "g_max": 20,
+  "factor_ranks": [
+   1,
+   2,
+   3
+  ],
+  "seconds": 72.8
+ },
+ "results": {
+  "ecoli_colombos": {
+   "n_genes": 150,
+   "n_samples": 2470,
+   "sources": {
+    "ecoli_regulondb": 15
+   },
+   "methods": {
+    "gcm_factor": {
+     "k": 19,
+     "recovery": 0.22919848641210872,
+     "relevance": 0.10919925568369432,
+     "f1rr": 0.14792240613086532,
+     "per_source": {
+      "ecoli_regulondb": {
+       "recovery": 0.22919848641210872,
+       "relevance": 0.10919925568369432,
+       "f1rr": 0.14792240613086532
+      }
+     }
+    },
+    "gcm_loglik": {
+     "k": 19,
+     "recovery": 0.4043127243127243,
+     "relevance": 0.1965563676089992,
+     "f1rr": 0.26451765130685256,
+     "per_source": {
+      "ecoli_regulondb": {
+       "recovery": 0.4043127243127243,
+       "relevance": 0.1965563676089992,
+       "f1rr": 0.26451765130685256
+      }
+     }
+    },
+    "wgcna": {
+     "k": 1,
+     "recovery": 0.015714285714285715,
+     "relevance": 0.2,
+     "f1rr": 0.029139072847682124,
+     "per_source": {
+      "ecoli_regulondb": {
+       "recovery": 0.015714285714285715,
+       "relevance": 0.2,
+       "f1rr": 0.029139072847682124
+      }
+     }
+    },
+    "leiden": {
+     "k": 9,
+     "recovery": 0.18982570984856967,
+     "relevance": 0.15531390640517623,
+     "f1rr": 0.1708443258570547,
+     "per_source": {
+      "ecoli_regulondb": {
+       "recovery": 0.18982570984856967,
+       "relevance": 0.15531390640517623,
+       "f1rr": 0.1708443258570547
+      }
+     }
+    },
+    "spectral": {
+     "k": 19,
+     "recovery": 0.2858792678227795,
+     "relevance": 0.20223763327040387,
+     "f1rr": 0.2368922133041144,
+     "per_source": {
+      "ecoli_regulondb": {
+       "recovery": 0.2858792678227795,
+       "relevance": 0.20223763327040387,
+       "f1rr": 0.2368922133041144
+      }
+     }
+    },
+    "hier_avg": {
+     "k": 20,
+     "recovery": 0.21401640117326393,
+     "relevance": 0.09956827592697158,
+     "f1rr": 0.13590743196999777,
+     "per_source": {
+      "ecoli_regulondb": {
+       "recovery": 0.21401640117326393,
+       "relevance": 0.09956827592697158,
+       "f1rr": 0.13590743196999777
+      }
+     }
+    }
+   }
+  }
+ }
+}
