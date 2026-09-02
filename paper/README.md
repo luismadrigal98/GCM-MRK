@@ -116,6 +116,11 @@ scaling table.
 - `experiments/empirical_comparison.py` — GSE183947 comparison of all methods by
   coherence, GO enrichment (Enrichr, needs network), phenotype association and
   split-half reproducibility (~5 min at `--n-top 200`).
+- `experiments/saelens_benchmark.py` — the real-data benchmark with curated
+  ground truth (Saelens et al. 2018). Needs `data/saelens2018/data/`, unzipped
+  from Zenodo record 5532578 (`data.zip`, 1.2 GB). Scores recovery/relevance/F1
+  as the benchmark's authors defined them; `--list` shows available datasets.
+  **~5 h for six datasets at `--n-top 500`**, almost entirely the factor arm.
 
 ### Extra dependencies for the new experiments
 
@@ -143,5 +148,8 @@ virtualenv at the repo root (`.venv`) holds the Python side.
       split-half reproducibility) — **result is a wash; reported as such**
 - [ ] Real citation for GSE183947; finalise author list and affiliations
 - [x] Venue decided (PeerJ) and ported to `wlpeerj.cls`
-- [ ] Larger empirical cohort — the single 60-sample dataset cannot separate the
-      methods, which is the main open item
+- [x] Real-data benchmark with ground truth: Saelens et al. 2018, 6 datasets /
+      3 organisms — GCM (`loglik_aic`) has the best mean recovery, wins 4/6,
+      beats Leiden and hierarchical on 6/6, ties WGCNA
+- [x] Lead method reverted to `loglik_aic`: the factor model loses on all 7 real
+      datasets despite winning 6/6 synthetic ones

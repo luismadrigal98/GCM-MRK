@@ -55,37 +55,35 @@ while stochastic Bayesian approaches (such as Reversible Jump MCMC) could theore
 Here we present \tool{} (Genetic Clustering by Metric), an open-source Python package that clusters data by directly optimizing a chosen cluster-validity metric with a memetic genetic algorithm (GA), which is an evolutionary algorithm hybridized with a problem-specific local search that refines each candidate solution within its own ``lifetime,''. This strategy was introduced by Moscato~\cite{Moscato2000} and surveyed by Neri and Cotta~\cite{NeriCotta2012}. Genetic algorithms (GAs) could be a promising solution for clustering tasks \cite{katoch2021}, particularly in the context of gene expression data \cite{pirim2012}. Other attempts have been made to use evolutionary algorithms in this or similar contexts, with overall promising results \cite{hageman2008, hruschka2006, korkmaz2006, weiEntropyClusteringAnalysis2008}. GAs are optimization algorithms that mimic the principles of natural selection and evolution, making them well-suited for complex, multi-objective problems where traditional methods may struggle to find optimal solutions \cite{wirsanskyHGA2020}. 
 
 \tool{} makes four contributions. First, we place co-expression module detection
-on an explicit likelihood footing: a module is a block of the correlation matrix
-with a $q$-factor structure and free loadings, and the absolute-correlation
-criterion used throughout the field is the constrained special case in which
-$q=1$ and all loadings share a magnitude. Making that nesting visible turns an
-implicit modelling choice---that a module's members respond to their regulator
-equally strongly, and to one regulator only---into a testable assumption with a
-strictly more general alternative. Second, we hybridize the GA with an efficient
-memetic local search and benchmark it not only against the agglomerative
-clustering at the core of standard co-expression pipelines but against the
+on an explicit likelihood footing: the absolute-correlation criterion used
+throughout the field is the profile log-likelihood of a block-diagonal one-factor
+Gaussian with equal-magnitude loadings, and it is the constrained member of a
+family whose general form permits $q$ factors with free loadings. Making that
+nesting visible turns an implicit modelling choice---that a module's members
+respond to their regulator equally strongly, and to one regulator only---into a
+testable assumption with a strictly more general alternative. Second, we hybridize
+the GA with an efficient memetic local search and benchmark it against the
 community-detection and network methods that dominate practice---Leiden
 \cite{Traag2019}, Louvain~\cite{Blondel2008}, spectral
 clustering~\cite{NgJordanWeiss2002}, Markov clustering~\cite{VanDongen2008} and
-WGCNA~\cite{Langfelder2008} itself---each given the true number of modules or
-tuned against ground truth, so that no margin can be attributed to unfavourable
-settings for a competitor. Third, and unusually for a methods paper, we
-characterize when our own objective is wrong: across a family of data-generating
-processes that violate the block model we identify two structural regimes in
-which maximizing the \emph{constrained} likelihood moves \emph{away} from the true
-modules, demonstrate that this is model misspecification rather than optimizer
-failure, and show that the free-loading model removes the failure. Fourth, we
-show the factor rank can be selected from the data by BIC, and---because a
-negative result here is as useful as a positive one---that the same criterion
-cannot select the number of modules, for a reason we make explicit; the
-constrained criterion remains the right tool for that. The implementation is
-deliberately minimal---depending only on NumPy~\cite{Harris2020} and
-SciPy~\cite{Virtanen2020}, with internal k-means++~\cite{ArthurVassilvitskii2007}
-and correlation-distance hierarchical seeders, behind one swappable-metric
-interface that also exposes standard geometric indices and a multi-objective
-(NSGA-II~\cite{Deb2002}) mode. We evaluate \tool{} on synthetic data across a
-replicated noise sweep, on misspecified generators, on the classic Iris
-benchmark~\cite{Fisher1936}, and on a breast-cancer RNA-seq dataset.
+WGCNA~\cite{Langfelder2008}---each given the true number of modules or tuned
+against ground truth, so that no margin can be attributed to unfavourable settings
+for a competitor. Third, we test on real data with real ground truth, using the
+benchmark of Saelens et al.~\cite{Saelens2018}, which pairs expression compendia
+from three organisms with curated module definitions derived from regulatory
+networks. Fourth, and unusually for a methods paper, we characterize when our own
+objective is wrong: across data-generating processes that violate the block model
+we identify two structural regimes in which maximizing the constrained likelihood
+moves \emph{away} from the true modules, demonstrate that this is model
+misspecification rather than optimizer failure, and show that the free-loading
+model removes the failure on those processes---while reporting that this
+advantage does not carry over to any of the real datasets we tested, which is a
+result about the structure of real co-expression data rather than about the
+optimizer. The implementation is deliberately minimal---depending only on
+NumPy~\cite{Harris2020} and SciPy~\cite{Virtanen2020}, with internal
+k-means++~\cite{ArthurVassilvitskii2007} and correlation-distance hierarchical
+seeders, behind one swappable-metric interface that also exposes standard
+geometric indices and a multi-objective (NSGA-II~\cite{Deb2002}) mode.
 
 \section*{Materials and methods}
 
@@ -310,8 +308,10 @@ the \emph{mean} within-module $\lvert r\rvert$ matters, not how it is distribute
 across members. That is precisely the equal-magnitude $\pm$ loading assumption,
 and it is restrictive in two ways that matter biologically---members of a real
 module respond to their regulator with different strengths, and a module may
-answer to more than one regulator. Relaxing both gives the model we recommend by
-default, of which Eq~\eqref{eq:loglik} is a constrained special case.
+answer to more than one regulator. Relaxing both gives a strictly more general
+model, of which Eq~\eqref{eq:loglik} is a constrained special case; whether the
+extra freedom pays is an empirical question we answer in Results, and the answer
+differs between synthetic and real data.
 
 For a module $m$ with $n_m$ genes we take the block of the correlation matrix to
 follow a $q$-factor structure with free loadings,
@@ -352,9 +352,12 @@ within-module correlation has the same absolute value $\lambda_m^2$, which is wh
 Eq~\eqref{eq:loglik} can work with $\lvert\mathbf{R}\rvert$ and a single
 per-module coherence parameter. The two are therefore not competing objectives
 but nested models, and Eq~\eqref{eq:loglik} is the fast, strongly constrained
-member of the family: it costs roughly a third to a quarter as much per
-evaluation and requires no rank selection, at the price of the two assumptions
-above. We report both throughout, and quantify what the constraint costs.
+member of the family: it requires no rank selection and is dramatically cheaper
+in practice---on real compendia we measured the factor procedure at 20 to 110
+times the cost of the constrained criterion, because real correlation structure
+yields more modules and a higher selected rank than synthetic designs do---at the
+price of the two assumptions above. We report both throughout, and quantify what
+the constraint costs and what relaxing it buys.
 
 Because the factor likelihood does not decompose into the $O(1)$ incremental
 updates the exchangeable objective admits, the local search re-solves the
@@ -492,39 +495,36 @@ replicated noise sweep (Fig~\ref{fig:perfnoise}, Table~\ref{tab:baselines}) show
 that it does at every noise level tested, though the size of the margin and which
 variant delivers it both depend on the noise.
 
-Driven by the factor objective with the rank selected by BIC, \tool{} attains the
-best recovery of any method at both informative noise levels: ARI
-$\FactorAutoHardARI{}$ at $\sigma=1.5$ and $\FactorAutoExtremeARI{}$ at
-$\sigma=2.0$, against $\WgcnaOraHardARI{}$ and $\WgcnaOraExtremeARI{}$ for
-oracle-tuned WGCNA, the strongest competitor. At lower noise every method except
+Driven by the constrained objective of Eq~\eqref{eq:loglik}, \tool{} reaches ARI
+$\MemeticHardARI{}$ at $\sigma=1.5$, ahead of every competitor and significantly
+so under a paired Wilcoxon signed-rank test across the \NSeeds{} shared datasets
+($p<0.001$ against each): $\WgcnaOraHardARI{}$ for oracle-tuned WGCNA,
+$\SpectralHardARI{}$ for spectral clustering, $\LeidenHardARI{}$ for Leiden,
+$\LouvainHardARI{}$ for Louvain and $\HierAvgHardARI{}$ for average-linkage
+hierarchical clustering at the true $K$. At lower noise every method except
 k-means and MCL saturates near ARI $1.0$ and the comparison is uninformative.
-Under the constrained objective of Eq~\eqref{eq:loglik}, \tool{} reaches
-$\MemeticHardARI{}$ at $\sigma=1.5$---still ahead of every competitor, and
-significantly so under a paired Wilcoxon signed-rank test across the \NSeeds{}
-shared datasets ($p<0.001$ against each)---but falls to $\MemeticExtremeARI{}$ at
-$\sigma=2.0$, where oracle-tuned WGCNA overtakes it (paired difference $-0.11$,
-$p=1\times10^{-4}$).
 
-That contrast is itself informative. The equal-loading constraint costs little
-when the signal is strong and a great deal when it is weak: at high noise the
-effective loadings of a module's members are most heterogeneous, and it is
-exactly there that freeing them recovers a lead. This is the first of several
-results in which the constrained model's failures are concentrated where its
-assumption is least tenable, rather than distributed at random.
+The one place the constraint costs something here is at the highest noise level:
+at $\sigma=2.0$ the constrained objective falls to $\MemeticExtremeARI{}$ and
+oracle-tuned WGCNA overtakes it (paired difference $-0.11$, $p=1\times10^{-4}$),
+whereas the free-loading model of Eq~\eqref{eq:factorblock} attains
+$\FactorAutoExtremeARI{}$ and restores the lead. That is the expected direction:
+at high noise the effective loadings of a module's members are most
+heterogeneous, so the equal-loading assumption is least tenable. At $\sigma=1.5$
+the two variants are close ($\FactorAutoHardARI{}$ versus $\MemeticHardARI{}$).
 
 Two further points belong with these numbers. First, the margin over the best
-competitor is modest---$0.04$ ARI at $\sigma=1.5$---where the margin over
+competitor is modest---$0.03$ ARI at $\sigma=1.5$---where the margin over
 average-linkage hierarchical clustering, the comparison a reader of the earlier
-GA-clustering literature would expect, is $0.15$. A benchmark restricted to
+GA-clustering literature would expect, is $0.14$. A benchmark restricted to
 agglomerative clustering and k-means would have overstated the advantage roughly
 fourfold, and we report the stronger comparison because it is the honest one.
 Second, the ablation isolating the memetic local search is noise-dependent in the
-same way: at $\sigma=1.5$ disabling it costs $0.065$ ARI
-($p=2\times10^{-4}$), confirming that the hill-climb---which reassigns genes
-\emph{a posteriori}, a move greedy agglomeration cannot make---is responsible for
-much of the margin, while at $\sigma=2.0$ the difference is not significant. Local
-search is decisive where the likelihood surface is rugged but still informative,
-not universally.
+same way: at $\sigma=1.5$ disabling it costs $0.065$ ARI ($p=2\times10^{-4}$),
+confirming that the hill-climb---which reassigns genes \emph{a posteriori}, a move
+greedy agglomeration cannot make---is responsible for much of the margin, while at
+$\sigma=2.0$ the difference is not significant. Local search is decisive where the
+likelihood surface is rugged but still informative, not universally.
 
 A separate observation concerns WGCNA in its default configuration, which
 performs poorly throughout the sweep (ARI $\WgcnaDefHardARI{}$ at $\sigma=1.5$).
@@ -619,38 +619,24 @@ establish that the optimum is the biologically correct answer. We therefore
 re-ran the comparison on the five processes of Methods, each violating a
 different assumption (Table~\ref{tab:misspec}, Fig~\ref{fig:misspec}).
 
-Across the \MisspecTotal{} processes at the discriminating noise level, the
-factor objective leads on all \MisspecTotal{}: its own one-factor design (ARI
-$\MisspecOneFacFactor{}$ against $\MisspecOneFacBest{}$ for the best competitor),
-overlapping modules ($\MisspecOverlapFactor{}$ versus $\MisspecOverlapBest{}$),
-negative-binomial counts ($\MisspecCountsFactor{}$ versus
-$\MisspecCountsBest{}$), network-derived correlation ($\MisspecNetworkFactor{}$
-versus $\MisspecNetworkBest{}$), multi-factor modules
-($\MisspecMultiFacFactor{}$ versus $\MisspecMultiFacBest{}$) and hub-and-spoke
-modules ($\MisspecHubFactor{}$ versus $\MisspecHubBest{}$). The rank is selected
-without supervision in each case, and recovers the generating structure: BIC
-chooses $q=\MisspecMultiFacRank{}$ on the three-factor process and
-$q=\MisspecOneFacRank{}$ on the rest.
-
-The constrained objective of Eq~\eqref{eq:loglik} behaves quite differently, and
-the pattern of where it fails is the substantive result. It leads on
-\MisspecWins{} of the \MisspecTotal{} processes and fails on two. Where modules
-are driven by a single dominant signal it is competitive or better---one-factor
-$\MisspecOneFacGCM{}$, overlapping $\MisspecOverlapGCM{}$, counts
-$\MisspecCountsGCM{}$, network $\MisspecNetworkGCM{}$---and the counts result is
-worth emphasizing, because replacing the Gaussian with a gamma--Poisson mixture
-and adding a mean--variance trend does not degrade it. \emph{Distributional}
-misspecification is not what hurts this model.
+Across the \MisspecTotal{} processes at the discriminating noise level the
+constrained objective leads on \MisspecWins{} and fails on two, and the pattern of
+where it fails is the substantive result. Where modules are driven by a single
+dominant signal it is competitive or better---its own one-factor design
+$\MisspecOneFacGCM{}$, overlapping modules $\MisspecOverlapGCM{}$,
+negative-binomial counts $\MisspecCountsGCM{}$, network-derived correlation
+$\MisspecNetworkGCM{}$. The counts result is worth emphasizing: replacing the
+Gaussian with a gamma--Poisson mixture and adding a mean--variance trend does not
+degrade it, so \emph{distributional} misspecification is not what hurts this
+model.
 
 \emph{Structural} misspecification is. On multi-factor modules---where a module
-spans a three-dimensional subspace rather than a single direction---the
-constrained objective recovers ARI $\MisspecMultiFacGCM{}$ where the best
-competitor reaches $\MisspecMultiFacBest{}$, and on hub-and-spoke modules, whose
-members carry systematically unequal loadings, $\MisspecHubGCM{}$ against
-$\MisspecHubBest{}$. Both are exactly the regimes in which the equal-magnitude,
-single-factor constraint is false, and in both the free-loading model removes the
-deficit entirely. The failures are therefore attributable to a specific,
-identifiable assumption rather than to the framework.
+spans a three-dimensional subspace rather than a single direction---it recovers
+ARI $\MisspecMultiFacGCM{}$ where the best competitor reaches
+$\MisspecMultiFacBest{}$, and on hub-and-spoke modules, whose members carry
+systematically unequal loadings, $\MisspecHubGCM{}$ against $\MisspecHubBest{}$.
+Both are exactly the regimes in which the equal-magnitude, single-factor
+constraint is false.
 
 That these are failures of the model rather than of the search can be shown
 directly. On multi-factor data we evaluated Eq~\eqref{eq:loglik} at the planted
@@ -693,7 +679,7 @@ Gaussian---and falls behind where a module spans several directions
 \label{fig:misspec}
 \end{figure}
 
-\subsection*{Freeing the loadings removes the failure}
+\subsection*{Freeing the loadings removes the failure on synthetic data}
 The diagnosis predicts where relaxing the constraint should help. If the
 constrained model fails because it cannot represent unequal or multi-directional
 loadings, the free-loading model of Eq~\eqref{eq:factorblock} should recover the
@@ -733,10 +719,98 @@ comparable across ranks and therefore makes automatic selection possible. We
 recommend BIC over AIC here, since AIC systematically selects one rank too many.
 
 The factor branch is offered alongside the exchangeable objective rather than as
-a replacement. It costs roughly three to four times more per run, multiplied by
-the number of candidate ranks, and on data that genuinely follow the one-factor
+a replacement. On synthetic designs it costs roughly three to four times more per
+run, multiplied by the number of candidate ranks; on real compendia the gap is far
+larger, between twenty and a hundred times (Results), because real correlation
+structure yields more modules and a higher selected rank, and on data that genuinely follow the one-factor
 model it offers nothing over Eq~\eqref{eq:loglik}. Its value is that a user who
 does not know which regime their data occupy can let BIC decide.
+
+\subsection*{Real expression data with curated modules}
+Everything above is measured on data we generated. The misspecification sweep
+mitigates that---those processes deliberately break our own model---but they
+remain simulations, and a module detector should be judged on whether it recovers
+modules that biologists have independently curated. We therefore evaluated on the
+benchmark of Saelens et al.~\cite{Saelens2018}, which pairs real expression
+compendia with module definitions derived from regulatory networks:
+RegulonDB regulons for \emph{E. coli}, MacIsaac and Sisima regulons for yeast, and
+regulatory circuits for human (Methods).
+
+Ground truth here is not a partition. Regulons overlap and do not cover every
+gene, so the adjusted Rand index is inapplicable and we use the benchmark's own
+scores: \emph{recovery}, the mean over known modules of the best Jaccard against
+any predicted module; \emph{relevance}, the mean over predicted modules of the
+best Jaccard against any known module; and their harmonic mean, F1. Recovery
+alone is maximized by predicting one enormous module and relevance alone by
+predicting many tiny ones, so F1 is the score to read.
+
+Over \SaelensNDatasets{} datasets spanning three organisms
+(Table~\ref{tab:saelens}, Fig~\ref{fig:saelens}), \tool{} driven by the
+constrained criterion attains the best mean F1 of any method,
+$\SaelensLoglikScore{}$, and wins \SaelensLoglikWins{} of the \SaelensNDatasets{}
+datasets outright. Against the graph and agglomerative methods the result is
+clean: it beats Leiden and average-linkage hierarchical clustering on every
+dataset ($\SaelensLeidenBeaten{}$, sign test $p=\SaelensLeidenP{}$; mean F1
+$\SaelensLeidenScore{}$ and $\SaelensHierScore{}$ respectively) and spectral clustering
+on $\SaelensSpectralBeaten{}$. Against WGCNA it does not separate: \tool{} leads
+on $\SaelensWgcnaBeaten{}$ datasets with a mean F1 of $\SaelensLoglikScore{}$ against
+$\SaelensWgcnaScore{}$, a difference that a sign test over six datasets cannot
+distinguish from chance ($p=\SaelensWgcnaP{}$). The defensible claim is therefore
+that \tool{} attains the best mean recovery of curated modules among the methods
+tested, is clearly ahead of the community-detection and agglomerative approaches,
+and is on a par with WGCNA.
+
+The free-loading factor model, which led every synthetic process, does not
+transfer. It is worse than the constrained criterion on \emph{all}
+\SaelensFactorBeaten{} real datasets (sign test $p=\SaelensFactorP{}$; mean F1
+$\SaelensFactorScore{}$ against $\SaelensLoglikScore{}$), never wins one, and also
+trails WGCNA. Taken with the breast-cancer analysis below, where it likewise
+fails to improve on the constrained form, this is consistent evidence across
+seven independent real datasets. We take it at face value: the structures that
+the factor model is built for---modules spanning several latent directions, or
+whose members respond at very different strengths---are ones we can construct in
+simulation and detect there, but they do not appear to characterize these
+compendia at the scale analysed, so the additional free parameters add variance
+without capturing signal. This is a statement about real co-expression data, not
+about the optimizer, and it is the reason we recommend Eq~\eqref{eq:loglik} as
+the default despite the synthetic results.
+
+Two caveats bound these numbers. We analysed the \SaelensNTop{} most variable
+genes per dataset rather than whole compendia, because the factor procedure costs
+between twenty and a hundred times more than the constrained criterion at this
+scale and whole-compendium runs with it were not tractable; absolute scores are
+therefore not comparable with those published by Saelens et al., though the
+between-method comparison, which is what we claim, is unaffected. And absolute F1
+is low throughout---from $0.02$ on human to $0.31$ on \emph{E. coli}---which
+reflects the genuine difficulty of recovering regulons from expression alone
+rather than a defect of any particular method; the human compendia are the
+hardest for every method tested.
+
+\begin{table}[!ht]
+\centering
+\caption{\textbf{Recovery of curated modules on the Saelens et al. benchmark}
+(F1 of recovery and relevance; higher is better). Best method per dataset in
+bold. All methods see the same \SaelensNTop{} most variable genes per dataset.}
+\label{tab:saelens}
+\begin{adjustwidth}{-1.25in}{0in}
+\centering
+\IfFileExists{results/saelens_table.tex}{\input{results/saelens_table.tex}}{%
+\begin{tabular}{@{}l@{}}\hline
+\textit{Run experiments/saelens\_benchmark.py to populate this table.}\\\hline
+\end{tabular}}
+\end{adjustwidth}
+\end{table}
+
+\begin{figure}[!h]
+\previewfig{saelens.pdf}
+\caption{\textbf{Module recovery on real expression compendia with curated
+ground truth.} F1 of recovery and relevance by dataset and method. The
+constrained correlation criterion attains the best mean score and is clearly
+ahead of Leiden, spectral and agglomerative clustering; it is not distinguishable
+from WGCNA. The free-loading factor model, which leads every synthetic process,
+is worse than the constrained form on all six real datasets.}
+\label{fig:saelens}
+\end{figure}
 
 \subsection*{Selecting the number of clusters without knowing it}
 When only \texttt{loglik} is optimized under a loose $g_{\max}$, the correlation
@@ -892,16 +966,14 @@ of magnitude slower.
 
 These timings are for the constrained objective of Eq~\eqref{eq:loglik}, and the
 factor objective is considerably more expensive---not by the constant factor of
-three to four that its per-evaluation cost implies, but by substantially more
-once the data support many modules. On the empirical dataset of the next section
-the constrained criterion fitted $300$ genes in $14$~s where the two-stage factor
-procedure took $463$~s, because the local search must re-solve an
-eigendecomposition per affected block and real correlation structure yields both
-more modules and a higher selected rank than the synthetic designs do. The factor
-model is therefore the better choice on gene sets of hundreds to low thousands of
-genes, and the constrained objective the practical one above that; users needing
-both can fit the factor model on a variance-filtered subset and extend the
-resulting modules with the cheaper criterion.
+three to four that its per-evaluation cost implies, but by between twenty and a
+hundred times on real data. On the Saelens compendia the constrained criterion
+fitted $\SaelensNTop{}$ genes in 28 to 165~s where the two-stage factor procedure
+took 1836 to 4064~s, because the local search must re-solve an eigendecomposition
+per affected block and real correlation structure yields both more modules and a
+higher selected rank than the synthetic designs do. Together with the recovery
+results this is why we recommend the constrained criterion as the default: on
+real data it is both better and far cheaper.
 
 We measured only to $\ScaleMaxGenes{}$ genes, and we do not extrapolate: the
 $O(n^2)$ correlation matrix becomes the binding constraint before the optimizer
@@ -996,13 +1068,12 @@ roughly three times as many modules as Leiden is itself consistent with the
 over-segmentation of the penalized correlation criterion documented above.
 
 Two further observations deserve recording. First, the factor model does
-\emph{not} outperform the constrained objective here, on any of the four criteria,
-despite leading on every synthetic process. With one dataset, \EmpSamples{}
-samples and differences this small we cannot say whether that reflects a genuine
-property of these data---modules that really are single-signal, where the extra
-flexibility only adds variance---or simply the limits of what this dataset can
-resolve. It does mean the synthetic advantage should not be assumed to transfer
-automatically to real expression data, and we do not claim that it does. Second,
+\emph{not} outperform the constrained objective here, on any of the four
+criteria, despite leading on every synthetic process---the same pattern seen on
+all \SaelensNDatasets{} datasets of the curated benchmark above. Across the seven
+real datasets analysed in this paper the free-loading model never once improves on
+the constrained one, which we take as evidence that modules in real compendia at
+this scale behave as single-signal structures. Second,
 the absolute reproducibility of \emph{every} method is low
 ($\text{ARI} \le \EmpCompLeidenSplit{}$), which is a statement about the dataset
 rather than the methods: with 30 samples per half, module structure among
@@ -1097,24 +1168,25 @@ factor, the profile log-likelihood of a block-diagonal one-factor Gaussian in
 which each module is driven by a single regulator with equal-magnitude $\pm$
 loadings \cite{bartholomew2011} (\nameref{S1_Appendix}). Writing it that way makes
 two constraints visible---one factor, equal magnitudes---and both can be relaxed
-within the same family. Doing so is what our results recommend: the free-loading
-factor model of Eq~\eqref{eq:factorblock} is at least as good as the constrained
-form on every process and every noise level we tested, and strictly better where
-the constraints bind. We therefore treat the factor model as the default and the
-absolute-correlation criterion as a fast, strongly constrained approximation to
-it---cheaper, requiring no rank selection, and adequate whenever modules really
-are driven by one regulator whose members respond comparably.
+within the same family. Whether to relax them is then an empirical question
+rather than a matter of taste, and our answer is split. On synthetic data the
+free-loading model of Eq~\eqref{eq:factorblock} is at least as good as the
+constrained form everywhere and strictly better where the constraints bind. On
+real expression compendia with curated modules it is worse on every dataset we
+tested, never wins one, and costs twenty to a hundred times more. We therefore
+recommend the constrained absolute-correlation criterion as the default, and the
+factor model where there is specific reason to think module members respond at
+very different strengths or to several regulators---a situation we can construct
+and detect in simulation but did not find in seven real datasets.
 
-That recommendation carries an important qualification. On the one empirical
-dataset we analyse, the factor model does not outperform the constrained form on
-any criterion we could apply, and it is markedly more expensive there than its
-per-evaluation cost on synthetic data suggests. We therefore state the
-recommendation exactly as far as our evidence supports it: the factor model is
-the better choice when there is reason to think module members respond at
-different strengths or to several regulators, the constrained form is a sensible
-default otherwise, and on real data of this size we could not distinguish them.
-Which regime real co-expression data typically occupy is an open question that
-larger cohorts would settle.
+We think the negative transfer is itself worth reporting. The obvious reading is
+that our generators overstate how often real modules are multi-directional: a
+regulon at the scale of a few hundred variable genes appears to behave much like
+a single dominant signal, so the extra loadings fit noise rather than structure.
+That is a claim about co-expression data, not about the optimizer, and it is
+testable---by anyone who finds a compendium where the factor model does win. It
+also cautions against a common inference in methods papers, that a model which
+dominates on simulations designed to exercise it will dominate in application.
 
 The likelihood footing also explains why pairing
 either objective with a \emph{geometric} information criterion fails: those assume
@@ -1196,32 +1268,30 @@ objective operates in.
 \section*{Conclusion}
 We introduced \tool{}, a dependency-light Python tool that detects co-expression
 modules by maximizing the likelihood of an explicit block-diagonal Gaussian model
-with a memetic genetic algorithm. Treating a module as a correlation block with a
-$q$-factor structure and free loadings, and recovering the field's usual
-absolute-correlation criterion as the constrained $q=1$ equal-magnitude special
-case, puts both on one footing and makes the choice between them empirical rather
-than conventional. On that footing the free-loading model is the better default:
-it attains the best recovery of any method we tested at every informative noise
-level, leads on all six data-generating processes including the two where the
-constrained form fails outright, and selects its own rank from the data. The
-constrained criterion remains valuable as a fast approximation, and---because its
-penalty grows with the module count where the factor model's does not---it
-remains the appropriate tool for choosing how many modules there are.
+with a memetic genetic algorithm. Recognizing the field's usual
+absolute-correlation criterion as the constrained member of a factor-model family
+puts the modelling assumptions on the table, where they can be tested rather than
+inherited. Tested, they largely hold: on the Saelens benchmark of real expression
+compendia with curated modules, the constrained criterion attains the best mean
+recovery of any method over \SaelensNDatasets{} datasets in three organisms,
+beating Leiden and agglomerative clustering on every one and matching WGCNA; on
+replicated synthetic designs it leads every contemporary detector at moderate
+noise; and it isolates genes belonging to no module far better than anything else
+we tested.
 
-Making the generative model explicit also let us test it, and we regard the
-resulting negative results as part of the contribution rather than a caveat to
-it: we identify two structural regimes in which the constrained objective is
-misspecified, demonstrate that its optimizer there finds partitions scoring above
-the ground truth, and show that the factor model removes the failure; and we show
-that the criterion which selects the rank so reliably cannot select the number of
-modules, for a reason we make explicit. \tool{}'s largest and most robust
-practical advantage---isolating genes that belong to no module---is likewise a
-consequence of the model rather than of the search. The same engine generalizes
-to geometric indices and recovers phenotype-associated modules in breast-cancer
-RNA-seq. We suggest that reporting where a method's objective ceases to be
-appropriate, alongside where it succeeds, is more useful to practitioners than a
-benchmark in which it always wins. The software, documentation, and full
-reproduction scripts are openly available.
+Making the model explicit also let us find where it breaks. We identify two
+structural regimes in which the constrained objective is misspecified,
+demonstrate that its optimizer there returns partitions scoring above the ground
+truth---a diagnostic that separates a wrong model from a failed search, and that
+applies to any model-based clustering method---and show that freeing the loadings
+repairs the failure completely on those processes. We then report that this
+repair does not transfer to real data, that the criterion which selects the
+factor rank cannot select the number of modules, and that our advantage over
+WGCNA on real compendia is not statistically distinguishable. We suggest that
+reporting where a method's objective ceases to be appropriate, and where an
+improvement fails to generalize, is more useful to practitioners than a benchmark
+in which it always wins. The software, documentation, and full reproduction
+scripts are openly available.
 
 \section*{Supporting information}
 
