@@ -90,6 +90,38 @@ On synthetic data spanning one-factor, multi-factor, hub-and-spoke and
 network-derived modules, BIC-selected rank matched the best attainable rank in
 every case — so auto-selection costs a few extra runs but not accuracy.
 
+### Which correlation objective should I use?
+
+`loglik_factor` (free loadings, rank chosen by BIC) is the **recommended
+default**. `loglik` is the same model constrained to one factor with all loadings
+of equal magnitude — roughly 3–4x faster and needing no rank selection, but it
+loses badly when a module spans several regulators or when its members respond at
+very different strengths.
+
+| situation | use |
+|---|---|
+| number of modules known or bounded | `cluster_factor_auto(...)` |
+| number of modules unknown | two-stage: `loglik_aic` to pick K, then `cluster_factor_auto(g_max=K)` |
+| large input, or modules known to be single-signal | `loglik` (fast approximation) |
+| choosing K only | `loglik_aic` / `loglik_bic`, or a resolution-based method |
+
+The two-stage recipe matters because the factor criterion selects the *rank* well
+but cannot select the *number of clusters* (see the warning below):
+
+```python
+from gcmrk import cluster, cluster_factor_auto
+
+k_hat = len(set(cluster(data, targets=["loglik_aic"], g_max=15).labels))
+result = cluster_factor_auto(data, ranks=(1, 2, 3), g_max=k_hat)
+```
+
+**Set `g_max` from knowledge of the data.** `cluster_factor_auto` selects the
+rank reliably but *cannot* select the number of clusters: the summed parameter
+count is `n*q - k*q(q-1)/2 + k`, which grows with `k` only at `q = 1`, is flat at
+`q = 2`, and shrinks for `q >= 3`. At higher ranks the criterion charges less for
+more modules, so with a loose `g_max` the search runs to the ceiling. When the
+module count is unknown, use `loglik_aic` / `loglik_bic` instead.
+
 Expect `loglik_factor` to cost
 roughly 3-4x the runtime of `loglik`: its local search must re-solve the affected
 blocks' leading eigenvalues per candidate move, where the exchangeable objective

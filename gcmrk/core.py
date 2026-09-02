@@ -116,6 +116,16 @@ def cluster_factor_auto(data, ranks: Sequence[int] = (1, 2, 3),
     minimizing ``loglik_factor_bic`` (or ``loglik_factor_aic``).  Prefer ``bic``:
     ``aic`` tends to select one rank too many.
 
+    .. warning::
+       **Set ``g_max`` to a known or externally justified cluster count.**  This
+       function selects the *rank* well but must not be used to select the
+       *number of clusters*.  Summing the per-module parameter count over ``k``
+       modules gives ``n*q - k*q(q-1)/2 + k``, which increases with ``k`` only at
+       ``q = 1``; it is flat at ``q = 2`` and decreases for ``q >= 3``.  At higher
+       ranks the criterion therefore charges *less* for more modules and the
+       search runs to whatever ``g_max`` allows.  Use ``loglik_aic`` /
+       ``loglik_bic`` when the module count is unknown.
+
     Parameters
     ----------
     data:

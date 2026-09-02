@@ -272,3 +272,32 @@ class TestClusterFactorAuto(unittest.TestCase):
         from gcmrk import cluster_factor_auto
         res = cluster_factor_auto(self.X, ranks=(1, 2), criterion="aic", **self.kw)
         self.assertIn(res.scores["factor_rank"], (1, 2))
+
+
+class TestFactorParameterCountLimitation(unittest.TestCase):
+    """Pin the known limitation of the factor parameter count.
+
+    Summed over k modules totalling n elements the count is
+    ``n*q - k*q(q-1)/2 + k``, so it grows with k only at q=1.  At q>=2 the
+    information criteria therefore cannot penalise partition complexity, which is
+    why `cluster_factor_auto` must be given a constrained `g_max`.  These tests
+    exist so the property is documented and cannot regress silently.
+    """
+
+    def _params(self, n, k, q):
+        return metrics._factor_n_params(np.repeat(np.arange(1, k + 1), n // k), q=q)
+
+    def test_rank_one_penalises_splitting(self):
+        self.assertLess(self._params(100, 2, 1), self._params(100, 20, 1))
+
+    def test_rank_two_is_flat_in_k(self):
+        self.assertEqual(self._params(100, 2, 2), self._params(100, 20, 2))
+
+    def test_rank_three_rewards_splitting(self):
+        # the documented failure mode: more modules cost fewer parameters
+        self.assertGreater(self._params(100, 2, 3), self._params(100, 20, 3))
+
+    def test_matches_closed_form(self):
+        n, k, q = 120, 6, 2
+        expected = n * q - k * q * (q - 1) // 2 + k
+        self.assertEqual(self._params(n, k, q), expected)
