@@ -1,0 +1,21 @@
+% PLOS-specific author summary; omitted by the PeerJ wrapper.
+When biologists group genes by how similarly they are expressed, they usually run
+a standard clustering method and then score the result with a separate quality
+measure---a measure the method was never trying to do well on. We built a tool,
+\tool{}, that removes this gap: the user picks the quality measure they care
+about, and a genetic algorithm searches directly for the grouping that scores
+best on it. For co-expression data we show that the natural correlation measure
+is not an arbitrary choice but the likelihood of a specific picture of what a
+module is---a group of genes driven up and down by one shared regulator.
+
+Making that picture explicit lets us ask a question that is usually left
+unasked: when is it wrong? We built several artificial datasets that break the
+picture in different ways and found that our tool wins on most of them, but fails
+badly on one---modules driven by several regulators at once. The failure is
+informative rather than fatal, because we can show the search is working
+correctly and it is the underlying picture that is wrong: the method finds
+groupings that score \emph{better} than the true answer. We then widen the
+picture to allow several regulators per module, let the data decide how many are
+needed, and recover the lost accuracy. We think reporting both the failure and
+its repair is more useful to a reader deciding whether to use the method than a
+table in which it always wins.

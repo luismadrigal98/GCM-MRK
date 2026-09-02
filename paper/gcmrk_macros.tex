@@ -1,0 +1,110 @@
+% Shared macro definitions and generated-result inputs.
+% Included by both the PLOS and PeerJ wrappers so the two cannot diverge.
+% Shorthand
+\newcommand{\tool}{GCM}
+
+% Local-preview figures.  PLOS requires figures to be uploaded separately and
+% removed from the manuscript PDF before submission; set \showfigsfalse for the
+% submission build.  When true, the generated PDFs in figures/ are embedded.
+\graphicspath{{figures/}}
+\newif\ifshowfigs\showfigstrue
+\newcommand{\previewfig}[1]{\ifshowfigs\begin{center}%
+\includegraphics[width=0.7\textwidth]{#1}\end{center}\fi}
+
+% Auto-generated result macros (written by experiments/run_experiments.py).
+% Re-running the experiments regenerates these, so the numbers below update
+% automatically.  Defaults are provided so the manuscript compiles before the
+% experiments have been run.
+\InputIfFileExists{results/results_macros.tex}{}{}
+\providecommand{\EasyGenes}{75}\providecommand{\EasySamples}{80}
+\providecommand{\EasyWithinR}{0.66}\providecommand{\EasyBetweenR}{0.07}
+\providecommand{\HardGenes}{100}\providecommand{\HardSamples}{50}
+\providecommand{\HardWithinR}{0.32}\providecommand{\HardBetweenR}{0.12}
+\providecommand{\IrisSamples}{150}\providecommand{\IrisFeatures}{4}
+\providecommand{\EasyLoglikARI}{1.00}\providecommand{\EasyKmeansARI}{0.22}
+\providecommand{\HardLoglikARI}{0.89}\providecommand{\HardKmeansARI}{0.27}
+\providecommand{\EasyLooseK}{6}\providecommand{\HardLooseK}{9}
+\providecommand{\EasyAicK}{3}\providecommand{\EasyAicARI}{1.00}
+\providecommand{\EasyBicK}{3}\providecommand{\EasyBicARI}{1.00}
+\providecommand{\HardAicK}{5}\providecommand{\HardAicARI}{0.84}
+\providecommand{\HardBicK}{2}\providecommand{\HardBicARI}{0.34}
+\providecommand{\ScanHardKaic}{4}\providecommand{\ScanHardKbic}{2}
+\providecommand{\IrisKmeansARI}{0.89}
+\providecommand{\IrisSilK}{2}\providecommand{\IrisSilARI}{0.57}
+\providecommand{\IrisCHK}{2}\providecommand{\IrisCHARI}{0.57}
+\providecommand{\EmpFullGenes}{20246}\providecommand{\EmpSamples}{60}
+\providecommand{\EmpNtop}{200}\providecommand{\EmpKmodules}{8}
+\providecommand{\EmpNmodules}{8}\providecommand{\EmpWithinR}{0.53}
+\providecommand{\EmpBgR}{0.31}\providecommand{\EmpNsig}{0}
+
+% Decisive multi-seed benchmark macros.
+\InputIfFileExists{results/decisive_macros.tex}{}{}
+\providecommand{\NSeeds}{30}
+\providecommand{\MemeticHardARI}{0.94}\providecommand{\NoLocalHardARI}{0.86}
+\providecommand{\HierAvgHardARI}{0.78}\providecommand{\KmeansHardARI}{0.31}
+\providecommand{\MemeticSelK}{5.5}\providecommand{\MemeticSelARI}{0.90}
+\providecommand{\HierSelK}{4.0}\providecommand{\HierSelARI}{0.75}
+\providecommand{\NoiseGeneMemeticARI}{0.85}\providecommand{\NoiseGeneHierARI}{0.60}
+
+% Iris optimizer-validation macros.
+\InputIfFileExists{results/iris_macros.tex}{}{}
+\providecommand{\IrisTrueSil}{0.38}\providecommand{\IrisKmTwoSil}{0.58}
+\providecommand{\IrisKmThreeSil}{0.46}\providecommand{\IrisGcmrkSil}{0.58}
+
+% State-of-the-art baseline comparison (Leiden, Louvain, spectral, MCL, WGCNA).
+\InputIfFileExists{results/baselines_macros.tex}{}{}
+\providecommand{\FactorAutoHardARI}{0.95}\providecommand{\SpectralHardARI}{0.87}
+\providecommand{\FactorAutoExtremeARI}{0.70}\providecommand{\WgcnaOraExtremeARI}{0.61}
+\providecommand{\MemeticExtremeARI}{0.50}
+\providecommand{\LouvainHardARI}{0.83}\providecommand{\LeidenHardARI}{0.86}
+\providecommand{\MCLHardARI}{0.46}
+\providecommand{\WgcnaDefHardARI}{0.11}\providecommand{\WgcnaOraHardARI}{0.91}
+\providecommand{\NoiseGeneLeidenARI}{0.59}\providecommand{\NoiseGeneWgcnaARI}{0.42}
+\providecommand{\LeidenSelK}{4.9}\providecommand{\LeidenSelARI}{0.88}
+\providecommand{\WgcnaSelK}{1.6}\providecommand{\WgcnaSelARI}{0.11}
+\providecommand{\FactorSelK}{5.0}\providecommand{\FactorSelARI}{0.90}
+\providecommand{\TwoStageSeeds}{10}\providecommand{\TwoStageK}{6.6}
+\providecommand{\TwoStageARI}{0.91}\providecommand{\TwoStageAicARI}{0.88}
+\providecommand{\TwoStageLooseARI}{0.70}\providecommand{\TwoStageOracleARI}{0.94}
+
+% Model-misspecification sweep at the discriminating noise level (sigma = 1.5).
+\InputIfFileExists{results/misspec_macros_n15.tex}{}{}
+\providecommand{\MisspecSeeds}{20}
+\providecommand{\MisspecWins}{4}\providecommand{\MisspecTotal}{6}
+\providecommand{\MisspecOneFacGCM}{0.95}\providecommand{\MisspecOneFacBest}{0.92}
+\providecommand{\MisspecMultiFacGCM}{0.27}\providecommand{\MisspecMultiFacBest}{0.69}
+\providecommand{\MisspecHubGCM}{0.33}\providecommand{\MisspecHubBest}{0.46}
+\providecommand{\MisspecOverlapGCM}{0.86}\providecommand{\MisspecOverlapBest}{0.85}
+\providecommand{\MisspecCountsGCM}{0.87}\providecommand{\MisspecCountsBest}{0.85}
+\providecommand{\MisspecNetworkGCM}{0.76}\providecommand{\MisspecNetworkBest}{0.74}
+% Factor-branch recovery, emitted per generator by misspecification.py.
+\providecommand{\MisspecOneFacFactor}{0.95}\providecommand{\MisspecMultiFacFactor}{0.91}
+\providecommand{\MisspecHubFactor}{0.89}\providecommand{\MisspecOverlapFactor}{0.86}
+\providecommand{\MisspecCountsFactor}{0.87}\providecommand{\MisspecNetworkFactor}{0.76}
+\providecommand{\MisspecOneFacRank}{1.0}\providecommand{\MisspecMultiFacRank}{3.0}
+\providecommand{\MisspecHubRank}{1.0}
+
+% Scaling.
+\InputIfFileExists{results/scaling_macros.tex}{}{}
+\providecommand{\ScaleMaxGenes}{4000}\providecommand{\ScaleMaxSeconds}{120}
+\providecommand{\ScaleMaxARI}{1.00}
+\providecommand{\ScaleExponent}{1.08}
+
+% Comparative empirical analysis (GSE183947).
+\InputIfFileExists{results/empirical_macros.tex}{}{}
+\providecommand{\EmpCompNTop}{200}\providecommand{\EmpCompLibrary}{GO Biological Process}
+\providecommand{\EmpCompFactorK}{14}\providecommand{\EmpCompFactorCoh}{0.521}
+\providecommand{\EmpCompFactorEnr}{3}\providecommand{\EmpCompFactorTested}{11}
+\providecommand{\EmpCompFactorSplit}{0.29}
+\providecommand{\EmpCompLoglikK}{14}\providecommand{\EmpCompLoglikCoh}{0.588}
+\providecommand{\EmpCompLoglikEnr}{4}\providecommand{\EmpCompLoglikTested}{12}
+\providecommand{\EmpCompLoglikSplit}{0.33}
+\providecommand{\EmpCompWgcnaK}{5}\providecommand{\EmpCompWgcnaCoh}{0.533}
+\providecommand{\EmpCompWgcnaEnr}{1}\providecommand{\EmpCompWgcnaTested}{5}
+\providecommand{\EmpCompWgcnaSplit}{0.14}
+\providecommand{\EmpCompLeidenK}{5}\providecommand{\EmpCompLeidenCoh}{0.490}
+\providecommand{\EmpCompLeidenEnr}{1}\providecommand{\EmpCompLeidenTested}{5}
+\providecommand{\EmpCompLeidenSplit}{0.40}
+\providecommand{\EmpCompHierK}{15}\providecommand{\EmpCompHierCoh}{0.528}
+\providecommand{\EmpCompHierEnr}{2}\providecommand{\EmpCompHierTested}{7}
+\providecommand{\EmpCompHierSplit}{0.35}

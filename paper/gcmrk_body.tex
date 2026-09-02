@@ -1,0 +1,1297 @@
+% Venue-agnostic manuscript body: Introduction through Acknowledgments.
+% Requires \tool, \previewfig, \adjustwidth and \nameref from the wrapper.
+\section*{Introduction}
+
+High-throughput technologies for profiling gene expression have revolutionized the field of molecular biology, enabling researchers to capture the intricate patterns of gene regulation and unravel the underlying genetic networks. However, the sheer volume and complexity of gene expression data pose significant challenges in extracting meaningful insights \cite{lorenaComplexityGeneExpression2008}. One critical step in this process is the clustering of genes based on their expression profiles, which aims to group together genes exhibiting similar patterns of expression across various experimental conditions or time points \cite{saelensComprehensiveEvaluationModule2018}. Clustering is a foundational step in computational biology, from grouping co-expressed genes into putative regulatory modules~\cite{Eisen1998,Wolfe2005} to shedding light on regulatory pathways mechanisms \cite{vengatharajulooGeneCoExpressionNetwork2023}, disease-associated genes \cite{vandamGeneCoexpressionAnalysis2017}, and potential therapeutic targets \cite{hasankhaniDifferentialCoExpressionNetwork2021}. By partitioning a set of objects into groups based on similarity, cluster analysis identifies intrinsic structures in data to gain insight \cite{hruschka2004, pirim2012}.  
+
+The dominant practice has two stages. First, a fixed algorithm such as k-means~\cite{MacQueen1967} or hierarchical clustering~\cite{Eisen1998} produces a partition. Second,a cluster-validity index like the silhouette~\cite{Rousseeuw1987}, 
+the Davies--Bouldin index~\cite{DaviesBouldin1979}, the Calinski--Harabasz
+criterion~\cite{CalinskiHarabasz1974}, or an information criterion such as
+BIC~\cite{Schwarz1978} is used to \emph{evaluate} that partition, often
+to choose the number of clusters. The objective the algorithm optimizes (for
+k-means, within-cluster sum of squares) and the objective by which the result is
+ultimately judged are therefore distinct. When the two disagree, the reported
+partition is optimal for neither the user's stated criterion nor, necessarily,
+the underlying biology.
+
+This gap is particularly consequential in gene co-expression analysis. There,
+the notion of a good module is intrinsically correlational: genes in a module
+should be strongly co-expressed across conditions, regardless of their absolute
+expression levels or Euclidean geometry. Tools such as WGCNA~\cite{Langfelder2008},
+Clust~\cite{AbuJamous2018}, and UNCLES~\cite{AbuJamous2015} encode this intuition
+through correlation networks or consensus procedures, and comparative studies
+show that module-detection performance depends strongly on how the objective is
+framed~\cite{Saelens2018}. Yet the correlation-based quality of the final
+modules is still, in most pipelines, assessed only after the clustering
+algorithm has finished optimizing a different, geometric objective.
+
+We argue for inverting the workflow by making the validity metric itself the
+optimization target. Concretely, the user specifies the scalar criterion that
+defines a good partition for their problem, and a search procedure evolves a
+partition to optimize that criterion directly. This is attractive whenever the
+criterion of interest is (i) not what standard algorithms optimize, (ii)
+non-differentiable or combinatorial, or (iii) most naturally expressed as a
+trade-off between competing concerns---fit versus parsimony, compactness versus
+separation. Direct optimization of clustering criteria has a long history in
+evolutionary computation~\cite{Maulik2000,Handl2007}, but it is rarely packaged
+as a practical, dependency-light tool aimed at the co-expression use case and
+built around a correlation objective.
+
+While traditional numerical optimizers---such as Newton-Raphson, Powell's method, or the Simplex 
+algorithm---are highly effective for continuous parameter estimation, they are fundamentally 
+ill-suited for this clustering framework. These methods require a continuous search space and 
+differentiable objective functions to calculate valid step directions. In contrast, identifying 
+optimal partitions is an inherently discrete, combinatorial problem. Our objective functions are 
+highly discontinuous with respect to categorical cluster labels, resulting in a rugged fitness 
+landscape riddled with local optima where gradient-based methods become trapped. Furthermore, 
+while stochastic Bayesian approaches (such as Reversible Jump MCMC) could theoretically navigate
+ this discrete landscape by jumping between partition states, the computational time cost of 
+ sufficiently sampling such a vast combinatorial space is prohibitive for large datasets. 
+ The Genetic Algorithm provides the necessary robustness to directly evolve discrete partition 
+ vectors, efficiently navigating the non-differentiable landscape via crossover and mutation without 
+ the extreme computational overhead of exhaustive Bayesian sampling or the restrictive assumptions 
+ of gradient-based methods.
+
+Here we present \tool{} (Genetic Clustering by Metric), an open-source Python package that clusters data by directly optimizing a chosen cluster-validity metric with a memetic genetic algorithm (GA), which is an evolutionary algorithm hybridized with a problem-specific local search that refines each candidate solution within its own ``lifetime,''. This strategy was introduced by Moscato~\cite{Moscato2000} and surveyed by Neri and Cotta~\cite{NeriCotta2012}. Genetic algorithms (GAs) could be a promising solution for clustering tasks \cite{katoch2021}, particularly in the context of gene expression data \cite{pirim2012}. Other attempts have been made to use evolutionary algorithms in this or similar contexts, with overall promising results \cite{hageman2008, hruschka2006, korkmaz2006, weiEntropyClusteringAnalysis2008}. GAs are optimization algorithms that mimic the principles of natural selection and evolution, making them well-suited for complex, multi-objective problems where traditional methods may struggle to find optimal solutions \cite{wirsanskyHGA2020}. 
+
+\tool{} makes four contributions. First, we place co-expression module detection
+on an explicit likelihood footing: a module is a block of the correlation matrix
+with a $q$-factor structure and free loadings, and the absolute-correlation
+criterion used throughout the field is the constrained special case in which
+$q=1$ and all loadings share a magnitude. Making that nesting visible turns an
+implicit modelling choice---that a module's members respond to their regulator
+equally strongly, and to one regulator only---into a testable assumption with a
+strictly more general alternative. Second, we hybridize the GA with an efficient
+memetic local search and benchmark it not only against the agglomerative
+clustering at the core of standard co-expression pipelines but against the
+community-detection and network methods that dominate practice---Leiden
+\cite{Traag2019}, Louvain~\cite{Blondel2008}, spectral
+clustering~\cite{NgJordanWeiss2002}, Markov clustering~\cite{VanDongen2008} and
+WGCNA~\cite{Langfelder2008} itself---each given the true number of modules or
+tuned against ground truth, so that no margin can be attributed to unfavourable
+settings for a competitor. Third, and unusually for a methods paper, we
+characterize when our own objective is wrong: across a family of data-generating
+processes that violate the block model we identify two structural regimes in
+which maximizing the \emph{constrained} likelihood moves \emph{away} from the true
+modules, demonstrate that this is model misspecification rather than optimizer
+failure, and show that the free-loading model removes the failure. Fourth, we
+show the factor rank can be selected from the data by BIC, and---because a
+negative result here is as useful as a positive one---that the same criterion
+cannot select the number of modules, for a reason we make explicit; the
+constrained criterion remains the right tool for that. The implementation is
+deliberately minimal---depending only on NumPy~\cite{Harris2020} and
+SciPy~\cite{Virtanen2020}, with internal k-means++~\cite{ArthurVassilvitskii2007}
+and correlation-distance hierarchical seeders, behind one swappable-metric
+interface that also exposes standard geometric indices and a multi-objective
+(NSGA-II~\cite{Deb2002}) mode. We evaluate \tool{} on synthetic data across a
+replicated noise sweep, on misspecified generators, on the classic Iris
+benchmark~\cite{Fisher1936}, and on a breast-cancer RNA-seq dataset.
+
+\section*{Materials and methods}
+
+\subsection*{Overview and problem statement}
+\tool{} clusters $n$ \emph{elements} (the rows of a data matrix
+$\mathbf{X}\in\mathbb{R}^{n\times d}$; in co-expression analysis, $n$ genes
+measured across $d$ samples) by searching the space of partitions for one that
+optimizes a user-chosen validity metric. A partition is represented as an
+integer label vector $\boldsymbol{\ell}\in\{0,1,\dots,K\}^{n}$, where
+$\ell_i = c$ assigns element $i$ to cluster $c$ and the optional label $0$ marks
+an element as unassigned. The user fixes an upper bound $g_{\max}$ on the number
+of clusters. Each candidate partition $\boldsymbol{\ell}$ is scored by one or
+more metric functions $m(\boldsymbol{\ell})\in\mathbb{R}$; the GA evolves a
+population of partitions to optimize these scores in their natural direction
+(maximize or minimize).
+
+\subsection*{Performance-target metrics}
+\tool{} treats every metric as an interchangeable ``performance target'' or fitness measure \cite{wirsanskyHGA2020}. Table~\ref{tab:metrics} lists the built-in targets, the input format each one is design to work with, and its optimization direction. They fall into two families: correlation-based objectives designed for modular data, and standard geometric/probabilistic indices.
+
+\paragraph*{A generative model for correlation modules.}
+The correlation objective is the maximum log-likelihood of an explicit
+generative model, which we state here and derive in full in
+\nameref{S1_Appendix}. Let the data matrix $\mathbf{X}\in\mathbb{R}^{n\times d}$
+hold $n$ genes measured over $d$ samples, row-standardized. We model each
+\emph{sample} (column) as an independent draw from a multivariate Gaussian over
+genes, $N(\mathbf{0},\Sigma)$, whose correlation matrix $\Sigma$ is
+\emph{block-diagonal} by the partition $\boldsymbol{\ell}$: genes in the same
+module are correlated, genes in different modules independent. Within a module
+$s$ we adopt the canonical single-regulator (one-factor) structure with
+equal-magnitude loadings of arbitrary sign, $x_g = \sigma_g f_s + \varepsilon_g$
+with $\sigma_g\in\{\pm\lambda_s\}$, so that any two genes in the module share
+$\lvert\mathrm{corr}\rvert = \rho_s$. This is exactly the core assumption of a
+co-expression module (one regulator, up- or down-regulating its targets).
+
+\paragraph*{The likelihood reduces to the project's objective.}
+Let $\mathbf{R}$ be the Pearson correlation matrix between genes and, for module
+$s$ of size $n_s$, let
+\begin{equation}
+\label{eq:cs}
+C_s = \sum_{i\in s}\sum_{j\in s} \lvert R_{ij}\rvert \in [\,n_s,\,n_s^{2}\,]
+\end{equation}
+(the unit diagonal is included). As shown in \nameref{S1_Appendix}, the
+maximum-likelihood common coherence of a module is its mean absolute
+off-diagonal correlation, $\hat\rho_s=(C_s-n_s)/(n_s^2-n_s)$, and at that
+estimate the trace term of the Gaussian log-likelihood collapses to the module
+dimension. The profile log-likelihood of a partition is therefore, up to a
+partition-independent constant,
+\begin{equation}
+\label{eq:loglik}
+\ell(\boldsymbol{\ell}) = d\,\mathcal{L}(\boldsymbol{\ell}),
+\qquad
+\mathcal{L}(\boldsymbol{\ell}) = \frac{1}{2}\sum_{s\,:\,n_s>1}
+\left[\, \log\!\frac{n_s}{C_s}
+   + (n_s-1)\,\log\!\frac{n_s^{2}-n_s}{\,n_s^{2}-C_s\,} \,\right],
+\end{equation}
+where $\mathcal{L}$ is precisely $-\tfrac12\sum_s\log\det\Sigma_{\mathrm{CS}}(\hat\rho_s)$,
+the equicorrelation log-determinant. Maximizing $\mathcal{L}$ thus maximizes the
+model likelihood. Each summand is monotone in module coherence: as
+$C_s\to n_s^2$ the cluster is perfectly correlated (best fit) and as $C_s\to n_s$
+it is incoherent (contributing zero); singletons contribute nothing. A perfectly
+correlated cluster is awarded a large finite reward rather than $+\infty$ for
+numerical stability.
+
+\paragraph*{Model selection: information criteria.}
+The raw likelihood favours more modules, since splitting a coherent module into
+coherent sub-modules does not necessarily lower $\mathcal{L}$. Because each module carries a single coherence parameter $\rho_s$, the model with $K$ modules has $K$ free
+parameters, and the standard information criteria over the $d$ samples are
+\begin{equation}
+\label{eq:loglikic}
+\mathrm{BIC}(\boldsymbol{\ell}) = -2 d\,\mathcal{L}(\boldsymbol{\ell}) + K\log d,
+\qquad
+\mathrm{AIC}(\boldsymbol{\ell}) = -2 d\,\mathcal{L}(\boldsymbol{\ell}) + 2K,
+\end{equation}
+to be minimized (targets \texttt{loglik\_bic}, \texttt{loglik\_aic}). The
+likelihood scales with the sample size $d$ while the penalty does not, so more
+samples correctly license more modules. This is distinct from the geometric
+\texttt{bic}/\texttt{aic} targets, whose Euclidean-Gaussian assumption conflicts
+with the absolute-correlation objective when modules contain anti-correlated
+members, which is precisely the regime in which the correlation criteria are the right
+choice.
+
+\paragraph*{Geometric and probabilistic indices.}
+For data whose clusters are defined geometrically, \tool{} provides four
+standard indices computed on $\mathbf{X}$: the mean silhouette
+coefficient~\cite{Rousseeuw1987} (maximize; range $[-1,1]$), the Davies--Bouldin
+index~\cite{DaviesBouldin1979} (minimize), the Calinski--Harabasz
+variance-ratio criterion~\cite{CalinskiHarabasz1974} (maximize), and the
+Bayesian and Akaike information criteria~\cite{Schwarz1978,Akaike1974} under a
+spherical-Gaussian-per-cluster model with pooled variance (both minimize). The
+BIC/AIC log-likelihood follows the x-means formulation~\cite{Pelyhe2000}; for a
+partition with $k$ clusters in $d$ dimensions the model has
+$p = kd + (k-1) + 1$ free parameters (centroids, mixture weights, and one pooled
+variance), and BIC $=-2\log\hat{L} + p\log n$, AIC $=-2\log\hat{L} + 2p$. Unlike
+the correlation objective, BIC and AIC reward parsimony explicitly and so can be
+used for model selection on geometrically compact data.
+
+\begin{table}[!ht]
+\centering
+\caption{\textbf{The built-in performance-target metrics.}}
+\label{tab:metrics}
+\begin{tabular}{@{}llll@{}}
+\hline
+Target & Direction & Input & Role \\
+\hline
+\texttt{loglik}            & maximize & correlation matrix & correlation coherence (modules) \\
+\texttt{loglik\_bic}       & minimize & correlation matrix & coherence with cluster-count penalty \\
+\texttt{loglik\_aic}       & minimize & correlation matrix & coherence with lighter penalty \\
+\texttt{silhouette}        & maximize & data matrix        & geometric separation \\
+\texttt{davies\_bouldin}   & minimize & data matrix        & compactness/separation ratio \\
+\texttt{calinski\_harabasz}& maximize & data matrix        & variance-ratio criterion \\
+\texttt{bic}               & minimize & data matrix        & Gaussian-mixture parsimony \\
+\texttt{aic}               & minimize & data matrix        & Gaussian-mixture parsimony \\
+\hline
+\end{tabular}
+\begin{flushleft}
+The correlation-based targets consume the element-by-element Pearson correlation
+matrix; the geometric/probabilistic indices are computed directly on the
+(standardized) data matrix. Any subset can be combined under multi-objective
+optimization. The penalized correlation criteria \texttt{loglik\_bic} and
+\texttt{loglik\_aic} add a cluster-count penalty to \texttt{loglik} so that a
+single objective both fits and selects the number of modules (see below).
+\end{flushleft}
+\end{table}
+
+\subsection*{Data preparation}
+Input is a numeric matrix (CSV/TSV or array) with rows as elements and columns
+as features; header rows and index columns are auto-detected. By default the
+data are standardized to zero mean and unit variance. For the correlation
+objective, standardization is applied per row (per element/gene), which is the
+regime under which the Pearson correlation between rows is meaningful; for the
+geometric indices, per-feature standardization is the appropriate choice. The
+element-by-element correlation matrix $\mathbf{R}$ is computed once and reused
+across all evaluations of $\mathcal{L}$.
+
+\subsection*{Dimensionality-reduction visualization}
+Visual inspection of clustering results is essential for communicating and
+sanity-checking a partition.  \tool{} provides built-in tools for projecting the
+clustered data into two (or three) dimensions, with the cluster labels shown as
+colours.  Two embedding methods are always available (no extra dependencies):
+\emph{principal component analysis} (PCA), a linear projection preserving maximal
+variance, and \emph{correlation multidimensional scaling} (correlation MDS), a
+classical MDS embedding~\cite{Torgerson1952} on the correlation distance matrix
+$1 - \lvert\mathbf{R}\rvert$.  The second method is particularly informative for
+the correlation objective because it projects the elements into the same distance
+space the log-likelihood operates in: if modules are well-separated in
+correlation, they appear well-separated in the MDS embedding.  For users with
+additional packages installed, t-SNE~\cite{vanderMaaten2008} and
+UMAP~\cite{McInnes2018} are also supported and may better resolve local
+neighbourhood structure in large or high-dimensional datasets.  These tools are
+exposed both through the Python API (\texttt{reduce\_dimensions} and
+\texttt{plot\_clusters}) and the command line (\texttt{gcmrk visualize}).
+
+\subsection*{Genetic algorithm}
+\tool{} evolves a population of partitions with a self-contained GA
+(Fig~\ref{fig:convergence}). The components are:
+
+\begin{enumerate}
+\item \textbf{Initialization.} The initial population is seeded with three kinds
+of partition across candidate cluster counts $k = 2,\dots,g_{\max}$: k-means++
+partitions (a small internal NumPy k-means with multiple restarts);
+\emph{correlation-aware} partitions obtained by agglomerative (average- and
+complete-linkage) hierarchical clustering of the correlation distance
+$1-\lvert\mathbf{R}\rvert$, the classical co-expression clustering strategy; and
+random partitions for diversity. User-supplied seeds (e.g.\ the output of WGCNA
+or Clust) can also be injected. The correlation-aware seeds are important for the
+\texttt{loglik} objective: Euclidean k-means splits strongly anti-correlated
+elements that are coherent under the absolute-correlation criterion, whereas the
+correlation-distance seeds already respect the structure the GA is asked to
+optimize.
+\item \textbf{Evaluation.} Each partition is scored on the chosen target(s); a
+cache keyed on the label vector avoids recomputing identical partitions.
+\item \textbf{Selection and variation.} In \emph{weighted} mode the targets are
+combined into a single fitness through direction-aware weights after a bounded
+squashing transform that places metrics of different scales on a comparable
+footing, and elitist tournament selection is applied. In \emph{nsga2} mode the
+targets are treated as competing objectives and NSGA-II~\cite{Deb2002}
+fast non-dominated sorting with crowding distance is used. Variation is two-point
+crossover on label vectors plus a reassignment mutation that moves a small
+fraction of elements to random clusters.
+\item \textbf{Repair.} After every operator a partition is relabelled to
+consecutive integers and constrained to have between $2$ and $g_{\max}$ clusters,
+so that all validity metrics remain well defined (degenerate single-cluster or
+empty-cluster partitions are repaired).
+\item \textbf{Memetic local search.} For the correlation objective, the seed
+partitions and the elite of each generation are refined by a greedy hill-climb
+that repeatedly applies the single element reassignment most improving the
+objective until none remains (a memetic, Lamarckian GA). The gain of a move
+touches only the source and target modules, so it is computed incrementally in
+$\mathcal{O}(\text{module size})$ from $C_s$ (Eq~\eqref{eq:cs}); a full sweep is
+$\mathcal{O}(n^2)$. This step is decisive: it performs exactly the move that
+agglomerative clustering---used here only for seeding---cannot, namely reassigning
+an element after an early merge, and as shown in the Results it is what lets the
+optimizer surpass hierarchical clustering. When the objective is a penalized
+criterion (Eq~\eqref{eq:loglikic}) the hill-climb optimizes that criterion, so it
+also merges spurious modules.
+\end{enumerate}
+
+For multi-objective runs \tool{} returns the full Pareto front and, as a single
+representative partition, the knee point that maximizes the sum of min--max
+normalized objectives across the front. Unless stated otherwise, all experiments
+use a population of 200 evolved for 120 generations, two k-means restarts per
+candidate $k$, crossover probability 0.8, mutation probability 0.2 with per-gene
+reassignment probability 0.05, tournament size 3, and elitism 5, with a fixed
+random seed for reproducibility.
+
+\subsection*{Choosing the number of clusters}
+Because $\mathcal{L}$ (Eq~\eqref{eq:loglik}) has no parsimony term (penalization against more clusters), \tool{} offers three routes to the right number of clusters (a fourth, based on the factor block model below, is described in that section). (i) \emph{Constrain} $g_{\max}$ to the expected number of modules. (ii) \emph{Optimize a penalized correlation criterion} (\texttt{loglik\_aic} or \texttt{loglik\_bic},
+Eq~\eqref{eq:loglikic}) as a single objective under a loose $g_{\max}$; this
+selects $K$ within correlation space and is our recommended default when $K$ is
+unknown. Equivalently, one can scan $g_{\max}$ with \texttt{loglik} and pick the
+$K$ that minimizes Eq~\eqref{eq:loglikic}. (iii) \emph{Explore an explicit
+trade-off} by optimizing \texttt{loglik} jointly with a parsimony target under
+NSGA-II and reading the knee of the Pareto front; pairing with the geometric
+\texttt{bic} is informative only when the modules are also geometrically compact,
+whereas the penalized correlation criteria avoid that assumption.
+
+\subsection*{The factor block model}
+\label{sec:factor}
+Eq~\eqref{eq:loglik} enters a module only through the sum of absolute
+correlations inside it. Every within-module pair is therefore exchangeable: only
+the \emph{mean} within-module $\lvert r\rvert$ matters, not how it is distributed
+across members. That is precisely the equal-magnitude $\pm$ loading assumption,
+and it is restrictive in two ways that matter biologically---members of a real
+module respond to their regulator with different strengths, and a module may
+answer to more than one regulator. Relaxing both gives the model we recommend by
+default, of which Eq~\eqref{eq:loglik} is a constrained special case.
+
+For a module $m$ with $n_m$ genes we take the block of the correlation matrix to
+follow a $q$-factor structure with free loadings,
+\begin{equation}
+\mathbf{R}_m \;=\; \mathbf{\Lambda}_m\mathbf{\Lambda}_m^{\!\top} + \sigma_m^2\mathbf{I},
+\qquad \mathbf{\Lambda}_m \in \mathbb{R}^{n_m \times q},
+\label{eq:factorblock}
+\end{equation}
+which is probabilistic PCA~\cite{TippingBishop1999} applied blockwise. Its
+maximum-likelihood fit is available in closed form from the eigenvalues of
+$\mathbf{R}_m$: with $\ell_{m,1}\ge\dots\ge\ell_{m,n_m}$ the eigenvalues of the
+block, the residual variance is the mean of the discarded eigenvalues,
+$\hat{\sigma}^2_m = (n_m-q)^{-1}\sum_{i>q}\ell_{m,i}$, and the profile
+log-likelihood contribution of the module is
+\begin{equation}
+\mathcal{L}^{\text{factor}}_m \;=\; -\frac{d}{2}\left[\sum_{i\le q}\log \ell_{m,i}
+\;+\;(n_m-q)\log\hat{\sigma}^2_m\right].
+\label{eq:factorloglik}
+\end{equation}
+Only the leading $q$ eigenvalues and the block trace are needed, which keeps the
+objective affordable inside the genetic algorithm. Two properties matter. First,
+Eq~\eqref{eq:factorblock} is fitted to the \emph{signed} correlation matrix: a
+factor with mixed-sign loadings reproduces an anti-correlated module natively, so
+the absolute value that Eq~\eqref{eq:loglik} requires is no longer needed.
+Second, the number of free parameters,
+$p_m = n_m q - q(q-1)/2 + 1$, grows with module size, where the exchangeable
+model charges one parameter per module regardless of size. Summing $p_m$ into the
+usual AIC/BIC penalties therefore yields criteria that are comparable
+\emph{across ranks}, so $q$ need not be fixed by the user: we run the optimizer
+once per candidate rank and keep the fit minimizing BIC. We use BIC rather than
+AIC throughout, because AIC selects one rank too many (\nameref{S1_Appendix}).
+
+\emph{Relationship between the two objectives.} Eq~\eqref{eq:factorblock} at
+$q=1$ with the loadings constrained to a common magnitude,
+$\lvert\lambda_{mi}\rvert=\lambda_m$ for all $i$ in module $m$, reproduces the
+exchangeable model of Eq~\eqref{eq:loglik}: under that constraint every
+within-module correlation has the same absolute value $\lambda_m^2$, which is why
+Eq~\eqref{eq:loglik} can work with $\lvert\mathbf{R}\rvert$ and a single
+per-module coherence parameter. The two are therefore not competing objectives
+but nested models, and Eq~\eqref{eq:loglik} is the fast, strongly constrained
+member of the family: it costs roughly a third to a quarter as much per
+evaluation and requires no rank selection, at the price of the two assumptions
+above. We report both throughout, and quantify what the constraint costs.
+
+Because the factor likelihood does not decompose into the $O(1)$ incremental
+updates the exchangeable objective admits, the local search re-solves the
+eigendecomposition of affected blocks and screens candidate destinations to the
+three most similar modules; on inputs above $1500$ elements the refinement step is
+skipped rather than allowed to dominate the run.
+
+\subsection*{Competing methods and the fairness protocol}
+\label{sec:baselines}
+Because our central question is comparative, every competitor is given the most
+favourable setting we can construct. Methods that accept a cluster count---
+k-means, spectral clustering~\cite{NgJordanWeiss2002} on the affinity
+$\lvert\mathbf{R}\rvert^{\beta}$, and agglomerative clustering on
+$1-\lvert\mathbf{R}\rvert$---are handed the true $K$. Leiden~\cite{Traag2019} and
+Louvain~\cite{Blondel2008} take a resolution rather than a cluster count, and
+Markov clustering~\cite{VanDongen2008} an inflation parameter; for the known-$K$
+comparison we bisect these parameters until each method returns exactly $K$
+communities, which is the most generous setting available to them. We verified
+that the graph methods are insensitive to the soft-thresholding power $\beta$
+(bisecting to $K$ renormalizes granularity), so the shared choice $\beta=6$ does
+not handicap them.
+
+WGCNA~\cite{Langfelder2008} is reported twice, because it selects its own module
+count from a fixed tree-cut height and is correspondingly sensitive to
+thresholding. The \emph{default} arm runs the standard pipeline (soft threshold
+chosen by \texttt{pickSoftThreshold}, topological overlap, dynamic hybrid tree
+cut~\cite{LangfelderHorvath2008DynamicTreeCut}), which is what a practitioner
+following the tutorial obtains. The \emph{oracle-tuned} arm reports the best
+result over a grid of soft-thresholding powers and minimum module sizes,
+\emph{scored against the ground truth}---an advantage no real user has. We
+compare against the oracle arm so that no margin we report can be attributed to
+unlucky WGCNA hyper-parameters.
+
+\subsection*{Data-generating processes that violate the model}
+\label{sec:misspec}
+Recovering modules from \tool{}'s own simulator demonstrates that the optimizer
+reaches the likelihood optimum; it cannot demonstrate that the model describes
+real co-expression data, since the simulator and the objective encode the same
+assumptions. We therefore generate data from five further processes, each
+breaking a different assumption while retaining planted ground truth.
+\emph{Multi-factor} modules are driven by three latent factors with continuous
+Gaussian loadings, so within-module correlation is heterogeneous and some
+same-module pairs are nearly independent. \emph{Hub-and-spoke} modules carry a
+single factor whose loading decays geometrically across members, so members are
+not exchangeable. \emph{Overlapping} modules give a fraction of genes a secondary
+loading on a second module, so no hard partition is exactly correct.
+\emph{Negative-binomial counts} replace the Gaussian with a gamma-Poisson
+mixture on the log scale, breaking distributional assumptions and adding the
+mean--variance trend of RNA-seq. \emph{Network} data are drawn from a Gaussian
+whose covariance arises by diffusion over an LFR benchmark
+graph~\cite{LancichinettiFortunato2008} with planted communities and power-law
+degrees, so correlation reflects connectivity through a sparse network rather
+than a shared factor. Each generator's noise level is calibrated so that the
+within- minus between-module absolute-correlation contrast is comparable across
+processes; we report that contrast alongside every result, because a generator
+whose contrast has collapsed cannot discriminate between methods.
+
+\subsection*{Benchmark datasets and evaluation}
+We evaluate on three datasets with known ground truth and one empirical
+expression dataset.
+
+\emph{Synthetic-Easy} and \emph{Synthetic-Hard} are generated by \tool{}'s
+modular simulator: each module is driven by a shared latent factor (with random
+$\pm 1$ loadings, so within-module genes are strongly correlated in absolute
+value while genes in different modules are not), with per-entry Gaussian noise
+added and rows finally standardized. Synthetic-Easy has three equal modules
+(\EasyGenes{} genes across \EasySamples{} samples) at low noise, giving strong
+separation (mean within-module $\lvert r\rvert = \EasyWithinR{}$ versus
+between-module $\EasyBetweenR{}$). Synthetic-Hard has five unequal modules
+(15, 20, 25, 30, 10 genes; \HardGenes{} genes across \HardSamples{} samples) at
+higher noise, giving weak separation (within $\HardWithinR{}$ versus between
+$\HardBetweenR{}$).
+
+\emph{Iris} \cite{Fisher1936} is the classic \IrisSamples{}-sample,
+\IrisFeatures{}-feature, 3-class benchmark; it is low-dimensional and geometric
+rather than correlational, and we use it to show that the same engine, driven by
+geometric targets, faithfully optimizes those indices on data outside the
+co-expression regime.
+
+\emph{Empirical data.} We apply \tool{} to GSE183947~\cite{Wang2021}, a breast
+cancer RNA-seq dataset of \EmpSamples{} samples (30 tumours and 30
+patient-matched adjacent-normal tissues) with \EmpFullGenes{} genes
+quantified as FPKM. After $\log_2$ transformation we cluster the \EmpNtop{} most
+variable genes into co-expression modules, and assess each module both by its
+internal correlation coherence and by whether its eigengene (the leading
+principal component of the module's expression across samples) distinguishes
+tumour from normal tissue (Welch $t$-test), linking the recovered modules to the
+clinical phenotype.
+
+\emph{Comparative benchmark.} To test whether globally optimizing the block
+likelihood improves on the alternatives a practitioner would otherwise use, we
+run a replicated benchmark on the five-module design over a noise sweep
+$\sigma\in\{0.7,1.0,1.5,2.0\}$, with \NSeeds{} random datasets per noise level.
+We compare \tool{} (memetic) and \tool{} driven by the factor objective with
+BIC-selected rank, against: \tool{} with the local-search step disabled (an
+ablation isolating its contribution); agglomerative clustering on
+$1-\lvert\mathbf{R}\rvert$ with average and with complete linkage, cut at the
+true $k$; k-means; spectral clustering; Leiden; Louvain; Markov clustering; and
+WGCNA in both its default and oracle-tuned arms, under the fairness protocol
+described above. We also evaluate model selection with $k$ unknown---where every
+method runs free, with no ground-truth $k$ and no oracle tuning---and robustness
+to unstructured ``noise'' genes that belong to no module. Because every method
+sees the same datasets, comparisons are paired, and we test them with the
+Wilcoxon signed-rank test across the \NSeeds{} replicates rather than comparing
+marginal means.
+
+\emph{Scaling.} We measure wall-clock runtime and recovery on the modular design
+at $200$, $500$, $1000$, $2000$ and $\ScaleMaxGenes{}$ genes with ten modules,
+three replicates per size, on the same hardware and with identical GA settings.
+
+We use the adjusted Rand index (ARI)~\cite{HubertArabie1985}; for the single-dataset summaries (Table~\ref{tab:benchmark}) we also report Hungarian-matched accuracy. Results are reported as mean $\pm$ SD over the random datasets. All code to reproduce the experiments, figures, and tables is provided with the package.
+
+\section*{Results}
+
+\subsection*{Recovering correlated modules on synthetic data}
+On Synthetic-Easy, \tool{} driven by the correlation log-likelihood (with
+$g_{\max}$ set to the true count) recovers the planted three-module structure
+perfectly (ARI $=\EasyLoglikARI{}$), whereas the k-means baseline---given the
+same true $k$---fails badly (ARI $=\EasyKmeansARI{}$). The gap is diagnostic:
+because module loadings carry random signs, each module contains strongly
+anti-correlated genes that are coherent under the absolute-correlation objective
+but lie far apart in Euclidean space, so k-means splits them. The GA converges
+within the first few dozen generations (Fig~\ref{fig:convergence}). On
+Synthetic-Hard, where weak separation and higher noise make the problem
+substantially harder, \tool{} still recovers the five modules well
+(ARI $=\HardLoglikARI{}$) while k-means remains poor (ARI $=\HardKmeansARI{}$).
+The correlation-aware hierarchical seeding (Methods) is important here: it
+supplies the GA with starting partitions that already respect the
+absolute-correlation structure, which a Euclidean seeder cannot.
+
+\subsection*{Comparison against contemporary module detectors}
+The central methodological question is whether globally optimizing the block
+likelihood improves on the methods a practitioner would otherwise reach for. The
+replicated noise sweep (Fig~\ref{fig:perfnoise}, Table~\ref{tab:baselines}) shows
+that it does at every noise level tested, though the size of the margin and which
+variant delivers it both depend on the noise.
+
+Driven by the factor objective with the rank selected by BIC, \tool{} attains the
+best recovery of any method at both informative noise levels: ARI
+$\FactorAutoHardARI{}$ at $\sigma=1.5$ and $\FactorAutoExtremeARI{}$ at
+$\sigma=2.0$, against $\WgcnaOraHardARI{}$ and $\WgcnaOraExtremeARI{}$ for
+oracle-tuned WGCNA, the strongest competitor. At lower noise every method except
+k-means and MCL saturates near ARI $1.0$ and the comparison is uninformative.
+Under the constrained objective of Eq~\eqref{eq:loglik}, \tool{} reaches
+$\MemeticHardARI{}$ at $\sigma=1.5$---still ahead of every competitor, and
+significantly so under a paired Wilcoxon signed-rank test across the \NSeeds{}
+shared datasets ($p<0.001$ against each)---but falls to $\MemeticExtremeARI{}$ at
+$\sigma=2.0$, where oracle-tuned WGCNA overtakes it (paired difference $-0.11$,
+$p=1\times10^{-4}$).
+
+That contrast is itself informative. The equal-loading constraint costs little
+when the signal is strong and a great deal when it is weak: at high noise the
+effective loadings of a module's members are most heterogeneous, and it is
+exactly there that freeing them recovers a lead. This is the first of several
+results in which the constrained model's failures are concentrated where its
+assumption is least tenable, rather than distributed at random.
+
+Two further points belong with these numbers. First, the margin over the best
+competitor is modest---$0.04$ ARI at $\sigma=1.5$---where the margin over
+average-linkage hierarchical clustering, the comparison a reader of the earlier
+GA-clustering literature would expect, is $0.15$. A benchmark restricted to
+agglomerative clustering and k-means would have overstated the advantage roughly
+fourfold, and we report the stronger comparison because it is the honest one.
+Second, the ablation isolating the memetic local search is noise-dependent in the
+same way: at $\sigma=1.5$ disabling it costs $0.065$ ARI
+($p=2\times10^{-4}$), confirming that the hill-climb---which reassigns genes
+\emph{a posteriori}, a move greedy agglomeration cannot make---is responsible for
+much of the margin, while at $\sigma=2.0$ the difference is not significant. Local
+search is decisive where the likelihood surface is rugged but still informative,
+not universally.
+
+A separate observation concerns WGCNA in its default configuration, which
+performs poorly throughout the sweep (ARI $\WgcnaDefHardARI{}$ at $\sigma=1.5$).
+The cause is diagnostic rather than incidental: with a mean within-module
+$\lvert r\rvert$ near $0.29$, \texttt{pickSoftThreshold} selects a power of $8$,
+at which the soft-thresholded adjacency is numerically negligible and the dynamic
+tree cut returns a single grey module. This is a property of scale-free
+thresholding on weakly correlated data rather than a deficiency of the method's
+core idea, and it is why we compare against the oracle-tuned arm throughout.
+
+% Place tables after the first paragraph in which they are cited.
+\begin{table}[!ht]
+\centering
+\caption{\textbf{Module recovery against contemporary module detectors}
+(ARI, mean $\pm$ SD over \NSeeds{} datasets) on the five-module design across a
+noise sweep, with the number of clusters fixed to the truth or bisected to it.}
+\label{tab:baselines}
+\begin{adjustwidth}{-1.25in}{0in}
+\centering
+\IfFileExists{results/baselines_table.tex}{\input{results/baselines_table.tex}}{%
+\begin{tabular}{@{}l@{}}\hline
+\textit{Run experiments/benchmark\_baselines.py to populate this table.}\\\hline
+\end{tabular}}
+\end{adjustwidth}
+\begin{flushleft}
+Resolution- and inflation-based methods (Leiden, Louvain, MCL) do not accept a
+cluster count; their parameters are bisected until they return the true $K$.
+WGCNA selects its own module count, and is reported both at its default settings
+and at the best of a power $\times$ minimum-module-size grid scored against
+ground truth (Methods).
+\end{flushleft}
+\end{table}
+
+\begin{figure}[!h]
+\previewfig{baselines_vs_noise.pdf}
+\caption{\textbf{Module recovery versus noise, against the full baseline set.}
+Adjusted Rand index (mean, bands $\pm$ SD over \NSeeds{} datasets) at the true
+number of clusters. \tool{} leads at moderate noise and has the lowest variance,
+but the community-detection and network methods lie much closer to it than
+agglomerative clustering does, and oracle-tuned WGCNA overtakes it at
+$\sigma=2.0$.}
+\label{fig:perfnoise}
+\end{figure}
+
+\begin{figure}[!h]
+\previewfig{ablation.pdf}
+\caption{\textbf{The memetic local search helps at moderate noise, not
+universally.} Recovery with and without the hill-climb across the noise sweep.
+The refinement that reassigns elements after seeding accounts for much of
+\tool{}'s margin at $\sigma\le1.5$; at $\sigma=2.0$ the difference is not
+significant.}
+\label{fig:ablation}
+\end{figure}
+
+% Place tables after the first paragraph in which they are cited.
+\begin{table}[!ht]
+\centering
+\caption{\textbf{Benchmark results: clusters recovered ($k$), adjusted Rand
+index (ARI), and Hungarian-matched accuracy against ground truth.}}
+\label{tab:benchmark}
+\begin{adjustwidth}{-1.25in}{0in}
+\centering
+\IfFileExists{results/benchmark_table.tex}{\input{results/benchmark_table.tex}}{%
+\begin{tabular}{@{}l@{}}\hline
+\textit{Run experiments/run\_experiments.py to populate this table.}\\\hline
+\end{tabular}}
+\end{adjustwidth}
+\begin{flushleft}
+True $k$ is 3 (Synthetic-Easy, Iris) and 5 (Synthetic-Hard); GSE183947 has no
+ground-truth labelling (ARI/accuracy not applicable). ``known $k$'' fixes
+$g_{\max}$ to the true value; ``loose $g_{\max}$'' and ``model sel.'' use a loose
+bound, the latter with a penalized correlation criterion. k-means is given the
+true $k$ and 10 restarts. GA settings as in Methods; fixed random seed.
+\end{flushleft}
+\end{table}
+
+\begin{figure}[!h]
+\caption{\textbf{Convergence of the genetic algorithm on Synthetic-Easy.}
+Best and population-mean weighted fitness (correlation log-likelihood) across
+generations. The optimizer reaches a high-quality partition within the first few
+dozen generations and the elite fitness is monotone non-decreasing by
+construction.}
+\previewfig{convergence.pdf}
+\label{fig:convergence}
+\end{figure}
+
+\subsection*{When the model is right, and when it is not}
+The benchmark above, like the synthetic designs in most module-detection papers,
+draws its data from the same generative model the objective assumes. Success
+there establishes that the optimizer reaches the likelihood optimum; it cannot
+establish that the optimum is the biologically correct answer. We therefore
+re-ran the comparison on the five processes of Methods, each violating a
+different assumption (Table~\ref{tab:misspec}, Fig~\ref{fig:misspec}).
+
+Across the \MisspecTotal{} processes at the discriminating noise level, the
+factor objective leads on all \MisspecTotal{}: its own one-factor design (ARI
+$\MisspecOneFacFactor{}$ against $\MisspecOneFacBest{}$ for the best competitor),
+overlapping modules ($\MisspecOverlapFactor{}$ versus $\MisspecOverlapBest{}$),
+negative-binomial counts ($\MisspecCountsFactor{}$ versus
+$\MisspecCountsBest{}$), network-derived correlation ($\MisspecNetworkFactor{}$
+versus $\MisspecNetworkBest{}$), multi-factor modules
+($\MisspecMultiFacFactor{}$ versus $\MisspecMultiFacBest{}$) and hub-and-spoke
+modules ($\MisspecHubFactor{}$ versus $\MisspecHubBest{}$). The rank is selected
+without supervision in each case, and recovers the generating structure: BIC
+chooses $q=\MisspecMultiFacRank{}$ on the three-factor process and
+$q=\MisspecOneFacRank{}$ on the rest.
+
+The constrained objective of Eq~\eqref{eq:loglik} behaves quite differently, and
+the pattern of where it fails is the substantive result. It leads on
+\MisspecWins{} of the \MisspecTotal{} processes and fails on two. Where modules
+are driven by a single dominant signal it is competitive or better---one-factor
+$\MisspecOneFacGCM{}$, overlapping $\MisspecOverlapGCM{}$, counts
+$\MisspecCountsGCM{}$, network $\MisspecNetworkGCM{}$---and the counts result is
+worth emphasizing, because replacing the Gaussian with a gamma--Poisson mixture
+and adding a mean--variance trend does not degrade it. \emph{Distributional}
+misspecification is not what hurts this model.
+
+\emph{Structural} misspecification is. On multi-factor modules---where a module
+spans a three-dimensional subspace rather than a single direction---the
+constrained objective recovers ARI $\MisspecMultiFacGCM{}$ where the best
+competitor reaches $\MisspecMultiFacBest{}$, and on hub-and-spoke modules, whose
+members carry systematically unequal loadings, $\MisspecHubGCM{}$ against
+$\MisspecHubBest{}$. Both are exactly the regimes in which the equal-magnitude,
+single-factor constraint is false, and in both the free-loading model removes the
+deficit entirely. The failures are therefore attributable to a specific,
+identifiable assumption rather than to the framework.
+
+That these are failures of the model rather than of the search can be shown
+directly. On multi-factor data we evaluated Eq~\eqref{eq:loglik} at the planted
+truth and at the partition \tool{} returns, and found the returned partition
+scores \emph{higher} in every replicate (for example $16.8$ against $15.4$ at
+$\sigma=1.0$), while its ARI against the truth is near $0.5$. The optimizer is
+therefore working correctly and reaching a better optimum of the stated
+objective; it is the objective whose optimum is in the wrong place. A likelihood
+that outscores the ground truth is, in this sense, a sharper diagnostic of
+misspecification than any accuracy metric, because it separates the two failure
+modes that an accuracy drop alone conflates.
+
+\begin{table}[!ht]
+\centering
+\caption{\textbf{Recovery under model misspecification} (ARI, mean $\pm$ SD over
+\MisspecSeeds{} datasets per process, $\sigma=1.5$). Best method per process in
+bold.}
+\label{tab:misspec}
+\begin{adjustwidth}{-1.25in}{0in}
+\centering
+\IfFileExists{results/misspec_table_n15.tex}{\input{results/misspec_table_n15.tex}}{%
+\begin{tabular}{@{}l@{}}\hline
+\textit{Run experiments/misspecification.py to populate this table.}\\\hline
+\end{tabular}}
+\end{adjustwidth}
+\begin{flushleft}
+The first column is \tool{}'s own generative model; the remaining five each
+violate one of its assumptions (Methods). Every method receives the number of
+modules planted in that dataset.
+\end{flushleft}
+\end{table}
+
+\begin{figure}[!h]
+\previewfig{misspecification_n15.pdf}
+\caption{\textbf{The advantage tracks whether modules carry a single dominant
+signal.} Recovery by data-generating process. \tool{} leads where a module is one
+direction in expression space---including when the data are counts rather than
+Gaussian---and falls behind where a module spans several directions
+(multi-factor) or where members carry systematically unequal loadings (hub).}
+\label{fig:misspec}
+\end{figure}
+
+\subsection*{Freeing the loadings removes the failure}
+The diagnosis predicts where relaxing the constraint should help. If the
+constrained model fails because it cannot represent unequal or multi-directional
+loadings, the free-loading model of Eq~\eqref{eq:factorblock} should recover the
+loss, and its advantage over the constrained form should be concentrated on
+exactly the two processes where Eq~\eqref{eq:loglik} fails---rather than being a
+uniform improvement, which would suggest we had simply added capacity.
+
+It does, and by more than repair. With the rank selected from the data by BIC
+(\texttt{cluster\_factor\_auto}; Methods), multi-factor recovery rises from
+$\MisspecMultiFacGCM{}$ to $\MisspecMultiFacFactor{}$ and hub-and-spoke recovery
+from $\MisspecHubGCM{}$ to $\MisspecHubFactor{}$. Both figures exceed the best
+competing method on those processes ($\MisspecMultiFacBest{}$ for
+\MisspecMultiFacBestName{} and $\MisspecHubBest{}$ for
+\MisspecHubBestName{} respectively), so relaxing the exchangeability assumption
+converts the framework's two clear failures into leads. On the four processes
+where the exchangeable objective already led, the factor objective is equal or
+slightly better---one-factor $\MisspecOneFacFactor{}$, overlapping
+$\MisspecOverlapFactor{}$, counts $\MisspecCountsFactor{}$, network
+$\MisspecNetworkFactor{}$---so it leads on all \MisspecTotal{} processes at this
+noise level, where the exchangeable objective leads on \MisspecWins{}
+(Table~\ref{tab:misspec}). The same pattern appears in the noise sweep, where the
+factor objective is the only variant to beat oracle-tuned WGCNA at $\sigma=2.0$.
+
+Rank selection recovers the generating structure without supervision: BIC chooses
+$q=\MisspecMultiFacRank{}$ on the three-factor process and
+$q=\MisspecOneFacRank{}$ on the one-factor, hub, counts and network processes, and
+the automatically selected rank attains the same recovery as the best rank chosen
+with knowledge of the truth. The extra flexibility therefore costs computation but
+not accuracy.
+
+The rank must be selected rather than fixed. Setting $q$ above the number of
+factors actually present is worse than not using the branch at all: at $q=3$ on
+the one-factor design recovery falls from $1.00$ to $0.58$, because the surplus
+factors fit noise directions within each block. This is why the size-scaled
+parameter count of Eq~\eqref{eq:factorblock} matters---it is what makes BIC
+comparable across ranks and therefore makes automatic selection possible. We
+recommend BIC over AIC here, since AIC systematically selects one rank too many.
+
+The factor branch is offered alongside the exchangeable objective rather than as
+a replacement. It costs roughly three to four times more per run, multiplied by
+the number of candidate ranks, and on data that genuinely follow the one-factor
+model it offers nothing over Eq~\eqref{eq:loglik}. Its value is that a user who
+does not know which regime their data occupy can let BIC decide.
+
+\subsection*{Selecting the number of clusters without knowing it}
+When only \texttt{loglik} is optimized under a loose $g_{\max}$, the correlation
+objective can over-segment, since Eq~\eqref{eq:loglik} carries no parsimony term.
+The effect, however, is mild once the likelihood is optimized well: on
+Synthetic-Easy the optimum already coincides with the true partition
+($k=\EasyLooseK{}$), and on Synthetic-Hard a loose bound yields only
+$k=\HardLooseK{}$ (true 5; Table~\ref{tab:benchmark}), one module above the truth.
+The penalized correlation criteria (Eq~\eqref{eq:loglikic}) keep selection near
+the truth within a single objective: on Synthetic-Easy \texttt{loglik\_aic}
+returns $k=\EasyAicK{}$ at ARI $=\EasyAicARI{}$, and on this Synthetic-Hard
+dataset $k=\HardAicK{}$ at ARI $=\HardAicARI{}$. The decisive test is replication, and it is
+also where this route shows its limit. Over \NSeeds{} datasets
+\texttt{loglik\_aic} selects $\MemeticSelK{}$ modules on average at ARI
+$\MemeticSelARI{}$, comfortably better than hierarchical clustering whose cut
+minimizes the same criterion ($\HierSelK{}$ modules, ARI $\HierSelARI{}$;
+Table~\ref{tab:modelsel}), so global optimization does help when the criterion is
+held fixed. Against the community-detection methods, however, the picture is less
+favourable: free-running Leiden at its default resolution recovers
+$\LeidenSelK{}$ modules at ARI $\LeidenSelARI{}$, statistically indistinguishable
+from \texttt{loglik\_aic} in ARI but substantially closer to the true count
+($\lvert k-5\rvert$ of $0.27$ against $1.73$, $p=2\times10^{-5}$). A resolution
+default with no explicit model therefore identifies the number of modules more
+reliably than our penalized correlation criterion does, and we do not claim
+otherwise.
+
+The reason is instructive, and it also rules out the obvious remedy. The penalty
+in Eq~\eqref{eq:loglikic} charges a fixed cost per module, because the
+exchangeable block model has one parameter per module irrespective of size;
+splitting a large module is therefore cheap relative to the likelihood it buys,
+which produces the mild over-segmentation observed. It is natural to expect the
+factor block model of Eq~\eqref{eq:factorblock} to do better, since its parameter
+count grows with module size. It does not---it is substantially worse, selecting
+the largest number of modules permitted in every replicate
+(Table~\ref{tab:modelsel}). The cause is a property of the parameter count that
+is easy to miss. Summing $p_m = n_m q - q(q-1)/2 + 1$ over $k$ modules whose
+sizes total $n$ gives
+\begin{equation}
+\textstyle\sum_m p_m \;=\; nq \;-\; k\,q(q-1)/2 \;+\; k ,
+\label{eq:factorparams}
+\end{equation}
+which is increasing in $k$ only for $q=1$; it is constant in $k$ at $q=2$ and
+\emph{decreasing} for $q\ge3$. The per-block correction $q(q-1)/2$ for rotational
+invariance is correct for each block in isolation, but accumulating it across
+blocks means that at higher ranks a partition is charged \emph{less} for having
+more modules. The criterion therefore cannot penalize partition complexity, and
+the search runs to whatever bound $g_{\max}$ imposes. We report this as a
+limitation of the factor branch rather than repair it here: the underlying issue
+is that BIC accounts for the parameters of a partition but not for the
+combinatorial multiplicity of the partition itself, which the fixed per-module
+term of Eq~\eqref{eq:loglikic} penalizes only incidentally. \textbf{The factor
+objective should therefore be used with $K$ known or externally constrained, and
+Eq~\eqref{eq:loglikic} retained when the module count must be inferred.} Users
+whose priority is recovering the module count itself, rather than optimizing a
+stated correlation criterion, should treat a resolution-based method as a strong
+and much cheaper baseline.
+
+This division of labour suggests a practical recipe, since the two objectives
+fail in complementary ways: use the constrained criterion, whose penalty does
+grow with the module count, to choose $K$, then fit the factor model with $K$
+held at that value. Over \TwoStageSeeds{} datasets of the five-module design at
+$\sigma=1.5$ this two-stage procedure reaches ARI $\TwoStageARI{}$, against
+$\TwoStageAicARI{}$ for \texttt{loglik\_aic} alone and $\TwoStageLooseARI{}$ for
+the factor model run with a loose $g_{\max}$, and approaches the
+$\TwoStageOracleARI{}$ obtained when the true $K$ is supplied. The residual gap is
+inherited from the first stage, which selects $\TwoStageK{}$ modules on average
+against a truth of five; a better $K$-selection procedure---a resolution-based
+method, for instance---would close it further. We recommend this two-stage
+workflow whenever the module count is unknown. The
+fit--parsimony trade-off is also visible by scanning $g_{\max}$
+(Fig~\ref{fig:modelsel}): \texttt{loglik} rises and plateaus with $k$ while the
+penalized criteria turn over near the true number of modules.
+
+\begin{figure}[!h]
+\caption{\textbf{Model selection on Synthetic-Hard.}
+The raw correlation log-likelihood (left axis) increases monotonically as
+clusters are added---the over-segmentation tendency---while the penalized
+criteria (right axis, lower is better) turn over near the true number of modules.
+The \texttt{loglik\_aic} minimum identifies a parsimonious, well-fitting
+partition without the number of clusters being specified in advance.}
+\previewfig{model_selection.pdf}
+\label{fig:modelsel}
+\end{figure}
+
+For users who prefer to inspect an explicit trade-off rather than commit to a
+single penalized criterion, the multi-objective mode optimizes \texttt{loglik}
+against a parsimony target under NSGA-II and returns the full Pareto front
+(Fig~\ref{fig:pareto}). We note that pairing \texttt{loglik} with the
+\emph{geometric} BIC is less effective on these data, because BIC's
+Euclidean-Gaussian assumption conflicts with the absolute-correlation objective
+when modules contain anti-correlated members---which is exactly why the penalized
+\emph{correlation} criteria are preferable for module selection.
+
+\begin{figure}[!h]
+\caption{\textbf{Fit--parsimony Pareto front on Synthetic-Hard.}
+Each point is a non-dominated partition from a single NSGA-II run optimizing the
+correlation log-likelihood (maximized) against the geometric BIC (minimized);
+colour encodes the number of clusters. The multi-objective mode exposes the
+trade-off explicitly for interactive exploration.}
+\previewfig{pareto.pdf}
+\label{fig:pareto}
+\end{figure}
+
+\begin{table}[!ht]
+\centering
+\caption{\textbf{Model selection with $k$ unknown} (mean $\pm$ SD over \NSeeds{}
+datasets, Synthetic-Hard design, true $k=5$). Both methods use the same penalized
+correlation criterion; they differ only in optimizer.}
+\label{tab:modelsel}
+\IfFileExists{results/modelsel_table.tex}{\input{results/modelsel_table.tex}}{%
+\begin{tabular}{@{}l@{}}\hline
+\textit{Run experiments/decisive.py to populate this table.}\\\hline
+\end{tabular}}
+\end{table}
+
+\subsection*{Robustness to unstructured genes}
+Real gene sets contain many genes that belong to no module, and this is where
+\tool{}'s margin is largest and least ambiguous. When the five-module design is
+embedded among unstructured ``noise'' genes and the methods must both find the
+modules and avoid being derailed by the noise, \tool{} retains ARI
+$\NoiseGeneMemeticARI{}$, against $\NoiseGeneHierARI{}$ for hierarchical
+clustering under the same penalized criterion, $\NoiseGeneLeidenARI{}$ for
+free-running Leiden and $\NoiseGeneWgcnaARI{}$ for WGCNA
+(\NSeeds{} datasets; every paired difference $p<10^{-4}$). Unlike the noise-sweep
+margin, which is a few hundredths of ARI, these are differences of $0.25$ to
+$0.54$.
+
+The mechanism is the same likelihood that fails on multi-factor data, working in
+its favour here. Because a module's contribution to Eq~\eqref{eq:loglik} depends
+on its mean within-module $\lvert r\rvert$, admitting an incoherent gene lowers
+that mean and is penalized; the optimizer consequently isolates unstructured
+genes into their own low-coherence groups rather than distributing them among
+real modules. Greedy linkage, by contrast, must place every gene at some merge
+height and forces them into the nearest module, and WGCNA's grey module absorbs
+them only when the tree cut happens to separate them. For the common practical
+situation in which a gene set has been filtered by variance rather than by
+membership in any known programme, this behaviour is arguably more valuable than
+a small gain in recovery on clean data.
+
+\subsection*{Scaling to realistic gene counts}
+Co-expression studies routinely cluster thousands of genes, so the practical
+question is not only whether a global optimizer is more accurate but whether it
+is affordable at that size. We measured runtime and recovery on the modular
+design at $200$ to $\ScaleMaxGenes{}$ genes (Table~\ref{tab:scaling}).
+
+Recovery is unaffected by size (ARI $\ge0.996$ throughout). Runtime at
+$\ScaleMaxGenes{}$ genes is $\ScaleMaxSeconds{}$~s per dataset, and over the
+$1000$--$\ScaleMaxGenes{}$ range it grows as $n^{\ScaleExponent{}}$---close to
+linear, and well below the $O(n^2)$ cost of forming the correlation matrix that
+every correlation-based method must pay. \tool{} is accordingly two to three
+times slower than Leiden and WGCNA at $\ScaleMaxGenes{}$ genes rather than orders
+of magnitude slower.
+
+These timings are for the constrained objective of Eq~\eqref{eq:loglik}, and the
+factor objective is considerably more expensive---not by the constant factor of
+three to four that its per-evaluation cost implies, but by substantially more
+once the data support many modules. On the empirical dataset of the next section
+the constrained criterion fitted $300$ genes in $14$~s where the two-stage factor
+procedure took $463$~s, because the local search must re-solve an
+eigendecomposition per affected block and real correlation structure yields both
+more modules and a higher selected rank than the synthetic designs do. The factor
+model is therefore the better choice on gene sets of hundreds to low thousands of
+genes, and the constrained objective the practical one above that; users needing
+both can fit the factor model on a variance-filtered subset and extend the
+resulting modules with the cheaper criterion.
+
+We measured only to $\ScaleMaxGenes{}$ genes, and we do not extrapolate: the
+$O(n^2)$ correlation matrix becomes the binding constraint before the optimizer
+does, and at $16{,}000$ genes it alone occupies roughly two gigabytes in double
+precision. Genome-wide application therefore still benefits from the variance
+pre-filtering used here, though for the constrained objective the ceiling is set
+by memory for the correlation matrix rather than by the search.
+
+\begin{table}[!ht]
+\centering
+\caption{\textbf{Runtime scaling} (seconds per dataset, mean of three
+replicates). Recovery is unaffected by size across this range.}
+\label{tab:scaling}
+\IfFileExists{results/scaling_table.tex}{\input{results/scaling_table.tex}}{%
+\begin{tabular}{@{}l@{}}\hline
+\textit{Run experiments/scaling.py to populate this table.}\\\hline
+\end{tabular}}
+\end{table}
+
+\subsection*{Optimizer validation on geometric data: Iris}
+We include Iris not as a recovery benchmark---it is geometric rather than
+correlational, outside the correlation objective's domain---but to verify that
+the GA is a faithful, competent optimizer of \emph{any} geometric index it is
+given. It is: driven by \texttt{silhouette} it returns a partition with
+silhouette $\IrisGcmrkSil{}$, matching exactly the optimum found by k-means at
+$k=2$ ($\IrisKmTwoSil{}$), so the optimizer reaches the index's best value rather
+than a local one.
+
+That this partition has $k=\IrisSilK{}$ rather than three clusters is a property
+of the \emph{index}, not the optimizer: on Iris the three-species labelling has
+silhouette only $\IrisTrueSil{}$, \emph{below} both the two-cluster split
+($\IrisKmTwoSil{}$) and the best three-cluster k-means partition
+($\IrisKmThreeSil{}$), because \emph{versicolor} and \emph{virginica} overlap so
+heavily that merging them is geometrically cleaner (Fig~\ref{fig:iris}). No
+silhouette-maximizing method can return the three species here; \tool{} correctly
+returns what the criterion prefers (ARI $=\IrisSilARI{}$ against the species,
+matching k-means at the same $k$). The lesson is that the choice of criterion,
+not the optimizer, determines the answer, which is precisely the control \tool{}
+gives the user, and the reason the correlation objective matters for data where a
+geometric index would be the wrong question.
+
+\begin{figure}[!h]
+\caption{\textbf{Silhouette profile of the Iris clustering recovered by \tool{}.}
+Per-sample silhouette coefficients grouped by recovered cluster; the dashed line
+marks the mean. One cluster is cleanly separated (uniformly high silhouette)
+while the other two overlap, the expected structure for the Iris species.}
+\previewfig{iris_silhouette.pdf}
+\label{fig:iris}
+\end{figure}
+
+\subsection*{Empirical co-expression modules: breast cancer}
+We applied every method to the \EmpCompNTop{} most variable genes of
+GSE183947~\cite{Wang2021}, a breast-cancer RNA-seq dataset of \EmpSamples{}
+samples (30 tumours and 30 patient-matched adjacent-normal tissues), and scored
+the resulting partitions by four criteria, none of which uses the tumour label to
+fit anything (Table~\ref{tab:empcomp}, Fig~\ref{fig:empcomp}).
+
+The first criterion is the one the earlier literature, and an earlier version of
+this manuscript, relied on: whether module eigengenes separate tumour from normal
+tissue. It does not discriminate between methods. Every method produces modules
+whose eigengenes differ significantly between tissue types
+(Benjamini--Hochberg $q<0.05$), which is unsurprising given that the
+tumour/normal contrast dominates variation in this dataset; almost any partition
+of its most variable genes will recover some of it. We report this criterion for
+continuity with the literature while noting that it is close to unfalsifiable and
+should not be used to argue that one module detector is better than another.
+
+The remaining three criteria are more informative, and they do not favour any
+method decisively. Modules from \tool{} are as coherent as those from the
+alternatives (median within-module $\lvert r\rvert$ $\EmpCompLoglikCoh{}$ for the
+constrained objective and $\EmpCompFactorCoh{}$ for the factor model, against
+$\EmpCompWgcnaCoh{}$ for WGCNA and $\EmpCompLeidenCoh{}$ for Leiden), though this
+comparison slightly favours \tool{} by construction, since coherence is close to
+what the constrained objective maximizes. On functional enrichment---the
+criterion that asks whether a module corresponds to a recognizable biological
+programme---\tool{} enriches $\EmpCompLoglikEnr{}$ of $\EmpCompLoglikTested{}$
+tested modules against $\EmpCompLeidenEnr{}$ of $\EmpCompLeidenTested{}$ for
+Leiden and $\EmpCompWgcnaEnr{}$ of $\EmpCompWgcnaTested{}$ for WGCNA. The
+proportions favour \tool{}, but the counts are small enough that we draw no
+conclusion from them.
+
+Reproducibility is the criterion on which \tool{} does not lead. Splitting the
+samples in half, clustering each half independently and comparing the two
+partitions gives an adjusted Rand index of $\EmpCompLeidenSplit{}$ for Leiden
+against $\EmpCompLoglikSplit{}$ and $\EmpCompFactorSplit{}$ for the two \tool{}
+variants. That comparison is confounded, because \tool{} selects
+$\EmpCompLoglikK{}$ modules here where Leiden selects $\EmpCompLeidenK{}$, and
+agreement measured on finer partitions is systematically lower; but the confound
+does not favour us, and the honest summary is that \tool{}'s modules are not more
+stable than a resolution-based method's on this dataset. That \tool{} selects
+roughly three times as many modules as Leiden is itself consistent with the
+over-segmentation of the penalized correlation criterion documented above.
+
+Two further observations deserve recording. First, the factor model does
+\emph{not} outperform the constrained objective here, on any of the four criteria,
+despite leading on every synthetic process. With one dataset, \EmpSamples{}
+samples and differences this small we cannot say whether that reflects a genuine
+property of these data---modules that really are single-signal, where the extra
+flexibility only adds variance---or simply the limits of what this dataset can
+resolve. It does mean the synthetic advantage should not be assumed to transfer
+automatically to real expression data, and we do not claim that it does. Second,
+the absolute reproducibility of \emph{every} method is low
+($\text{ARI} \le \EmpCompLeidenSplit{}$), which is a statement about the dataset
+rather than the methods: with 30 samples per half, module structure among
+\EmpCompNTop{} highly variable genes is simply not sharply determined. A
+convincing demonstration that any of these methods recovers more biology than the
+others would need a substantially larger cohort, and we regard that as the main
+open item for this line of work.
+
+\begin{table}[!ht]
+\centering
+\caption{\textbf{Comparative analysis of GSE183947.} All methods applied to the
+same \EmpCompNTop{} most variable genes. ``assigned'' is the fraction of genes
+placed in a module (WGCNA leaves some in its grey module); ``GO-enriched
+modules'' counts modules with at least one \EmpCompLibrary{} term at adjusted
+$p<0.05$ against the analysed gene set as background; ``split-half ARI'' compares
+partitions fitted independently to two halves of the samples.}
+\label{tab:empcomp}
+\begin{adjustwidth}{-1.25in}{0in}
+\centering
+\IfFileExists{results/empirical_comparison.tex}{\input{results/empirical_comparison.tex}}{%
+\begin{tabular}{@{}l@{}}\hline
+\textit{Run experiments/empirical\_comparison.py to populate this table.}\\\hline
+\end{tabular}}
+\end{adjustwidth}
+\end{table}
+
+\begin{figure}[!h]
+\previewfig{empirical_comparison.pdf}
+\caption{\textbf{No method dominates on real data.} Median within-module
+correlation, fraction of modules with significant GO enrichment, and split-half
+reproducibility for each method on GSE183947. \tool{} (dark bars) leads on
+coherence and enrichment fraction and trails on reproducibility; none of the
+differences is large relative to what a single dataset of this size can resolve.}
+\label{fig:empcomp}
+\end{figure}
+
+\begin{figure}[!h]
+\caption{\textbf{Module eigengenes separate tumour from normal tissue.}
+Eigengene distributions (leading principal component of each module's expression
+across the \EmpSamples{} samples) for the \tool{} modules most associated with
+phenotype, split by tumour (T) and patient-matched normal (N) tissue; asterisks
+mark modules with a significant contrast (Benjamini--Hochberg $q<0.05$). Every
+method tested produces such modules, so this figure illustrates the output rather
+than discriminating between methods.}
+\previewfig{empirical_eigengenes.pdf}
+\label{fig:empirical}
+\end{figure}
+
+\subsection*{Visualizing cluster structure in reduced dimensions}
+To provide visual confirmation that the recovered modules occupy distinct regions
+of the space in which the objective operates, we embed each clustering result
+into two dimensions using PCA and correlation MDS
+($1 - \lvert\mathbf{R}\rvert$; see Methods).  On Synthetic-Easy the three
+recovered modules form well-separated clouds in both embeddings
+(Fig~\ref{fig:dimred_synth}), consistent with the perfect ARI.  On
+Synthetic-Hard, where noise and unequal module sizes degrade separation, PCA
+shows considerable overlap because co-expressed but anti-correlated genes are
+geometrically distant; the correlation MDS, which measures distance in the
+same absolute-correlation space as the objective, reveals clearer module
+boundaries.  For the empirical breast-cancer data, the correlation-MDS
+embedding of the \EmpKmodules{} modules shows that even on real gene expression
+data the recovered modules occupy coherent, distinguishable regions of
+correlation space (Fig~\ref{fig:dimred_emp}).  These visualizations are produced
+automatically by the software and are available to users for any dataset.
+
+\begin{figure}[!h]
+\caption{\textbf{Dimensionality-reduction visualization of synthetic
+clustering.} Recovered modules projected into two dimensions by PCA (left) and
+correlation MDS (right) on Synthetic-Easy.  Diamonds mark cluster centroids.
+The correlation-MDS embedding uses the distance space native to the
+correlation objective and shows clean separation.}
+\previewfig{dimred_synthetic_easy.pdf}
+\label{fig:dimred_synth}
+\end{figure}
+
+\begin{figure}[!h]
+\caption{\textbf{Dimensionality-reduction visualization of empirical modules.}
+The \EmpKmodules{} co-expression modules recovered from GSE183947 projected into
+two dimensions by PCA (left) and correlation MDS (right).  Module boundaries are
+more distinct in the correlation distance space, confirming that the objective
+captures structure beyond what Euclidean geometry reveals.}
+\previewfig{dimred_empirical.pdf}
+\label{fig:dimred_emp}
+\end{figure}
+
+\section*{Discussion}
+\tool{} reframes co-expression module detection as maximum-likelihood inference
+under an explicit generative model, and the value of making that model explicit
+is that it can be tested rather than assumed. The correlation criterion the field
+already uses is not a heuristic: it is, up to a constant and the sample-size
+factor, the profile log-likelihood of a block-diagonal one-factor Gaussian in
+which each module is driven by a single regulator with equal-magnitude $\pm$
+loadings \cite{bartholomew2011} (\nameref{S1_Appendix}). Writing it that way makes
+two constraints visible---one factor, equal magnitudes---and both can be relaxed
+within the same family. Doing so is what our results recommend: the free-loading
+factor model of Eq~\eqref{eq:factorblock} is at least as good as the constrained
+form on every process and every noise level we tested, and strictly better where
+the constraints bind. We therefore treat the factor model as the default and the
+absolute-correlation criterion as a fast, strongly constrained approximation to
+it---cheaper, requiring no rank selection, and adequate whenever modules really
+are driven by one regulator whose members respond comparably.
+
+That recommendation carries an important qualification. On the one empirical
+dataset we analyse, the factor model does not outperform the constrained form on
+any criterion we could apply, and it is markedly more expensive there than its
+per-evaluation cost on synthetic data suggests. We therefore state the
+recommendation exactly as far as our evidence supports it: the factor model is
+the better choice when there is reason to think module members respond at
+different strengths or to several regulators, the constrained form is a sensible
+default otherwise, and on real data of this size we could not distinguish them.
+Which regime real co-expression data typically occupy is an open question that
+larger cohorts would settle.
+
+The likelihood footing also explains why pairing
+either objective with a \emph{geometric} information criterion fails: those assume
+Euclidean-Gaussian clusters, which a correlation block model contradicts whenever
+modules contain anti-correlated genes.
+
+Given the model, the first contribution that matters in practice is optimization
+quality. Greedy agglomerative clustering on the correlation distance---the core
+of widely used co-expression pipelines---is a strong seed but a poor optimizer:
+once it merges two genes it can never separate them. Our replicated benchmark
+shows that hybridizing the GA with a memetic local search, which reassigns genes
+after the fact, surpasses hierarchical clustering and every contemporary
+alternative we tested at moderate noise. We are deliberate about the size of that
+claim. Measured against agglomerative clustering alone the margin is $0.14$ ARI;
+measured against oracle-tuned WGCNA, the strongest competitor, it is $0.03$, and
+at $\sigma=2.0$ that competitor overtakes us. A benchmark restricted to
+hierarchical clustering and k-means---the comparison the earlier literature on
+GA-based clustering has largely used---would have overstated the advantage by
+roughly fourfold. Where the margin is unambiguous is in the presence of
+unstructured genes, a situation any variance-filtered gene set presents, and we
+regard that as the more consequential practical result.
+
+The second contribution is a negative one that we think is more useful than
+another favourable table. By generating data from processes the model does not
+assume, we found two structural regimes---modules spanning several latent factors,
+and modules whose members carry systematically unequal loadings---in which
+maximizing the correlation likelihood moves away from the true partition. That
+this is misspecification rather than search failure is directly demonstrable: the
+optimizer returns partitions of higher likelihood than the ground truth. The
+diagnostic generalizes beyond this method. Any model-based clustering procedure
+can be interrogated the same way, by evaluating its own objective at a trusted
+reference partition; an objective that outscores the truth is misspecified for
+those data, and no amount of better search will help. Notably, distributional
+misspecification---non-Gaussian counts with a mean--variance trend---did not
+degrade performance, which suggests that practitioners should worry more about
+whether their modules are single-signal than about whether their data are normal.
+
+The third contribution follows from the second. Because the failure is
+attributable to a specific assumption---exchangeability of module members---it
+can be repaired by relaxing that assumption rather than abandoning the framework.
+The rank-$q$ free-loading block model does not merely recover the lost accuracy:
+with the rank selected from the data it leads every process we tested, including
+the two the exchangeable objective fails on, and it is the only variant that
+beats oracle-tuned WGCNA at the highest noise level. Because its parameter count
+scales with module size, its information criteria are comparable across ranks, so
+the rank is selected without supervision. It does not, however, help with
+selecting the number of modules: as Eq~\eqref{eq:factorparams} shows, its
+parameter count stops increasing with the module count at $q\ge2$, so the
+criterion that selects the rank so successfully cannot also select $K$. The two
+selection problems are not solved by the same penalty, and we recommend the
+factor objective only where $K$ is known or bounded.
+
+Limits remain, and two deserve emphasis. First, our penalized correlation
+criterion is not the best available way to choose the number of modules: a
+resolution-based community detector with no explicit model recovers the module
+count more reliably. The contribution here is a principled criterion within a
+likelihood framework, not a state-of-the-art model-selection procedure. Second,
+scaling is bounded by the $O(n^2)$ correlation matrix rather than by the search,
+so genome-wide application still benefits from pre-filtering. Natural extensions
+include shrinkage-regularized within-module covariance, correlation-aware
+crossover operators, and sketched or approximate correlation for very large $n$.
+
+Methodologically, \tool{} sits in the tradition of GA-based and multi-objective
+clustering~\cite{Maulik2000,Handl2007} but is distinguished by a co-expression
+objective with an explicit likelihood, a memetic optimizer that measurably
+outperforms the greedy clustering such pipelines rely on, and---unusually---a
+characterization of the conditions under which its own objective should not be
+used. We note that multi-objective search is not a remedy for the
+misspecification we identify: a Pareto front between two objectives helps only
+when at least one of them ranks the truth highly, and we found that graph
+modularity, the natural second objective, is itself misspecified on the same
+processes. Search strategy cannot repair a wrongly located optimum. As a
+practical complement, the built-in dimensionality-reduction tools (PCA and
+correlation MDS, with optional t-SNE and UMAP) let users inspect and communicate
+the recovered structure, with the correlation-MDS embedding particularly
+informative because it projects elements into the same distance space the
+objective operates in.
+
+\section*{Conclusion}
+We introduced \tool{}, a dependency-light Python tool that detects co-expression
+modules by maximizing the likelihood of an explicit block-diagonal Gaussian model
+with a memetic genetic algorithm. Treating a module as a correlation block with a
+$q$-factor structure and free loadings, and recovering the field's usual
+absolute-correlation criterion as the constrained $q=1$ equal-magnitude special
+case, puts both on one footing and makes the choice between them empirical rather
+than conventional. On that footing the free-loading model is the better default:
+it attains the best recovery of any method we tested at every informative noise
+level, leads on all six data-generating processes including the two where the
+constrained form fails outright, and selects its own rank from the data. The
+constrained criterion remains valuable as a fast approximation, and---because its
+penalty grows with the module count where the factor model's does not---it
+remains the appropriate tool for choosing how many modules there are.
+
+Making the generative model explicit also let us test it, and we regard the
+resulting negative results as part of the contribution rather than a caveat to
+it: we identify two structural regimes in which the constrained objective is
+misspecified, demonstrate that its optimizer there finds partitions scoring above
+the ground truth, and show that the factor model removes the failure; and we show
+that the criterion which selects the rank so reliably cannot select the number of
+modules, for a reason we make explicit. \tool{}'s largest and most robust
+practical advantage---isolating genes that belong to no module---is likewise a
+consequence of the model rather than of the search. The same engine generalizes
+to geometric indices and recovers phenotype-associated modules in breast-cancer
+RNA-seq. We suggest that reporting where a method's objective ceases to be
+appropriate, alongside where it succeeds, is more useful to practitioners than a
+benchmark in which it always wins. The software, documentation, and full
+reproduction scripts are openly available.
+
+\section*{Supporting information}
+
+\paragraph*{S1 Appendix.}
+\label{S1_Appendix}
+\textbf{Derivation of the correlation objective from the one-factor block model.}
+
+\emph{Model.} Each of the $d$ samples (columns of $\mathbf{X}$) is an
+independent draw $\mathbf{x}\sim N(\mathbf{0},\Sigma)$ over the $n$
+row-standardized genes, with $\Sigma$ block-diagonal by the partition. Within a
+module $s$ of size $n_s$, the equal-magnitude one-factor structure
+$x_g=\sigma_g f_s+\varepsilon_g$, $\sigma_g\in\{\pm\lambda_s\}$, induces a
+correlation matrix that, after absorbing the loading signs by a diagonal
+$\pm1$ similarity (which changes neither eigenvalues nor determinant), is the
+equicorrelation (compound-symmetry) matrix
+$\Sigma_{\mathrm{CS}}(\rho_s)=(1-\rho_s)I+\rho_s\,\mathbf{1}\mathbf{1}^{\!\top}$
+with $\rho_s=\lambda_s^2$. Its eigenvalues are $1+(n_s-1)\rho_s$ once and
+$1-\rho_s$ with multiplicity $n_s-1$, so
+$\log\det\Sigma_{\mathrm{CS}}(\rho_s)=\log[1+(n_s-1)\rho_s]+(n_s-1)\log(1-\rho_s)$.
+
+\emph{Profile likelihood.} For $d$ i.i.d. samples with sample correlation
+$\mathbf{S}_s$ the per-module Gaussian log-likelihood is
+$\ell_s(\rho)=-\tfrac{d}{2}\big[\log\det\Sigma_{\mathrm{CS}}(\rho)+\operatorname{tr}(\Sigma_{\mathrm{CS}}(\rho)^{-1}\mathbf{S}_s)+n_s\log 2\pi\big]$.
+Writing $P=\mathbf{u}^{\!\top}\mathbf{S}_s\mathbf{u}$ for the variance along the
+aligned direction $\mathbf{u}=\mathbf{s}/\sqrt{n_s}$ (sign vector $\mathbf{s}$),
+the two distinct eigenvalues of $\Sigma_{\mathrm{CS}}$ are matched at their ML
+values $\widehat{1+(n_s-1)\rho}=P$ and $\widehat{1-\rho}=(n_s-P)/(n_s-1)$,
+giving $\hat\rho_s=(P-1)/(n_s-1)$. With sign alignment
+$P=1+(n_s-1)\bar r_s$ where $\bar r_s$ is the mean off-diagonal $\lvert R\rvert$,
+hence $\hat\rho_s=\bar r_s=(C_s-n_s)/(n_s^2-n_s)$ (Eq~\eqref{eq:cs}). At the ML
+estimate the trace term collapses, $\operatorname{tr}(\Sigma_{\mathrm{CS}}(\hat\rho_s)^{-1}\mathbf{S}_s)=n_s$,
+so
+$\ell_s=-\tfrac{d}{2}\log\det\Sigma_{\mathrm{CS}}(\hat\rho_s)-\tfrac{d}{2}n_s(1+\log 2\pi)$.
+
+\emph{Objective.} Summing over modules, the second term is
+$-\tfrac{d}{2}(1+\log 2\pi)\sum_s n_s$, a constant (total genes fixed). The
+partition-dependent part is
+$-\tfrac{d}{2}\sum_s\log\det\Sigma_{\mathrm{CS}}(\hat\rho_s)=d\,\mathcal{L}(\boldsymbol{\ell})$,
+which is exactly $d$ times Eq~\eqref{eq:loglik} after substituting
+$\hat\rho_s=(C_s-n_s)/(n_s^2-n_s)$ into the eigenvalue expression. The project's
+objective is therefore the maximum log-likelihood of the model up to an additive
+constant and the factor $d$, and the per-module summand diverges to $+\infty$ as
+$C_s\to n_s^2$ ($\rho_s\to1$, a perfectly correlated module); we cap this at a
+large finite value to keep the optimizer well-behaved.
+
+\emph{Model selection.} The $K$-module model has $K$ free coherence parameters
+over $d$ samples, giving $\mathrm{BIC}=-2d\mathcal{L}+K\log d$ and
+$\mathrm{AIC}=-2d\mathcal{L}+2K$ (Eq~\eqref{eq:loglikic}). Because the likelihood
+carries the factor $d$ and the penalty does not, the criteria license more
+modules as the number of samples grows, as required.
+
+\emph{Rank selection for the factor block model.} The factor model of
+Eq~\eqref{eq:factorblock} has $p_m = n_m q - q(q-1)/2 + 1$ free parameters per
+module, so $\mathrm{BIC}=-2d\mathcal{L}^{\text{factor}}+\log(d)\sum_m p_m$ and
+$\mathrm{AIC}=-2d\mathcal{L}^{\text{factor}}+2\sum_m p_m$. Because the parameter
+count depends on $q$, these are comparable across ranks and can be used to select
+$q$. Evaluated at the planted partition, BIC recovers the generating rank on every
+process we tested ($q=1$ for one-factor and hub designs, $q=3$ for the
+three-factor design), whereas AIC selects one rank too many on the three-factor
+design; we therefore recommend BIC. In practice the rank is selected by running
+the optimizer once per candidate rank and keeping the lowest-BIC fit, which
+attained the same recovery as the best rank chosen with knowledge of the truth on
+every process.
+
+\paragraph*{S1 File.}
+\label{S1_File}
+\textbf{Reproduction package.} For convenience, a compressed version of the repository is shared as a companion to the paper (although it is also available through GitHub and Zenodo). It contains the source code, the benchmark driver (\texttt{experiments/run\_experiments.py}), and the generated results tables and figures.
+
+\section*{Data and Software Availability}
+All source code for the \tool{} package, along with the reproduction scripts to generate the results and figures presented in this manuscript, is publicly available under an open-source license on GitHub at \url{https://github.com/luismadrigal98/GCM-MRK}. To ensure long-term reproducibility, a persistent snapshot of the codebase at the time of submission has been archived on Zenodo (DOI: 10.5281/zenodo.21361265). The empirical breast cancer RNA-seq dataset (GSE183947) analyzed in this study is publicly available from the NCBI Gene Expression Omnibus (GEO).
+
+\section*{Acknowledgments}
+We thank all the class of Simulation in Python offered in the University of Kansas, where all this project of evolving solutions using evolutionary algorithms (the simulation bit) started.

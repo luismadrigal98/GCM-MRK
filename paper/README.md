@@ -1,7 +1,28 @@
 # GCM-MRK paper
 
 LaTeX source and reproduction code for the GCM-MRK methodological paper,
-formatted for *PLOS Computational Biology* using the official PLOS template.
+targeting **PeerJ**.
+
+> **Status (2026-09-01):** desk-rejected by PLOS Comp Biol (2026-08-29) for
+> lacking a state-of-the-art comparison. That comparison now exists, along with a
+> model-misspecification analysis, a fix (the rank-q factor model), a scaling
+> study and a comparative empirical analysis. **Venue: PeerJ.**
+
+## Two wrappers, one manuscript
+
+The scientific content lives in shared files that both venue wrappers include, so
+the two cannot drift apart:
+
+| file | contents |
+|---|---|
+| `gcmrk_macros.tex` | `\tool`, `\previewfig`, and all `\InputIfFileExists` of generated results |
+| `gcmrk_abstract.tex` | abstract body (no sectioning command) |
+| `gcmrk_authorsummary.tex` | PLOS-only author summary |
+| `gcmrk_body.tex` | Introduction through Acknowledgments |
+| **`gcmrk_paper_peerj.tex`** | **PeerJ wrapper (`wlpeerj.cls`) — the submission target** |
+| `gcmrk_paper.tex` | PLOS wrapper, retained for reference |
+
+Build either with the usual `pdflatex / bibtex / pdflatex / pdflatex` cycle.
 
 ## Files
 
@@ -51,24 +72,57 @@ refresh the paper after changing the analysis: re-run the experiments (or
 
 ## Experiments
 
-- `experiments/decisive.py` — the replicated benchmark (30 seeds): noise sweep
-  (memetic vs ablation vs hierarchical avg/complete vs k-means), model selection
-  with unknown k, and noise-gene robustness. Writes `results/decisive.json`,
-  `results/perf_table.tex`, `results/modelsel_table.tex`,
-  `results/decisive_macros.tex`, and `figures/perf_vs_noise.pdf`,
-  `figures/ablation.pdf`.
+Run each from the repo root with `PYTHONPATH=.`, then compile. The first three
+are the originals; the last three were added for the 2026-08 revision and
+provide the state-of-the-art comparison, the misspecification analysis and the
+scaling table.
+
+- `experiments/decisive.py` — the original replicated benchmark (30 seeds):
+  noise sweep (memetic vs ablation vs hierarchical avg/complete vs k-means),
+  model selection with unknown k, and noise-gene robustness. Superseded for the
+  manuscript's main table by `benchmark_baselines.py`, but retained because it
+  is far cheaper to run.
 - `experiments/run_experiments.py` — single-dataset illustrative table, the
   generative-model figures (convergence, model selection, Pareto), Iris, and the
-  GSE183947 empirical analysis (BH-corrected). Writes `results/benchmark*.{csv,json}`,
-  `results/results_macros.tex`, `results/benchmark_table.tex`,
-  `results/empirical_table.tex`, and the corresponding figures.
+  GSE183947 empirical analysis (BH-corrected).
+- `experiments/iris_validation.py` — Iris as optimizer validation.
 
-- `experiments/iris_validation.py` — Iris as optimizer validation: writes
-  `results/iris_macros.tex` with the silhouette values showing GCM-MRK reaches the
-  k-means k=2 optimum and that the true 3-species labelling has a lower silhouette
-  (so the k=2 outcome is the index's doing, not the optimizer's).
+- `experiments/baselines.py` — **not a driver**; wraps the competing methods
+  (Leiden, Louvain, spectral, MCL, and real WGCNA via `Rscript`) behind one
+  signature, plus the fairness protocol (resolution/inflation bisected to the
+  true k; WGCNA reported at default *and* oracle-tuned settings).
+- `experiments/simulators.py` — **not a driver**; the five data-generating
+  processes that violate the one-factor block model (multi-factor, hub,
+  overlapping, negative-binomial counts, LFR network).
+- `experiments/benchmark_baselines.py` — the manuscript's main comparison
+  (~2.5 h). Writes `results/baselines.json`, `results/baselines_table.tex`,
+  `results/baselines_modelsel.tex`, `results/baselines_macros.tex` and
+  `figures/baselines_vs_noise.pdf`.
+- `experiments/misspecification.py` — recovery under model misspecification
+  (~1 h per noise level). Run **twice**, tagged, because difficulty varies by
+  generator and sigma=1.5 is the discriminating level:
 
-Run all three from the repo root with `PYTHONPATH=.`, then compile.
+  ```bash
+  PYTHONPATH=. python3 paper/experiments/misspecification.py --noise 1.0 --tag _n10
+  PYTHONPATH=. python3 paper/experiments/misspecification.py --noise 1.5 --tag _n15
+  ```
+
+  The manuscript inputs the `_n15` set. `--generators a,b` restricts the sweep.
+- `experiments/scaling.py` — runtime and ARI vs gene count (~20 min). **Run it
+  on an otherwise idle machine**: concurrent jobs distort the timings badly
+  enough to change the fitted growth exponent. Note the table reports the
+  *constrained* objective; the factor model is far more expensive on real data
+  (300 genes: 14 s vs 463 s).
+- `experiments/empirical_comparison.py` — GSE183947 comparison of all methods by
+  coherence, GO enrichment (Enrichr, needs network), phenotype association and
+  split-half reproducibility (~5 min at `--n-top 200`).
+
+### Extra dependencies for the new experiments
+
+The package itself still depends only on NumPy/SciPy/pandas. The benchmark
+harness additionally needs `scikit-learn`, `python-igraph`, `leidenalg`,
+`markov_clustering`, `matplotlib`, and an R installation with `WGCNA`. A
+virtualenv at the repo root (`.venv`) holds the Python side.
 
 ## Status / TODO
 
@@ -79,5 +133,15 @@ Run all three from the repo root with `PYTHONPATH=.`, then compile.
 - [x] Iris generality benchmark
 - [x] Empirical dataset 1: GSE183947, BH-corrected module-phenotype association
 - [x] Auto-generated, re-runnable results macros/tables/figures
+- [x] Comparison against Leiden/Louvain/spectral/MCL/WGCNA with a fairness
+      protocol, paired Wilcoxon tests (2026-08 revision)
+- [x] Model-misspecification analysis over six data-generating processes
+- [x] Rank-q free-loading factor block model with BIC rank selection
+- [x] Runtime scaling table
 - [ ] Empirical dataset 2 (a second set to be added)
+- [x] Comparative empirical analysis on GSE183947 (coherence, GO enrichment,
+      split-half reproducibility) — **result is a wash; reported as such**
 - [ ] Real citation for GSE183947; finalise author list and affiliations
+- [x] Venue decided (PeerJ) and ported to `wlpeerj.cls`
+- [ ] Larger empirical cohort — the single 60-sample dataset cannot separate the
+      methods, which is the main open item

@@ -1,0 +1,38 @@
+% Abstract body only (no sectioning command): PLOS wraps it in \section*,
+% PeerJ in the abstract environment.
+Gene co-expression analyses identify ``good'' modules by a correlation criterion,
+yet standard pipelines detect modules with greedy algorithms that optimize other
+quantities and only measure correlation afterwards. We present Genetic Clustering
+by Metric (\tool{}), an open-source Python tool that closes this gap by treating
+module detection as maximum-likelihood inference under an explicit generative
+model and solving it globally. A module is a block of the correlation matrix
+following a $q$-factor structure with free loadings; the widely used
+absolute-correlation criterion is recovered as the constrained special case in
+which $q=1$ and all loadings share a magnitude, so the two sit in one nested
+family rather than competing. \tool{} maximizes the likelihood with a memetic
+genetic algorithm---a population search hybridized with a greedy refinement that
+reassigns genes after the fact, a move the agglomerative clustering at the core of
+co-expression pipelines cannot make---and selects the factor rank from the data by
+BIC. Against a full set of contemporary module detectors---Leiden, Louvain,
+spectral clustering, Markov clustering and WGCNA, each given the true number of
+modules or tuned against ground truth---\tool{} attains the best recovery at every
+noise level tested (ARI $\FactorAutoHardARI{}$ at $\sigma=1.5$ and
+$\FactorAutoExtremeARI{}$ at $\sigma=2.0$, against $\WgcnaOraHardARI{}$ and
+$\WgcnaOraExtremeARI{}$ for oracle-tuned WGCNA, \NSeeds{} datasets), and it
+isolates unstructured genes far better than any competitor (ARI
+$\NoiseGeneMemeticARI{}$ versus $\NoiseGeneLeidenARI{}$ for Leiden). Because the
+model is explicit we can also ask when it is wrong: across \MisspecTotal{}
+data-generating processes that violate different assumptions the factor model
+leads on all \MisspecTotal{}, whereas the constrained special case leads on
+\MisspecWins{} and fails outright where modules are not driven by a single
+dominant signal---on multi-factor modules it recovers ARI $\MisspecMultiFacGCM{}$
+against $\MisspecMultiFacFactor{}$ for the free-loading model. We show this
+failure is misspecification rather than search failure, because the optimizer
+finds partitions of \emph{higher} likelihood than the ground truth. The
+constrained model remains useful as a fast approximation and, unlike the factor
+model, its penalty can select the number of modules. On a breast-cancer RNA-seq
+dataset the methods prove hard to separate, and we report that the synthetic
+advantage does not demonstrably transfer at that sample size. \tool{} depends only on NumPy and SciPy and exposes one swappable-metric
+interface with single- and multi-objective modes; the constrained objective
+scales to $\ScaleMaxGenes{}$ genes in $\ScaleMaxSeconds{}$~s, while the factor
+model is best suited to gene sets of hundreds to low thousands.

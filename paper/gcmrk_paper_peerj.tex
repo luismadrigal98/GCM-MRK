@@ -1,0 +1,49 @@
+%% GCM-MRK manuscript, PeerJ submission format.
+%%
+%% The scientific content lives in the shared files gcmrk_macros.tex,
+%% gcmrk_abstract.tex and gcmrk_body.tex, which this wrapper and the PLOS
+%% wrapper (gcmrk_paper.tex) both include -- so the two versions cannot drift
+%% apart.  Only the preamble, title block and front matter differ.
+%%
+%% Remove the `lineno' option for a camera-ready submission.
+
+\documentclass[fleqn,10pt,lineno]{wlpeerj}
+
+% Packages the shared body needs that wlpeerj does not already load.
+\usepackage{changepage}   % \begin{adjustwidth} around wide tables
+\usepackage{url}
+\usepackage{rotating}
+\usepackage[colorlinks=true,allcolors=blue]{hyperref}   % \nameref
+
+\title{\texorpdfstring{\tool{}}{GCM}: metric-guided clustering by genetic
+       algorithm for correlation-defined modules}
+
+\author[1]{Luis Javier Madrigal-Roca}
+\author[1]{John K. Kelly}
+\affil[1]{Department of Ecology and Evolutionary Biology, University of Kansas,
+          Lawrence, Kansas, United States of America}
+\corrauthor[1]{Luis Javier Madrigal-Roca}{madrigalrocalj@yahoo.com}
+
+% This wlpeerj.cls predates \keywords (v1.2+); PeerJ collects keywords through
+% the submission system, so they are recorded here as a comment only:
+% clustering, genetic algorithm, gene co-expression, gene modules,
+% model misspecification
+
+% Shared with the PLOS wrapper (gcmrk_paper.tex).
+\input{gcmrk_macros}
+
+\begin{abstract}
+\input{gcmrk_abstract}
+\end{abstract}
+
+\begin{document}
+
+\flushbottom
+\maketitle
+\thispagestyle{empty}
+
+\input{gcmrk_body}
+
+\bibliography{references}
+
+\end{document}
