@@ -44,7 +44,7 @@ import matplotlib.pyplot as plt
 
 from sklearn.metrics import adjusted_rand_score as ARI
 
-from gcmrk import cluster, simulate_modular_data
+from gcmrk import cluster, cluster_factor_auto, simulate_modular_data
 from gcmrk.data import normalize_data, pearson_correlation
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -98,8 +98,12 @@ GEN_LABELS = {
     "network": "network GMRF (LFR)",
 }
 
+#: candidate ranks for the factor branch; BIC picks among them per dataset
+FACTOR_RANKS = (1, 2, 3)
+
 METHOD_LABELS = {
     "memetic": "\\tool{} (memetic)",
+    "factor_auto": "\\tool{} (\\texttt{loglik\\_factor}, rank by BIC)",
     "hier_avg": "hierarchical (average)",
     "kmeans": "k-means",
     "spectral": "spectral",
@@ -109,8 +113,8 @@ METHOD_LABELS = {
     "wgcna_oracle": "WGCNA (oracle-tuned)",
 }
 
-METHOD_ORDER = ["memetic", "hier_avg", "kmeans", "spectral", "louvain",
-                "leiden", "mcl", "wgcna_oracle"]
+METHOD_ORDER = ["memetic", "factor_auto", "hier_avg", "kmeans", "spectral",
+                "louvain", "leiden", "mcl", "wgcna_oracle"]
 
 KNOWN_K = {
     "hier_avg": B.hierarchical_average,
@@ -141,6 +145,7 @@ def run_generator(name, n_seeds, noise):
     dataset rather than a nominal constant.
     """
     per_method = {m: [] for m in METHOD_ORDER}
+    ranks_picked = []
     ks, contrasts = [], []
 
     datasets = []
@@ -164,6 +169,9 @@ def run_generator(name, n_seeds, noise):
 
         per_method["memetic"].append(
             ARI(t, cluster(X, targets=["loglik"], g_max=k_true, **GA).labels))
+        fa = cluster_factor_auto(X, ranks=FACTOR_RANKS, g_max=k_true, **GA)
+        per_method["factor_auto"].append(ARI(t, fa.labels))
+        ranks_picked.append(int(fa.scores["factor_rank"]))
         for m, fn in KNOWN_K.items():
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
@@ -172,7 +180,8 @@ def run_generator(name, n_seeds, noise):
         lab, _ = B.wgcna_oracle(wg[i], t, ARI)
         per_method["wgcna_oracle"].append(ARI(t, lab))
 
-    return {"ari": per_method, "k_true": ks, "contrast": contrasts}
+    return {"ari": per_method, "k_true": ks, "contrast": contrasts,
+            "factor_rank": ranks_picked}
 
 
 # --------------------------------------------------------------------------- #
@@ -203,13 +212,23 @@ def write_latex(data):
     M = ""
     short = {"onefactor": "OneFac", "multifactor": "MultiFac", "hub": "Hub",
              "overlapping": "Overlap", "counts": "Counts", "network": "Network"}
+    # "best rival" means the best *competing* method: both of our own arms are
+    # excluded, so the manuscript never reports GCM as its own strongest rival.
+    ours = {"memetic", "factor_auto"}
     n_wins = 0
     for g in gens:
         gm, _ = ms(res[g]["ari"]["memetic"])
-        rival = max((ms(res[g]["ari"][m])[0], m) for m in METHOD_ORDER if m != "memetic")
+        rival = max((ms(res[g]["ari"][m])[0], m)
+                    for m in METHOD_ORDER if m not in ours)
         M += f"\\newcommand{{\\Misspec{short[g]}GCM}}{{{gm:.2f}}}\n"
         M += f"\\newcommand{{\\Misspec{short[g]}Best}}{{{rival[0]:.2f}}}\n"
         M += f"\\newcommand{{\\Misspec{short[g]}BestName}}{{{METHOD_LABELS[rival[1]]}}}\n"
+        if "factor_auto" in res[g]["ari"]:
+            fa, _ = ms(res[g]["ari"]["factor_auto"])
+            M += f"\\newcommand{{\\Misspec{short[g]}Factor}}{{{fa:.2f}}}\n"
+        if g in res and "factor_rank" in res[g]:
+            M += (f"\\newcommand{{\\Misspec{short[g]}Rank}}"
+                  f"{{{np.mean(res[g]['factor_rank']):.1f}}}\n")
         if gm >= rival[0]:
             n_wins += 1
     M += f"\\newcommand{{\\MisspecWins}}{{{n_wins}}}\n"
@@ -221,7 +240,8 @@ def write_latex(data):
 def fig_misspec(data):
     res = data["results"]
     gens = [g for g in GEN_ORDER if g in res]
-    show = ["memetic", "hier_avg", "spectral", "leiden", "wgcna_oracle", "kmeans"]
+    show = ["memetic", "factor_auto", "hier_avg", "spectral", "leiden",
+            "wgcna_oracle"]
 
     fig, ax = plt.subplots(figsize=(7.2, 3.4))
     x = np.arange(len(gens))
@@ -275,7 +295,9 @@ def main():
         line = f"{METHOD_LABELS[m].replace(chr(92) + 'tool{}', 'GCM-MRK'):28s}"
         line += "".join(f"{ms(results[g]['ari'][m])[0]:12.3f}" for g in gens)
         print(line)
-    print(f"\n{'contrast (within-between |r|)':28s}"
+    print(f"\n{'factor rank picked (mean)':28s}"
+          + "".join(f"{np.mean(results[g]['factor_rank']):12.1f}" for g in gens))
+    print(f"{'contrast (within-between |r|)':28s}"
           + "".join(f"{np.mean(results[g]['contrast']):12.3f}" for g in gens))
     print(f"{'planted k (mean)':28s}"
           + "".join(f"{np.mean(results[g]['k_true']):12.1f}" for g in gens))

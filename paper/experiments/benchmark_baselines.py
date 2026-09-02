@@ -57,7 +57,7 @@ from scipy.cluster.hierarchy import fcluster, linkage
 from scipy.spatial.distance import squareform
 from sklearn.metrics import adjusted_rand_score as ARI
 
-from gcmrk import cluster, simulate_modular_data
+from gcmrk import cluster, cluster_factor_auto, simulate_modular_data
 from gcmrk.data import normalize_data, pearson_correlation
 from gcmrk.metrics import loglik_aic
 
@@ -88,8 +88,12 @@ KNOWN_K_METHODS = {
     "mcl": B.mcl,
 }
 
+#: candidate ranks for the factor branch; BIC picks among them per dataset
+FACTOR_RANKS = (1, 2, 3)
+
 LABELS = {
     "memetic": "\\tool{} (memetic)",
+    "factor_auto": "\\tool{} (\\texttt{loglik\\_factor}, rank by BIC)",
     "no_local": "\\tool{} (no local search)",
     "hier_avg": "hierarchical (average)",
     "hier_comp": "hierarchical (complete)",
@@ -102,8 +106,9 @@ LABELS = {
     "wgcna_oracle": "WGCNA (oracle-tuned)",
 }
 
-ORDER = ["memetic", "no_local", "hier_avg", "hier_comp", "kmeans", "spectral",
-         "louvain", "leiden", "mcl", "wgcna_default", "wgcna_oracle"]
+ORDER = ["memetic", "factor_auto", "no_local", "hier_avg", "hier_comp",
+         "kmeans", "spectral", "louvain", "leiden", "mcl",
+         "wgcna_default", "wgcna_oracle"]
 
 
 # --------------------------------------------------------------------------- #
@@ -157,6 +162,9 @@ def exp_noise_sweep(n_seeds, noise_levels):
 
             out["memetic"][noise].append(
                 ARI(t, cluster(X, targets=["loglik"], g_max=K_TRUE, **GA).labels))
+            out["factor_auto"][noise].append(
+                ARI(t, cluster_factor_auto(X, ranks=FACTOR_RANKS,
+                                           g_max=K_TRUE, **GA).labels))
             out["no_local"][noise].append(
                 ARI(t, cluster(X, targets=["loglik"], g_max=K_TRUE,
                                local_search=False, **GA).labels))
@@ -176,8 +184,8 @@ def exp_noise_sweep(n_seeds, noise_levels):
 
 def exp_model_selection(n_seeds, noise=1.5, g_max=10):
     """Every method runs free: no ground-truth k, no oracle tuning."""
-    names = ["memetic_aic", "hier_avg_sel", "louvain_free", "leiden_free",
-             "mcl_free", "wgcna_default"]
+    names = ["memetic_aic", "factor_bic_sel", "hier_avg_sel", "louvain_free",
+             "leiden_free", "mcl_free", "wgcna_default"]
     rows = {m: {"k": [], "ari": []} for m in names}
 
     datasets = [make_data(noise, s) for s in range(n_seeds)]
@@ -190,6 +198,12 @@ def exp_model_selection(n_seeds, noise=1.5, g_max=10):
         r = cluster(X, targets=["loglik_aic"], g_max=g_max, **GA)
         rows["memetic_aic"]["k"].append(_nk(r.labels))
         rows["memetic_aic"]["ari"].append(ARI(t, r.labels))
+
+        # does the factor model's size-scaled parameter count fix the
+        # over-segmentation that loglik_aic shows?
+        fa = cluster_factor_auto(X, ranks=FACTOR_RANKS, g_max=g_max, **GA)
+        rows["factor_bic_sel"]["k"].append(_nk(fa.labels))
+        rows["factor_bic_sel"]["ari"].append(ARI(t, fa.labels))
 
         lab = hierarchical_select(cor, N_SAMPLES, g_max, "average")
         rows["hier_avg_sel"]["k"].append(_nk(lab))
@@ -255,6 +269,7 @@ def write_latex(data):
 
     msel = data["model_selection"]
     mlabel = {"memetic_aic": "\\tool{} (\\texttt{loglik\\_aic})",
+              "factor_bic_sel": "\\tool{} (\\texttt{loglik\\_factor\\_bic}, rank by BIC)",
               "hier_avg_sel": "hierarchical + penalized cut",
               "louvain_free": "Louvain (default resolution)",
               "leiden_free": "Leiden (default resolution)",
@@ -262,8 +277,8 @@ def write_latex(data):
               "wgcna_default": "WGCNA (default settings)"}
     mrows = ["\\begin{tabular}{@{}lrr@{}}", "\\hline",
              "Method & $k$ recovered & ARI \\\\", "\\hline"]
-    for m in ["memetic_aic", "hier_avg_sel", "louvain_free", "leiden_free",
-              "mcl_free", "wgcna_default"]:
+    for m in ["memetic_aic", "factor_bic_sel", "hier_avg_sel", "louvain_free",
+              "leiden_free", "mcl_free", "wgcna_default"]:
         km, ks = ms(msel[m]["k"])
         am, asd = ms(msel[m]["ari"])
         mrows.append(f"{mlabel[m]} & {km:.1f}$\\pm${ks:.1f} & {am:.2f}$\\pm${asd:.2f} \\\\")
@@ -271,7 +286,7 @@ def write_latex(data):
     (RESULTS / "baselines_modelsel.tex").write_text("\n".join(mrows) + "\n")
 
     M = ""
-    macro_name = {"spectral": "Spectral", "louvain": "Louvain", "leiden": "Leiden",
+    macro_name = {"factor_auto": "FactorAuto", "spectral": "Spectral", "louvain": "Louvain", "leiden": "Leiden",
                   "mcl": "MCL", "wgcna_default": "WgcnaDef", "wgcna_oracle": "WgcnaOra"}
     for m, nm in macro_name.items():
         M += _mac(f"{nm}HardARI", f"{cell(m, 1.5)[0]:.2f}")
@@ -284,9 +299,20 @@ def write_latex(data):
     (RESULTS / "baselines_macros.tex").write_text(M)
 
 
+def _series(sweep, m, nl):
+    """Fetch one cell, tolerating float or string keys.
+
+    Keys are floats in a live run but become strings after a JSON round-trip, so
+    the figure can be regenerated from ``baselines.json`` without a rerun.
+    """
+    cell = sweep[m]
+    return cell[nl] if nl in cell else cell[str(nl)]
+
+
 def fig_vs_noise(sweep, nls):
     style = {
         "memetic": ("GCM-MRK (memetic)", "o-", "C0"),
+        "factor_auto": ("GCM-MRK (loglik_factor, BIC rank)", "h-", "C3"),
         "no_local": ("GCM-MRK (no local search)", "s--", "C1"),
         "hier_avg": ("hierarchical (average)", "^-", "C2"),
         "kmeans": ("k-means", "d-", "C4"),
@@ -298,8 +324,8 @@ def fig_vs_noise(sweep, nls):
     }
     fig, ax = plt.subplots(figsize=(5.6, 3.6))
     for m, (lab, ls, c) in style.items():
-        mean = np.array([np.mean(sweep[m][nl]) for nl in nls])
-        sd = np.array([np.std(sweep[m][nl]) for nl in nls])
+        mean = np.array([np.mean(_series(sweep, m, nl)) for nl in nls])
+        sd = np.array([np.std(_series(sweep, m, nl)) for nl in nls])
         ax.plot(nls, mean, ls, color=c, label=lab, lw=1.5, ms=4)
         ax.fill_between(nls, mean - sd, mean + sd, color=c, alpha=0.10)
     ax.set_xlabel("noise level $\\sigma$")
