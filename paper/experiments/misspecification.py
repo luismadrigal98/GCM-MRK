@@ -114,8 +114,8 @@ METHOD_LABELS = {
 }
 
 FIG_LABELS = {
-    "memetic": "GCM-MRK (memetic)",
-    "factor_auto": "GCM-MRK (loglik_factor, BIC rank)",
+    "memetic": "GCM (memetic)",
+    "factor_auto": "GCM (loglik_factor, BIC rank)",
     "hier_avg": "hierarchical (average)",
     "kmeans": "k-means",
     "spectral": "spectral",
@@ -234,13 +234,18 @@ def write_latex(data):
                     for m in METHOD_ORDER if m not in ours)
         M += f"\\newcommand{{\\Misspec{short[g]}GCM}}{{{gm:.2f}}}\n"
         M += f"\\newcommand{{\\Misspec{short[g]}Best}}{{{rival[0]:.2f}}}\n"
-        M += f"\\newcommand{{\\Misspec{short[g]}BestName}}{{{METHOD_LABELS[rival[1]]}}}\n"
+        # prose form, so the name reads naturally inside a sentence
+        prose = {"wgcna_oracle": "oracle-tuned WGCNA"}.get(rival[1], METHOD_LABELS[rival[1]])
+        M += f"\\newcommand{{\\Misspec{short[g]}BestName}}{{{prose}}}\n"
         if "factor_auto" in res[g]["ari"]:
             fa, _ = ms(res[g]["ari"]["factor_auto"])
             M += f"\\newcommand{{\\Misspec{short[g]}Factor}}{{{fa:.2f}}}\n"
         if g in res and "factor_rank" in res[g]:
-            M += (f"\\newcommand{{\\Misspec{short[g]}Rank}}"
-                  f"{{{np.mean(res[g]['factor_rank']):.1f}}}\n")
+            # ranks are integers; print one only when every seed agreed
+            ranks = res[g]["factor_rank"]
+            r = (f"{ranks[0]}" if len(set(ranks)) == 1
+                 else f"{np.mean(ranks):.1f} on average")
+            M += f"\\newcommand{{\\Misspec{short[g]}Rank}}{{{r}}}\n"
         if gm >= rival[0]:
             n_wins += 1
     M += f"\\newcommand{{\\MisspecWins}}{{{n_wins}}}\n"

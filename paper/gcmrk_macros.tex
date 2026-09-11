@@ -29,32 +29,32 @@
 \providecommand{\EasyGenes}{75}\providecommand{\EasySamples}{80}
 \providecommand{\EasyWithinR}{0.66}\providecommand{\EasyBetweenR}{0.07}
 \providecommand{\HardGenes}{100}\providecommand{\HardSamples}{50}
-\providecommand{\HardWithinR}{0.32}\providecommand{\HardBetweenR}{0.12}
+\providecommand{\HardWithinR}{0.33}\providecommand{\HardBetweenR}{0.12}
 \providecommand{\IrisSamples}{150}\providecommand{\IrisFeatures}{4}
 \providecommand{\EasyLoglikARI}{1.00}\providecommand{\EasyKmeansARI}{0.22}
-\providecommand{\HardLoglikARI}{0.89}\providecommand{\HardKmeansARI}{0.27}
-\providecommand{\EasyLooseK}{6}\providecommand{\HardLooseK}{9}
+\providecommand{\HardLoglikARI}{0.99}\providecommand{\HardKmeansARI}{0.27}
+\providecommand{\EasyLooseK}{3}\providecommand{\HardLooseK}{6}
 \providecommand{\EasyAicK}{3}\providecommand{\EasyAicARI}{1.00}
 \providecommand{\EasyBicK}{3}\providecommand{\EasyBicARI}{1.00}
-\providecommand{\HardAicK}{5}\providecommand{\HardAicARI}{0.84}
-\providecommand{\HardBicK}{2}\providecommand{\HardBicARI}{0.34}
-\providecommand{\ScanHardKaic}{4}\providecommand{\ScanHardKbic}{2}
-\providecommand{\IrisKmeansARI}{0.89}
+\providecommand{\HardAicK}{6}\providecommand{\HardAicARI}{0.90}
+\providecommand{\HardBicK}{6}\providecommand{\HardBicARI}{0.90}
+\providecommand{\ScanHardKaic}{6}\providecommand{\ScanHardKbic}{6}
+\providecommand{\IrisKmeansARI}{0.59}
 \providecommand{\IrisSilK}{2}\providecommand{\IrisSilARI}{0.57}
 \providecommand{\IrisCHK}{2}\providecommand{\IrisCHARI}{0.57}
 \providecommand{\EmpFullGenes}{20246}\providecommand{\EmpSamples}{60}
-\providecommand{\EmpNtop}{200}\providecommand{\EmpKmodules}{8}
-\providecommand{\EmpNmodules}{8}\providecommand{\EmpWithinR}{0.53}
-\providecommand{\EmpBgR}{0.31}\providecommand{\EmpNsig}{0}
+\providecommand{\EmpNtop}{200}\providecommand{\EmpKmodules}{12}
+\providecommand{\EmpNmodules}{12}\providecommand{\EmpWithinR}{0.59}
+\providecommand{\EmpBgR}{0.31}\providecommand{\EmpNsig}{7}
 
 % Decisive multi-seed benchmark macros.
 \InputIfFileExists{results/decisive_macros.tex}{}{}
 \providecommand{\NSeeds}{30}
-\providecommand{\MemeticHardARI}{0.94}\providecommand{\NoLocalHardARI}{0.86}
-\providecommand{\HierAvgHardARI}{0.78}\providecommand{\KmeansHardARI}{0.31}
-\providecommand{\MemeticSelK}{5.5}\providecommand{\MemeticSelARI}{0.90}
-\providecommand{\HierSelK}{4.0}\providecommand{\HierSelARI}{0.75}
-\providecommand{\NoiseGeneMemeticARI}{0.85}\providecommand{\NoiseGeneHierARI}{0.60}
+\providecommand{\MemeticHardARI}{0.94}\providecommand{\NoLocalHardARI}{0.88}
+\providecommand{\HierAvgHardARI}{0.80}\providecommand{\KmeansHardARI}{0.31}
+\providecommand{\MemeticSelK}{6.7}\providecommand{\MemeticSelARI}{0.87}
+\providecommand{\HierSelK}{7.5}\providecommand{\HierSelARI}{0.83}
+\providecommand{\NoiseGeneMemeticARI}{0.96}\providecommand{\NoiseGeneHierARI}{0.53}
 
 % Iris optimizer-validation macros.
 \InputIfFileExists{results/iris_macros.tex}{}{}
@@ -66,7 +66,7 @@
 \providecommand{\FactorAutoHardARI}{0.95}\providecommand{\SpectralHardARI}{0.87}
 \providecommand{\FactorAutoExtremeARI}{0.70}\providecommand{\WgcnaOraExtremeARI}{0.61}
 \providecommand{\MemeticExtremeARI}{0.50}
-\providecommand{\LouvainHardARI}{0.83}\providecommand{\LeidenHardARI}{0.86}
+\providecommand{\LouvainHardARI}{0.84}\providecommand{\LeidenHardARI}{0.86}
 \providecommand{\MCLHardARI}{0.46}
 \providecommand{\WgcnaDefHardARI}{0.11}\providecommand{\WgcnaOraHardARI}{0.91}
 \providecommand{\NoiseGeneLeidenARI}{0.59}\providecommand{\NoiseGeneWgcnaARI}{0.42}
@@ -88,11 +88,11 @@
 \providecommand{\MisspecCountsGCM}{0.87}\providecommand{\MisspecCountsBest}{0.85}
 \providecommand{\MisspecNetworkGCM}{0.76}\providecommand{\MisspecNetworkBest}{0.74}
 % Factor-branch recovery, emitted per generator by misspecification.py.
-\providecommand{\MisspecOneFacFactor}{0.95}\providecommand{\MisspecMultiFacFactor}{0.91}
-\providecommand{\MisspecHubFactor}{0.89}\providecommand{\MisspecOverlapFactor}{0.86}
-\providecommand{\MisspecCountsFactor}{0.87}\providecommand{\MisspecNetworkFactor}{0.76}
-\providecommand{\MisspecOneFacRank}{1.0}\providecommand{\MisspecMultiFacRank}{3.0}
-\providecommand{\MisspecHubRank}{1.0}
+\providecommand{\MisspecOneFacFactor}{0.96}\providecommand{\MisspecMultiFacFactor}{0.74}
+\providecommand{\MisspecHubFactor}{0.52}\providecommand{\MisspecOverlapFactor}{0.87}
+\providecommand{\MisspecCountsFactor}{0.90}\providecommand{\MisspecNetworkFactor}{0.81}
+\providecommand{\MisspecOneFacRank}{1}\providecommand{\MisspecMultiFacRank}{3}
+\providecommand{\MisspecHubRank}{1}
 
 % Scaling.
 \InputIfFileExists{results/scaling_macros.tex}{}{}
@@ -132,3 +132,28 @@
 \providecommand{\SaelensSpectralBeaten}{5/6}\providecommand{\SaelensSpectralP}{0.219}
 \providecommand{\SaelensLeidenBeaten}{6/6}\providecommand{\SaelensLeidenP}{0.031}
 \providecommand{\SaelensHierBeaten}{6/6}\providecommand{\SaelensHierP}{0.031}
+
+% Diagnostic experiments (diagnostics.py): likelihood versus truth, rank recovery,
+% automatic versus oracle rank, modularity at the truth, and the two-stage recipe.
+\InputIfFileExists{results/diagnostics_macros.tex}{}{}
+\providecommand{\DiagLLSeeds}{10}\providecommand{\DiagLLMultiWins}{10/10}
+\providecommand{\DiagLLHubWins}{10/10}\providecommand{\DiagLLMultiARI}{0.50}
+\providecommand{\DiagLLHubARI}{0.80}
+\providecommand{\DiagLLExampleGCM}{16.8}\providecommand{\DiagLLExampleTruth}{15.4}
+\providecommand{\DiagRankSeeds}{10}
+\providecommand{\DiagRankBicOneFac}{10/10}\providecommand{\DiagRankAicOneFac}{10/10}
+\providecommand{\DiagRankBicMultiFac}{10/10}\providecommand{\DiagRankAicMultiFac}{0/10}
+\providecommand{\DiagRankBicHub}{10/10}\providecommand{\DiagRankAicHub}{10/10}
+\providecommand{\DiagAutoSeeds}{5}\providecommand{\DiagAutoMatches}{20/20}
+\providecommand{\DiagAutoGap}{0.000}
+\providecommand{\DiagOneFacLoglikARI}{1.00}\providecommand{\DiagOneFacQthreeARI}{0.58}
+\providecommand{\DiagModSeeds}{6}\providecommand{\DiagModTruthTopOneFac}{6/6}
+\providecommand{\DiagModTruthTopMultiFac}{2/6}\providecommand{\DiagModTruthTopHub}{1/6}
+\providecommand{\TwoStageLooseK}{10.0}
+
+% Saelens timing and range macros.
+\providecommand{\SaelensLoglikSecMin}{28}\providecommand{\SaelensLoglikSecMax}{165}
+\providecommand{\SaelensFactorSecMin}{1836}\providecommand{\SaelensFactorSecMax}{4064}
+\providecommand{\SaelensCostRatioMin}{20}\providecommand{\SaelensCostRatioMax}{110}
+\providecommand{\SaelensFMin}{0.01}\providecommand{\SaelensFMax}{0.31}
+\providecommand{\ScaleExponentFrom}{1000}

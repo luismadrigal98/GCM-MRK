@@ -29,7 +29,8 @@
    2,
    3
   ],
-  "seconds": 17863.6
+  "seconds": 17863.6,
+  "seconds_provenance": "per-dataset timings transcribed from the console output of the run that produced this file (2026-09-02); the run log was not retained. Runs after 2026-09-11 record them directly."
  },
  "results": {
   "ecoli_colombos": {
@@ -117,6 +118,10 @@
       }
      }
     }
+   },
+   "seconds": {
+    "gcm_loglik": 65,
+    "gcm_factor": 2564
    }
   },
   "ecoli_precise2": {
@@ -204,6 +209,10 @@
       }
      }
     }
+   },
+   "seconds": {
+    "gcm_loglik": 29,
+    "gcm_factor": 2527
    }
   },
   "yeast_gpl2529": {
@@ -322,6 +331,10 @@
       }
      }
     }
+   },
+   "seconds": {
+    "gcm_loglik": 88,
+    "gcm_factor": 4064
    }
   },
   "yeast_dream5": {
@@ -440,6 +453,10 @@
       }
      }
     }
+   },
+   "seconds": {
+    "gcm_loglik": 28,
+    "gcm_factor": 3162
    }
   },
   "human_tcga": {
@@ -527,6 +544,10 @@
       }
      }
     }
+   },
+   "seconds": {
+    "gcm_loglik": 93,
+    "gcm_factor": 1836
    }
   },
   "human_gtex": {
@@ -614,6 +635,10 @@
       }
      }
     }
+   },
+   "seconds": {
+    "gcm_loglik": 165,
+    "gcm_factor": 3145
    }
   }
  }

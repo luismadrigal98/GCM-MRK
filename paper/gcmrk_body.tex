@@ -2,9 +2,9 @@
 % Requires \tool, \previewfig, \adjustwidth and \nameref from the wrapper.
 \section*{Introduction}
 
-High-throughput technologies for profiling gene expression have revolutionized the field of molecular biology, enabling researchers to capture the intricate patterns of gene regulation and unravel the underlying genetic networks. However, the sheer volume and complexity of gene expression data pose significant challenges in extracting meaningful insights \cite{lorenaComplexityGeneExpression2008}. One critical step in this process is the clustering of genes based on their expression profiles, which aims to group together genes exhibiting similar patterns of expression across various experimental conditions or time points \cite{saelensComprehensiveEvaluationModule2018}. Clustering is a foundational step in computational biology, from grouping co-expressed genes into putative regulatory modules~\cite{Eisen1998,Wolfe2005} to shedding light on regulatory pathways mechanisms \cite{vengatharajulooGeneCoExpressionNetwork2023}, disease-associated genes \cite{vandamGeneCoexpressionAnalysis2017}, and potential therapeutic targets \cite{hasankhaniDifferentialCoExpressionNetwork2021}. By partitioning a set of objects into groups based on similarity, cluster analysis identifies intrinsic structures in data to gain insight \cite{hruschka2004, pirim2012}.  
+High-throughput technologies for profiling gene expression have revolutionized the field of molecular biology, enabling researchers to capture the intricate patterns of gene regulation and unravel the underlying genetic networks. However, the sheer volume and complexity of gene expression data pose significant challenges in extracting meaningful insights \cite{lorenaComplexityGeneExpression2008}. One critical step in this process is the clustering of genes based on their expression profiles, which aims to group together genes exhibiting similar patterns of expression across various experimental conditions or time points \cite{Saelens2018}. Clustering is a foundational step in computational biology, from grouping co-expressed genes into putative regulatory modules~\cite{Eisen1998,Wolfe2005} to shedding light on regulatory pathways mechanisms \cite{vengatharajulooGeneCoExpressionNetwork2023}, disease-associated genes \cite{vandamGeneCoexpressionAnalysis2017}, and potential therapeutic targets \cite{hasankhaniDifferentialCoExpressionNetwork2021}. By partitioning a set of objects into groups based on similarity, cluster analysis identifies intrinsic structures in data to gain insight \cite{hruschka2004, pirim2012}.  
 
-The dominant practice has two stages. First, a fixed algorithm such as k-means~\cite{MacQueen1967} or hierarchical clustering~\cite{Eisen1998} produces a partition. Second,a cluster-validity index like the silhouette~\cite{Rousseeuw1987}, 
+The dominant practice has two stages. First, a fixed algorithm such as k-means~\cite{MacQueen1967} or hierarchical clustering~\cite{Eisen1998} produces a partition. Second, a cluster-validity index like the silhouette~\cite{Rousseeuw1987}, 
 the Davies--Bouldin index~\cite{DaviesBouldin1979}, the Calinski--Harabasz
 criterion~\cite{CalinskiHarabasz1974}, or an information criterion such as
 BIC~\cite{Schwarz1978} is used to \emph{evaluate} that partition, often
@@ -52,7 +52,7 @@ while stochastic Bayesian approaches (such as Reversible Jump MCMC) could theore
  the extreme computational overhead of exhaustive Bayesian sampling or the restrictive assumptions 
  of gradient-based methods.
 
-Here we present \tool{} (Genetic Clustering by Metric), an open-source Python package that clusters data by directly optimizing a chosen cluster-validity metric with a memetic genetic algorithm (GA), which is an evolutionary algorithm hybridized with a problem-specific local search that refines each candidate solution within its own ``lifetime,''. This strategy was introduced by Moscato~\cite{Moscato2000} and surveyed by Neri and Cotta~\cite{NeriCotta2012}. Genetic algorithms (GAs) could be a promising solution for clustering tasks \cite{katoch2021}, particularly in the context of gene expression data \cite{pirim2012}. Other attempts have been made to use evolutionary algorithms in this or similar contexts, with overall promising results \cite{hageman2008, hruschka2006, korkmaz2006, weiEntropyClusteringAnalysis2008}. GAs are optimization algorithms that mimic the principles of natural selection and evolution, making them well-suited for complex, multi-objective problems where traditional methods may struggle to find optimal solutions \cite{wirsanskyHGA2020}. 
+Here we present \tool{} (Genetic Clustering by Metric), an open-source Python package that clusters data by directly optimizing a chosen cluster-validity metric with a memetic genetic algorithm (GA), which is an evolutionary algorithm hybridized with a problem-specific local search that refines each candidate solution within its own ``lifetime''. This strategy was introduced by Moscato and later surveyed by Neri and Cotta~\cite{Moscato1989,NeriCotta2012}. Genetic algorithms (GAs) could be a promising solution for clustering tasks \cite{katoch2021}, particularly in the context of gene expression data \cite{pirim2012}. Other attempts have been made to use evolutionary algorithms in this or similar contexts, with overall promising results \cite{hageman2008, hruschka2006, korkmaz2006, weiEntropyClusteringAnalysis2008}. GAs are optimization algorithms that mimic the principles of natural selection and evolution, making them well-suited for complex, multi-objective problems where traditional methods may struggle to find optimal solutions \cite{wirsanskyHGA2020}. 
 
 \tool{} makes four contributions. First, we place co-expression module detection
 on an explicit likelihood framework: the absolute-correlation criterion used
@@ -68,16 +68,14 @@ community-detection and network methods that dominate practice---Leiden
 clustering~\cite{NgJordanWeiss2002}, Markov clustering~\cite{VanDongen2008} and
 WGCNA~\cite{Langfelder2008}---each given the true number of modules or tuned
 against ground truth, so that no margin can be attributed to unfavourable settings
-for a competitor. Third, we test on real data with real ground truth, using the
-benchmark of Saelens et al.~\cite{Saelens2018}, which pairs expression compendia
+for a competitor. Third, we test on real data with real ground truth, using an established module-detection benchmark~\cite{Saelens2018}, which pairs expression compendia
 from three organisms with curated module definitions derived from regulatory
 networks. Fourth, we characterize when our own
 objective is wrong: across data-generating processes that violate the block model
 we identify two structural regimes in which maximizing the constrained likelihood
 moves \emph{away} from the true modules, demonstrate that this is model
 misspecification rather than optimizer failure, and show that the free-loading
-model removes the failure on those processes. The implementation is deliberately minimal---depending only on
-NumPy~\cite{Harris2020} and SciPy~\cite{Virtanen2020}, with internal
+model removes the failure on those processes. The implementation is deliberately minimal---depending only on NumPy~\cite{Harris2020}, SciPy~\cite{Virtanen2020}, pandas~\cite{McKinney2010} and Matplotlib~\cite{Hunter2007}, with internal
 k-means++~\cite{ArthurVassilvitskii2007} and correlation-distance hierarchical
 seeders, behind one swappable-metric interface that also exposes standard
 geometric indices and a multi-objective (NSGA-II~\cite{Deb2002}) mode.
@@ -98,7 +96,7 @@ population of partitions to optimize these scores in their natural direction
 (maximize or minimize).
 
 \subsection*{Performance-target metrics}
-\tool{} treats every metric as an interchangeable ``performance target'' or fitness measure \cite{wirsanskyHGA2020}. Table~\ref{tab:metrics} lists the built-in targets, the input format each one is design to work with, and its optimization direction. They fall into two families: correlation-based objectives designed for modular data, and standard geometric/probabilistic indices.
+\tool{} treats every metric as an interchangeable ``performance target'' or fitness measure \cite{wirsanskyHGA2020}. Table~\ref{tab:metrics} lists the built-in targets, the input format each one is designed to work with, and its optimization direction. They fall into two families: correlation-based objectives designed for modular data, and standard geometric/probabilistic indices.
 
 \paragraph*{A generative model for correlation modules.}
 The correlation objective is the maximum log-likelihood of an explicit
@@ -188,6 +186,9 @@ Target & Direction & Input & Role \\
 \texttt{loglik}            & maximize & correlation matrix & correlation coherence (modules) \\
 \texttt{loglik\_bic}       & minimize & correlation matrix & coherence with cluster-count penalty \\
 \texttt{loglik\_aic}       & minimize & correlation matrix & coherence with lighter penalty \\
+\texttt{loglik\_factor@}$q$ & maximize & correlation matrix & rank-$q$ free-loading factor fit \\
+\texttt{loglik\_factor\_bic@}$q$ & minimize & correlation matrix & factor fit with parameter penalty \\
+\texttt{loglik\_factor\_aic@}$q$ & minimize & correlation matrix & factor fit, lighter penalty \\
 \texttt{silhouette}        & maximize & data matrix        & geometric separation \\
 \texttt{davies\_bouldin}   & minimize & data matrix        & compactness/separation ratio \\
 \texttt{calinski\_harabasz}& maximize & data matrix        & variance-ratio criterion \\
@@ -201,7 +202,7 @@ matrix; the geometric/probabilistic indices are computed directly on the
 (standardized) data matrix. Any subset can be combined under multi-objective
 optimization. The penalized correlation criteria \texttt{loglik\_bic} and
 \texttt{loglik\_aic} add a cluster-count penalty to \texttt{loglik} so that a
-single objective both fits and selects the number of modules (see below).
+single objective both fits and selects the number of modules (see below). The factor targets take their rank $q$ as a suffix (e.g.\ \texttt{loglik\_factor@3}); their penalized forms select the rank but not the number of modules (Results).
 \end{flushleft}
 \end{table}
 
@@ -234,8 +235,7 @@ exposed both through the Python API (\texttt{reduce\_dimensions} and
 \texttt{plot\_clusters}) and the command line (\texttt{gcmrk visualize}).
 
 \subsection*{Genetic algorithm}
-\tool{} evolves a population of partitions with a self-contained GA
-(Fig~\ref{fig:convergence}). The components are:
+\tool{} evolves a population of partitions with a self-contained GA. The components are:
 
 \begin{enumerate}
 \item \textbf{Initialization.} The initial population is seeded with three kinds
@@ -270,24 +270,17 @@ that repeatedly applies the single element reassignment most improving the
 objective until none remains (a memetic, Lamarckian GA). The gain of a move
 touches only the source and target modules, so it is computed incrementally in
 $\mathcal{O}(\text{module size})$ from $C_s$ (Eq~\eqref{eq:cs}); a full sweep is
-$\mathcal{O}(n^2)$. This step is decisive: it performs exactly the move that
-agglomerative clustering---used here only for seeding---cannot, namely reassigning
-an element after an early merge, and as shown in the Results it is what lets the
-optimizer surpass hierarchical clustering. When the objective is a penalized
+$\mathcal{O}(n^2)$. This step performs exactly the move that agglomerative clustering---used here only for seeding---cannot, namely reassigning an element after an early merge; the ablation in Results shows it accounts for much of the optimizer's margin at moderate noise, though not at the highest noise level tested. When the objective is a penalized
 criterion (Eq~\eqref{eq:loglikic}) the hill-climb optimizes that criterion, so it
 also merges spurious modules.
 \end{enumerate}
 
 For multi-objective runs \tool{} returns the full Pareto front and, as a single
 representative partition, the knee point that maximizes the sum of min--max
-normalized objectives across the front. Unless stated otherwise, all experiments
-use a population of 200 evolved for 120 generations, two k-means restarts per
-candidate $k$, crossover probability 0.8, mutation probability 0.2 with per-gene
-reassignment probability 0.05, tournament size 3, and elitism 5, with a fixed
-random seed for reproducibility.
+normalized objectives across the front. All experiments use crossover probability 0.8, mutation probability 0.2 with per-gene reassignment probability 0.05, tournament size 3, elitism 5 and two k-means restarts per candidate $k$, with a fixed random seed. Population size and generations are set per experiment: a population of 150 evolved for 100 generations for the comparative benchmark, the misspecification sweep, the scaling study and the diagnostic experiments; 100 for 60 generations for the two real-data analyses, where the factor objective is far more costly; and 200 for 120 generations for the single-dataset illustrations on the synthetic designs and Iris. Within any one comparison every \tool{} variant uses the same settings.
 
 \subsection*{Choosing the number of clusters}
-Because $\mathcal{L}$ (Eq~\eqref{eq:loglik}) has no parsimony term (penalization against more clusters), \tool{} offers three routes to the right number of clusters (a fourth, based on the factor block model below, is described in that section). (i) \emph{Constrain} $g_{\max}$ to the expected number of modules. (ii) \emph{Optimize a penalized correlation criterion} (\texttt{loglik\_aic} or \texttt{loglik\_bic},
+Because $\mathcal{L}$ (Eq~\eqref{eq:loglik}) has no parsimony term (penalization against more clusters), \tool{} offers three routes to the right number of clusters. (i) \emph{Constrain} $g_{\max}$ to the expected number of modules. (ii) \emph{Optimize a penalized correlation criterion} (\texttt{loglik\_aic} or \texttt{loglik\_bic},
 Eq~\eqref{eq:loglikic}) as a single objective under a loose $g_{\max}$; this
 selects $K$ within correlation space and is our recommended default when $K$ is
 unknown. Equivalently, one can scan $g_{\max}$ with \texttt{loglik} and pick the
@@ -413,8 +406,7 @@ processes; we report that contrast alongside every result, because a generator
 whose contrast has collapsed cannot discriminate between methods.
 
 \subsection*{Benchmark datasets and evaluation}
-We evaluate on three datasets with known ground truth and one empirical
-expression dataset.
+We evaluate on synthetic designs with planted modules, on the misspecified processes described above, on Iris, on real expression compendia with curated modules, and on a clinical RNA-seq dataset.
 
 \emph{Synthetic-Easy} and \emph{Synthetic-Hard} are generated by \tool{}'s
 modular simulator: each module is driven by a shared latent factor (with random
@@ -434,15 +426,9 @@ rather than correlational, and we use it to show that the same engine, driven by
 geometric targets, faithfully optimizes those indices on data outside the
 co-expression regime.
 
-\emph{Empirical data.} We apply \tool{} to GSE183947~\cite{Wang2021}, a breast
-cancer RNA-seq dataset of \EmpSamples{} samples (30 tumours and 30
-patient-matched adjacent-normal tissues) with \EmpFullGenes{} genes
-quantified as FPKM. After $\log_2$ transformation we cluster the \EmpNtop{} most
-variable genes into co-expression modules, and assess each module both by its
-internal correlation coherence and by whether its eigengene (the leading
-principal component of the module's expression across samples) distinguishes
-tumour from normal tissue (Welch $t$-test), linking the recovered modules to the
-clinical phenotype.
+\emph{Curated-module benchmark.} For real data with ground truth we use an established module-detection benchmark~\cite{Saelens2018}, from which we take \SaelensNDatasets{} expression compendia spanning three organisms---\emph{E. coli} (COLOMBOS, PRECISE2), yeast (GPL2529, DREAM5) and human (TCGA, GTEx)---with module definitions derived from regulatory networks: RegulonDB regulons for \emph{E. coli}, MacIsaac and Sisima regulons for yeast, and regulatory circuits for human. We analyse the \SaelensNTop{} most variable genes of each compendium, intersect the known modules with that gene set, and discard known modules left with fewer than five genes or spanning more than a quarter of the analysed genes. The human regulatory circuits are published at nine stringency thresholds; we use the most stringent, because at permissive thresholds a single ``module'' spans a quarter of the transcriptome. Regulons overlap and do not cover every gene, so partitions are scored not by ARI but by the benchmark's own recovery and relevance measures (Results).
+
+\emph{Clinical RNA-seq data.} We also analyse GSE183947~\cite{Zhang2021}, a breast-cancer RNA-seq dataset of \EmpSamples{} samples (30 tumours and 30 patient-matched adjacent-normal tissues) with \EmpFullGenes{} genes quantified as FPKM. After $\log_2$ transformation every method is applied to the \EmpCompNTop{} most variable genes, and the partitions are scored by within-module coherence; by the fraction of modules with Gene Ontology Biological Process over-representation (Enrichr, with the analysed genes as background); by whether module eigengenes separate tumour from normal tissue (Welch $t$-test, Benjamini--Hochberg); and by split-half reproducibility, in which the samples are divided in half within each tissue type, each half is clustered independently and the two partitions are compared by ARI. None of these criteria uses the tissue label to fit anything.
 
 \emph{Comparative benchmark.} To test whether globally optimizing the block
 likelihood improves on the alternatives a practitioner would otherwise use, we
@@ -465,7 +451,7 @@ marginal means.
 at $200$, $500$, $1000$, $2000$ and $\ScaleMaxGenes{}$ genes with ten modules,
 three replicates per size, on the same hardware and with identical GA settings.
 
-We use the adjusted Rand index (ARI)~\cite{HubertArabie1985}; for the single-dataset summaries (Table~\ref{tab:benchmark}) we also report Hungarian-matched accuracy. Results are reported as mean $\pm$ SD over the random datasets. All code to reproduce the experiments, figures, and tables is provided with the package.
+We use the adjusted Rand index (ARI)~\cite{HubertArabie1985}; for the single-dataset summaries we also report Hungarian-matched accuracy. Results are reported as mean $\pm$ SD over the random datasets. All code to reproduce the experiments, figures, and tables is provided with the package.
 
 \section*{Results}
 
@@ -489,7 +475,7 @@ absolute-correlation structure, which a Euclidean seeder cannot.
 The central methodological question is whether globally optimizing the block
 likelihood improves on the methods a practitioner would otherwise reach for. The
 replicated noise sweep (Fig~\ref{fig:perfnoise}, Table~\ref{tab:baselines}) shows
-that it does at every noise level tested, though the size of the margin and which
+that it does at every noise level where the methods can be distinguished, though the size of the margin and which
 variant delivers it both depend on the noise.
 
 Driven by the constrained objective of Eq~\eqref{eq:loglik}, \tool{} reaches ARI
@@ -561,8 +547,7 @@ ground truth (Methods).
 Adjusted Rand index (mean, bands $\pm$ SD over \NSeeds{} datasets) at the true
 number of clusters. \tool{} leads at moderate noise and has the lowest variance,
 but the community-detection and network methods lie much closer to it than
-agglomerative clustering does, and oracle-tuned WGCNA overtakes it at
-$\sigma=2.0$.}
+agglomerative clustering does, and at $\sigma=2.0$ oracle-tuned WGCNA overtakes the constrained objective, though not the factor variant.}
 \label{fig:perfnoise}
 \end{figure}
 
@@ -638,8 +623,7 @@ constraint is false.
 That these are failures of the model rather than of the search can be shown
 directly. On multi-factor data we evaluated Eq~\eqref{eq:loglik} at the planted
 truth and at the partition \tool{} returns, and found the returned partition
-scores \emph{higher} in every replicate (for example $16.8$ against $15.4$ at
-$\sigma=1.0$), while its ARI against the truth is near $0.5$. The optimizer is
+scores \emph{higher} in \DiagLLMultiWins{} replicates (for example $\DiagLLExampleGCM{}$ against $\DiagLLExampleTruth{}$ at $\sigma=1.0$), while its mean ARI against the truth is only $\DiagLLMultiARI{}$; on hub-and-spoke data the same holds in \DiagLLHubWins{} replicates. The optimizer is
 therefore working correctly and reaching a better optimum of the stated
 objective; it is the objective whose optimum is in the wrong place. A likelihood
 that outscores the ground truth is, in this sense, a sharper diagnostic of
@@ -681,8 +665,7 @@ loss, and its advantage over the constrained form should be concentrated on
 exactly the two processes where Eq~\eqref{eq:loglik} fails---rather than being a
 uniform improvement, which would suggest we had simply added capacity.
 
-It does, and by more than repair. With the rank selected from the data by BIC
-(\texttt{cluster\_factor\_auto}; Methods), multi-factor recovery rises from
+It does, and by more than repair. With the rank selected from the data by BIC (Methods), multi-factor recovery rises from
 $\MisspecMultiFacGCM{}$ to $\MisspecMultiFacFactor{}$ and hub-and-spoke recovery
 from $\MisspecHubGCM{}$ to $\MisspecHubFactor{}$. Both figures exceed the best
 competing method on those processes ($\MisspecMultiFacBest{}$ for
@@ -699,33 +682,30 @@ factor objective is the only variant to beat oracle-tuned WGCNA at $\sigma=2.0$.
 
 Rank selection recovers the generating structure without supervision: BIC chooses
 $q=\MisspecMultiFacRank{}$ on the three-factor process and
-$q=\MisspecOneFacRank{}$ on the one-factor, hub, counts and network processes, and
-the automatically selected rank attains the same recovery as the best rank chosen
-with knowledge of the truth. The extra flexibility therefore costs computation but
+$q=\MisspecOneFacRank{}$ on the one-factor, hub, overlapping, counts and network processes; in a separate experiment the automatically selected rank matched the recovery of the best rank chosen with knowledge of the truth in \DiagAutoMatches{} fits (mean shortfall $\DiagAutoGap{}$ ARI). The extra flexibility therefore costs computation but
 not accuracy.
 
 The rank must be selected rather than fixed. Setting $q$ above the number of
 factors actually present is worse than not using the branch at all: at $q=3$ on
-the one-factor design recovery falls from $1.00$ to $0.58$, because the surplus
+the one-factor design recovery falls from $\DiagOneFacLoglikARI{}$ to $\DiagOneFacQthreeARI{}$, because the surplus
 factors fit noise directions within each block. This is why the size-scaled
 parameter count of Eq~\eqref{eq:factorblock} matters---it is what makes BIC
 comparable across ranks and therefore makes automatic selection possible. We
-recommend BIC over AIC here, since AIC systematically selects one rank too many.
+recommend BIC over AIC here, since at the planted partition AIC selected one rank too many on the three-factor process (correct in \DiagRankAicMultiFac{} datasets, against \DiagRankBicMultiFac{} for BIC).
 
 The factor branch is offered alongside the exchangeable objective rather than as
 a replacement. On synthetic designs it costs roughly three to four times more per
 run, multiplied by the number of candidate ranks; on real compendia the gap is far
-larger, between twenty and a hundred times (Results), because real correlation
+larger, between \SaelensCostRatioMin{} and \SaelensCostRatioMax{} times (Results), because real correlation
 structure yields more modules and a higher selected rank, and on data that genuinely follow the one-factor
 model it offers nothing over Eq~\eqref{eq:loglik}. Its value is that a user who
-does not know which regime their data occupy can let BIC decide.
+has specific reason to expect module members to respond at different strengths, or to several regulators, can test that expectation; on the real compendia analysed below we found no such case.
 
 \subsection*{Real expression data with curated modules}
 Everything above is measured on data we generated. The misspecification sweep
 mitigates that---those processes deliberately break our own model---but they
 remain simulations, and a module detector should be judged on whether it recovers
-modules that biologists have independently curated. We therefore evaluated on the
-benchmark of Saelens et al.~\cite{Saelens2018}, which pairs real expression
+modules that biologists have independently curated. We therefore evaluated on an established module-detection benchmark~\cite{Saelens2018}, which pairs real expression
 compendia with module definitions derived from regulatory networks:
 RegulonDB regulons for \emph{E. coli}, MacIsaac and Sisima regulons for yeast, and
 regulatory circuits for human (Methods).
@@ -755,8 +735,7 @@ tested, is clearly ahead of the community-detection and agglomerative approaches
 and is on a par with WGCNA.
 
 The free-loading factor model, which led every synthetic process, does not
-transfer. It is worse than the constrained criterion on \emph{all}
-\SaelensFactorBeaten{} real datasets (sign test $p=\SaelensFactorP{}$; mean F1
+transfer. It is worse than the constrained criterion on \SaelensFactorBeaten{} real datasets (sign test $p=\SaelensFactorP{}$; mean F1
 $\SaelensFactorScore{}$ against $\SaelensLoglikScore{}$), never wins one, and also
 trails WGCNA. Taken with the breast-cancer analysis below, where it likewise
 fails to improve on the constrained form, this is consistent evidence across
@@ -771,11 +750,11 @@ the default despite the synthetic results.
 
 Two caveats bound these numbers. We analysed the \SaelensNTop{} most variable
 genes per dataset rather than whole compendia, because the factor procedure costs
-between twenty and a hundred times more than the constrained criterion at this
+between \SaelensCostRatioMin{} and \SaelensCostRatioMax{} times more than the constrained criterion at this
 scale and whole-compendium runs with it were not tractable; absolute scores are
 therefore not comparable with those published by Saelens et al., though the
 between-method comparison, which is what we claim, is unaffected. And absolute F1
-is low throughout---from $0.02$ on human to $0.31$ on \emph{E. coli}---which
+is low throughout---from $\SaelensFMin{}$ on human to $\SaelensFMax{}$ on \emph{E. coli}---which
 reflects the genuine difficulty of recovering regulons from expression alone
 rather than a defect of any particular method; the human compendia are the
 hardest for every method tested.
@@ -875,16 +854,13 @@ against a truth of five; a better $K$-selection procedure---a resolution-based
 method, for instance---would close it further. We recommend this two-stage
 workflow whenever the module count is unknown. The
 fit--parsimony trade-off is also visible by scanning $g_{\max}$
-(Fig~\ref{fig:modelsel}): \texttt{loglik} rises and plateaus with $k$ while the
-penalized criteria turn over near the true number of modules.
+(Fig~\ref{fig:modelsel}): \texttt{loglik} rises and plateaus with $k$ while the penalized criteria fall steeply up to the true number of modules and then flatten, reaching their minimum one module above it.
 
 \begin{figure}[!h]
 \caption{\textbf{Model selection on Synthetic-Hard.}
 The raw correlation log-likelihood (left axis) increases monotonically as
 clusters are added---the over-segmentation tendency---while the penalized
-criteria (right axis, lower is better) turn over near the true number of modules.
-The \texttt{loglik\_aic} minimum identifies a parsimonious, well-fitting
-partition without the number of clusters being specified in advance.}
+criteria (right axis, lower is better) fall steeply up to the true number of modules and then flatten, reaching their minimum one module above it (vertical line). The horizontal axis is the number of clusters the optimizer returned as $g_{\max}$ was raised; it saturates at six, so larger values do not appear.}
 \previewfig{model_selection.pdf}
 \label{fig:modelsel}
 \end{figure}
@@ -910,13 +886,11 @@ trade-off explicitly for interactive exploration.}
 
 \begin{table}[!ht]
 \centering
-\caption{\textbf{Model selection with $k$ unknown} (mean $\pm$ SD over \NSeeds{}
-datasets, Synthetic-Hard design, true $k=5$). Both methods use the same penalized
-correlation criterion; they differ only in optimizer.}
+\caption{\textbf{Model selection with $k$ unknown} (mean $\pm$ SD over \NSeeds{} datasets, five-module design at $\sigma=1.5$, true $k=5$). Every method runs free: no ground-truth $k$ and no oracle tuning. The \tool{} and hierarchical rows use the same penalized correlation criterion and differ only in optimizer.}
 \label{tab:modelsel}
-\IfFileExists{results/modelsel_table.tex}{\input{results/modelsel_table.tex}}{%
+\IfFileExists{results/baselines_modelsel.tex}{\input{results/baselines_modelsel.tex}}{%
 \begin{tabular}{@{}l@{}}\hline
-\textit{Run experiments/decisive.py to populate this table.}\\\hline
+\textit{Run experiments/benchmark\_baselines.py to populate this table.}\\\hline
 \end{tabular}}
 \end{table}
 
@@ -929,8 +903,7 @@ $\NoiseGeneMemeticARI{}$, against $\NoiseGeneHierARI{}$ for hierarchical
 clustering under the same penalized criterion, $\NoiseGeneLeidenARI{}$ for
 free-running Leiden and $\NoiseGeneWgcnaARI{}$ for WGCNA
 (\NSeeds{} datasets; every paired difference $p<10^{-4}$). Unlike the noise-sweep
-margin, which is a few hundredths of ARI, these are differences of $0.25$ to
-$0.54$.
+margin, which is a few hundredths of ARI, these differences are an order of magnitude larger.
 
 The mechanism is the same likelihood that fails on multi-factor data, working in
 its favour here. Because a module's contribution to Eq~\eqref{eq:loglik} depends
@@ -960,10 +933,7 @@ of magnitude slower.
 
 These timings are for the constrained objective of Eq~\eqref{eq:loglik}, and the
 factor objective is considerably more expensive---not by the constant factor of
-three to four that its per-evaluation cost implies, but by between twenty and a
-hundred times on real data. On the Saelens compendia the constrained criterion
-fitted $\SaelensNTop{}$ genes in 28 to 165~s where the two-stage factor procedure
-took 1836 to 4064~s, because the local search must re-solve an eigendecomposition
+three to four that its per-evaluation cost implies, but by between \SaelensCostRatioMin{} and \SaelensCostRatioMax{} times on real data. On the curated compendia the constrained criterion fitted $\SaelensNTop{}$ genes in $\SaelensLoglikSecMin{}$ to $\SaelensLoglikSecMax{}$~s where the factor stage took $\SaelensFactorSecMin{}$ to $\SaelensFactorSecMax{}$~s, because the local search must re-solve an eigendecomposition
 per affected block and real correlation structure yields both more modules and a
 higher selected rank than the synthetic designs do. Together with the recovery
 results this is why we recommend the constrained criterion as the default: on
@@ -1020,7 +990,7 @@ while the other two overlap, the expected structure for the Iris species.}
 
 \subsection*{Empirical co-expression modules: breast cancer}
 We applied every method to the \EmpCompNTop{} most variable genes of
-GSE183947~\cite{Wang2021}, a breast-cancer RNA-seq dataset of \EmpSamples{}
+GSE183947~\cite{Zhang2021}, a breast-cancer RNA-seq dataset of \EmpSamples{}
 samples (30 tumours and 30 patient-matched adjacent-normal tissues), and scored
 the resulting partitions by four criteria, none of which uses the tumour label to
 fit anything (Table~\ref{tab:empcomp}, Fig~\ref{fig:empcomp}).
@@ -1167,7 +1137,7 @@ rather than a matter of taste, and our answer is split. On synthetic data the
 free-loading model of Eq~\eqref{eq:factorblock} is at least as good as the
 constrained form everywhere and strictly better where the constraints bind. On
 real expression compendia with curated modules it is worse on every dataset we
-tested, never wins one, and costs twenty to a hundred times more. We therefore
+tested, never wins one, and costs \SaelensCostRatioMin{} to \SaelensCostRatioMax{} times more. We therefore
 recommend the constrained absolute-correlation criterion as the default, and the
 factor model where there is specific reason to think module members respond at
 very different strengths or to several regulators, which is a situation we can construct
@@ -1196,7 +1166,7 @@ after the fact, surpasses hierarchical clustering and every contemporary
 alternative we tested at moderate noise. We are deliberate about the size of that
 claim. Measured against agglomerative clustering alone the margin is $0.14$ ARI;
 measured against oracle-tuned WGCNA, the strongest competitor, it is $0.03$, and
-at $\sigma=2.0$ that competitor overtakes us.
+at $\sigma=2.0$ it overtakes the constrained objective, though not the factor variant.
 
 The second contribution is a negative one that we think is more useful than
 another favourable table. By generating data from processes the model does not
@@ -1217,9 +1187,7 @@ The third contribution follows from the second. Because the failure is
 attributable to a specific assumption (exchangeability of module members) it
 can be repaired by relaxing that assumption rather than abandoning the framework.
 The rank-$q$ free-loading block model does not merely recover the lost accuracy:
-with the rank selected from the data it leads every process we tested, including
-the two the exchangeable objective fails on, and it is the only variant that
-beats oracle-tuned WGCNA at the highest noise level. Because its parameter count
+with the rank selected from the data it leads every synthetic process we tested, including the two the exchangeable objective fails on, and it is the only variant that beats oracle-tuned WGCNA at the highest noise level---though, as the curated benchmark showed, none of this carries over to real compendia. Because its parameter count
 scales with module size, its information criteria are comparable across ranks, so
 the rank is selected without supervision. It does not, however, help with
 selecting the number of modules: as Eq~\eqref{eq:factorparams} shows, its
@@ -1245,9 +1213,7 @@ outperforms the greedy clustering such pipelines rely on, and---unusually---a
 characterization of the conditions under which its own objective should not be
 used. We note that multi-objective search is not a remedy for the
 misspecification we identify: a Pareto front between two objectives helps only
-when at least one of them ranks the truth highly, and we found that graph
-modularity, the natural second objective, is itself misspecified on the same
-processes. Search strategy cannot repair a wrongly located optimum. As a
+when at least one of them ranks the truth highly, and graph modularity, the natural second objective, is itself misspecified on the same processes: evaluated at the planted partition it ranks the truth above the partitions \tool{} and Leiden return in only \DiagModTruthTopMultiFac{} multi-factor and \DiagModTruthTopHub{} hub-and-spoke datasets, against \DiagModTruthTopOneFac{} on the one-factor design (Newman modularity on the soft-thresholded graph, which is not the exact objective Leiden optimizes). Search strategy cannot repair a wrongly located optimum. As a
 practical complement, the built-in dimensionality-reduction tools (PCA and
 correlation MDS, with optional t-SNE and UMAP) let users inspect and communicate
 the recovered structure, with the correlation-MDS embedding particularly
@@ -1273,7 +1239,7 @@ structural regimes in which the constrained objective is misspecified,
 demonstrate that its optimizer there returns partitions scoring above the ground
 truth, a diagnostic that separates a wrong model from a failed search, and that
 applies to any model-based clustering method, and show that freeing the loadings
-repairs the failure completely on those processes. We then report that this
+turns both failures into leads on those processes. We then report that this
 repair does not transfer to real data, that the criterion which selects the
 factor rank cannot select the number of modules, and that our advantage over
 WGCNA on real compendia is not statistically distinguishable. We suggest that
@@ -1347,7 +1313,7 @@ every process.
 
 \paragraph*{S1 File.}
 \namedlabel{S1_File}{S1 File}
-\textbf{Reproduction package.} For convenience, a compressed version of the repository is shared as a companion to the paper (although it is also available through GitHub and Zenodo). It contains the source code, the benchmark driver (\texttt{experiments/run\_experiments.py}), and the generated results tables and figures.
+\textbf{Reproduction package.} For convenience, a compressed version of the repository is shared as a companion to the paper (although it is also available through GitHub and Zenodo). It contains the source code, one script per analysis in \texttt{paper/experiments/} (listed in that directory's README), and the generated results tables and figures.
 
 \section*{Data and Software Availability}
 All source code for the \tool{} package, along with the reproduction scripts to generate the results and figures presented in this manuscript, is publicly available under an open-source license on GitHub at \url{https://github.com/luismadrigal98/GCM-MRK}. To ensure long-term reproducibility, a persistent snapshot of the codebase at the time of submission has been archived on Zenodo (DOI: 10.5281/zenodo.21361265). The empirical breast cancer RNA-seq dataset (GSE183947) analyzed in this study is publicly available from the NCBI Gene Expression Omnibus (GEO).

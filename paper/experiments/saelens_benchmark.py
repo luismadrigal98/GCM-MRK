@@ -102,7 +102,7 @@ METHOD_LABELS = {
     "spectral": "spectral",
     "hier_avg": "hierarchical (average)",
 }
-METHOD_ORDER = ["gcm_factor", "gcm_loglik", "wgcna", "leiden", "spectral", "hier_avg"]
+METHOD_ORDER = ["gcm_loglik", "gcm_factor", "wgcna", "leiden", "spectral", "hier_avg"]
 
 
 # --------------------------------------------------------------------------- #
@@ -208,21 +208,24 @@ def hierarchical_select(cor, n_samples, g_max):
 
 
 def fit_all(X):
+    """Every method on one matrix; returns (labels, seconds) keyed by method."""
     Xn = normalize_data(X, by_sample=True)
     cor = pearson_correlation(Xn, rowvar=True)
-    out = {}
+    out, secs = {}, {}
 
     t0 = time.time()
     r = cluster(X, targets=["loglik_aic"], g_max=G_MAX, **GA)
     out["gcm_loglik"] = np.asarray(r.labels)
+    secs["gcm_loglik"] = time.time() - t0
     k_hat = len(np.unique(out["gcm_loglik"]))
-    print(f"    gcm_loglik k={k_hat} ({time.time()-t0:.0f}s)", flush=True)
+    print(f"    gcm_loglik k={k_hat} ({secs['gcm_loglik']:.0f}s)", flush=True)
 
     t0 = time.time()
     fa = cluster_factor_auto(X, ranks=FACTOR_RANKS, g_max=k_hat, **GA)
     out["gcm_factor"] = np.asarray(fa.labels)
+    secs["gcm_factor"] = time.time() - t0      # the factor stage alone
     print(f"    gcm_factor k={len(np.unique(out['gcm_factor']))} "
-          f"q={fa.scores['factor_rank']} ({time.time()-t0:.0f}s)", flush=True)
+          f"q={fa.scores['factor_rank']} ({secs['gcm_factor']:.0f}s)", flush=True)
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -237,7 +240,7 @@ def fit_all(X):
     except Exception as exc:                            # pragma: no cover
         print(f"    WGCNA failed: {type(exc).__name__}: {str(exc)[:120]}", flush=True)
         out["wgcna"] = None
-    return out
+    return out, secs
 
 
 # --------------------------------------------------------------------------- #
@@ -283,9 +286,11 @@ def main():
               + ", ".join(f"{k} ({len(v)} modules)" for k, v in sources.items()),
               flush=True)
 
-        labels = fit_all(X)
+        labels, secs = fit_all(X)
         ds = {"n_genes": int(X.shape[0]), "n_samples": int(X.shape[1]),
-              "sources": {k: len(v) for k, v in sources.items()}, "methods": {}}
+              "sources": {k: len(v) for k, v in sources.items()},
+              "seconds": {k: round(v, 1) for k, v in secs.items()},
+              "methods": {}}
         for m in METHOD_ORDER:
             lab = labels.get(m)
             if lab is None:
@@ -371,24 +376,44 @@ def write_latex(data):
                 if res[n]["methods"].get(m, {}).get("status") != "failed"]
         if vals:
             M += mac(f"Saelens{short}Score", f"{np.mean(vals):.3f}")
+    secs = [res[n].get("seconds", {}) for n in names]
+    if all("gcm_loglik" in t and "gcm_factor" in t for t in secs):
+        lo = [t["gcm_loglik"] for t in secs]
+        fa = [t["gcm_factor"] for t in secs]
+        ratio = [f / l for f, l in zip(fa, lo)]
+        M += mac("SaelensLoglikSecMin", f"{min(lo):.0f}")
+        M += mac("SaelensLoglikSecMax", f"{max(lo):.0f}")
+        M += mac("SaelensFactorSecMin", f"{min(fa):.0f}")
+        M += mac("SaelensFactorSecMax", f"{max(fa):.0f}")
+        # rounded to the nearest ten: the ratio is a summary, not a measurement
+        M += mac("SaelensCostRatioMin", f"{10 * round(min(ratio) / 10):.0f}")
+        M += mac("SaelensCostRatioMax", f"{10 * round(max(ratio) / 10):.0f}")
+    all_f1 = [res[n]["methods"][m]["f1rr"] for n in names for m in METHOD_ORDER
+              if res[n]["methods"].get(m, {}).get("status") != "failed"]
+    M += mac("SaelensFMin", f"{min(all_f1):.2f}")
+    M += mac("SaelensFMax", f"{max(all_f1):.2f}")
     (RESULTS / "saelens_macros.tex").write_text(M)
 
 
 def fig_saelens(data):
     res = data["results"]
     names = list(res)
-    fig, ax = plt.subplots(figsize=(1.9 * max(len(names), 3) + 1.6, 3.3))
+    plain = {m: METHOD_LABELS[m].replace("\\tool{}", "GCM")
+                                 .replace("\\texttt{", "").replace("}", "")
+                                 .replace("\\_", "_")
+             for m in METHOD_ORDER}
+    fig, ax = plt.subplots(figsize=(7.0, 3.6))
     x = np.arange(len(names))
     w = 0.8 / len(METHOD_ORDER)
     for j, m in enumerate(METHOD_ORDER):
         vals = [res[n]["methods"].get(m, {}).get("f1rr", np.nan) for n in names]
-        ax.bar(x + (j - len(METHOD_ORDER) / 2 + 0.5) * w, vals, w,
-               label=METHOD_LABELS[m].replace("\\tool{}", "GCM-MRK")
-                     .replace("\\texttt{", "").replace("}", ""))
+        ax.bar(x + (j - len(METHOD_ORDER) / 2 + 0.5) * w, vals, w, label=plain[m])
     ax.set_xticks(x)
-    ax.set_xticklabels([n.replace("_", "\n") for n in names], fontsize=7)
-    ax.set_ylabel("F1 (recovery, relevance)")
-    ax.legend(frameon=False, fontsize=6.5, ncol=3)
+    ax.set_xticklabels([n.replace("_", "\n", 1) for n in names], fontsize=8)
+    ax.set_ylabel("F1 (recovery, relevance)", fontsize=9)
+    ax.tick_params(axis="y", labelsize=8)
+    ax.legend(frameon=False, fontsize=7.5, ncol=2, loc="upper right")
+    ax.spines[["top", "right"]].set_visible(False)
     fig.tight_layout()
     fig.savefig(FIGURES / "saelens.pdf")
     plt.close(fig)

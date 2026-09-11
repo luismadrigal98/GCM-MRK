@@ -65,6 +65,13 @@ FIGURES.mkdir(exist_ok=True)
 SEED = 20240117
 GA_KW = dict(generations=120, population_size=200, seed=SEED, kmeans_restarts=2)
 
+#: The GSE183947 fit shares its settings with empirical_comparison.py, so the
+#: module count, eigengene figure and embedding shown here are the same partition
+#: the comparative analysis scores.  (Before 2026-09-11 this block used GA_KW and
+#: g_max=12, which capped the fit at 12 modules while the comparison found 14.)
+EMP_GA = dict(generations=60, population_size=100, seed=0)
+EMP_G_MAX = 15
+
 
 # --------------------------------------------------------------------------- #
 # Evaluation helpers
@@ -189,7 +196,7 @@ def model_selection_scan(X, truth, name, k_range=range(2, 11)):
 # --------------------------------------------------------------------------- #
 # Empirical: GSE183947 breast-cancer RNA-seq
 # --------------------------------------------------------------------------- #
-def empirical_block(rows, meta, n_top=200, g_max=12):
+def empirical_block(rows, meta, n_top=200, g_max=EMP_G_MAX):
     path = DATA / "GSE183947_fpkm.csv"
     if not path.exists():
         meta["empirical"] = {"status": "skipped (data file absent)"}
@@ -208,7 +215,7 @@ def empirical_block(rows, meta, n_top=200, g_max=12):
     bg = float(np.abs(cor[iu]).mean())
 
     # model-selection by the penalized correlation criterion
-    res = cluster(G, targets=["loglik_aic"], g_max=g_max, by_sample=True, **GA_KW)
+    res = cluster(G, targets=["loglik_aic"], g_max=g_max, by_sample=True, **EMP_GA)
     labels = np.asarray(res.labels)
     k = n_clusters(labels)
 
@@ -306,11 +313,14 @@ def fig_model_selection(scan, k_true):
     ax2.set_ylabel("penalized criterion (lower = better)")
     kbic = min(scan, key=lambda s: s["loglik_bic"])["k_found"]
     kaic = min(scan, key=lambda s: s["loglik_aic"])["k_found"]
-    ax2.axvline(kaic, color="C2", lw=0.8, alpha=0.6)
+    ax2.axvline(kaic, color="C2", lw=0.8, alpha=0.6,
+                label=f"loglik_aic minimum (k={kaic})")
     ax1.axvline(k_true, color="k", ls=":", lw=1, label=f"true k={k_true}")
-    lines = ax1.get_lines() + ax2.get_lines()
+    # matplotlib names unlabelled artists "_childN"; keep them out of the legend
+    lines = [l for l in ax1.get_lines() + ax2.get_lines()
+             if not l.get_label().startswith("_")]
     ax1.legend(lines, [l.get_label() for l in lines], frameon=False, fontsize=7,
-               loc="center right")
+               loc="lower center", bbox_to_anchor=(0.5, 1.02), ncol=3)
     fig.tight_layout(); fig.savefig(FIGURES / "model_selection.pdf"); plt.close(fig)
     return kbic, kaic
 

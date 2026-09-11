@@ -15,6 +15,11 @@
 \usepackage{rotating}
 \usepackage[colorlinks=true,allcolors=blue]{hyperref}   % \nameref
 
+% The shared body cites with \cite, which natbib renders textually under
+% PeerJ's author-year style ("Lorena et al. (2008)").  Every citation in the body
+% is written to be read parenthetically, so make \cite mean \citep here.
+\AtBeginDocument{\let\cite\citep}
+
 \title{\texorpdfstring{\tool{}}{GCM}: metric-guided clustering by genetic
        algorithm for correlation-defined modules}
 

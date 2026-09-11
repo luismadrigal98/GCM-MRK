@@ -368,8 +368,9 @@ def write_latex(data):
 def fig_comparison(data):
     r = data["results"]
     ms = [m for m in METHOD_ORDER if r.get(m, {}).get("status") != "failed"]
-    labels = [METHOD_LABELS[m].replace("\\tool{}", "GCM-MRK")
-              .replace("\\texttt{", "").replace("}", "") for m in ms]
+    labels = [METHOD_LABELS[m].replace("\\tool{}", "GCM")
+              .replace("\\texttt{", "").replace("}", "").replace("\\_", "_")
+              for m in ms]
     fig, axes = plt.subplots(1, 3, figsize=(9.5, 3.1))
     panels = [
         ("median_coherence", "median within-module $|r|$"),

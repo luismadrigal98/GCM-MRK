@@ -290,6 +290,11 @@ def write_latex(data):
                   "mcl": "MCL", "wgcna_default": "WgcnaDef", "wgcna_oracle": "WgcnaOra"}
     for m, nm in macro_name.items():
         M += _mac(f"{nm}HardARI", f"{cell(m, 1.5)[0]:.2f}")
+    # the highest noise level, where the constrained objective loses its lead
+    for m, nm in (("memetic", "Memetic"), ("factor_auto", "FactorAuto"),
+                  ("wgcna_oracle", "WgcnaOra")):
+        if m in sweep:
+            M += _mac(f"{nm}ExtremeARI", f"{cell(m, 2.0)[0]:.2f}")
     ng = data["noise_genes"]
     M += _mac("NoiseGeneLeidenARI", f"{ms(ng['leiden_free'])[0]:.2f}")
     M += _mac("NoiseGeneWgcnaARI", f"{ms(ng['wgcna_default'])[0]:.2f}")
@@ -311,9 +316,9 @@ def _series(sweep, m, nl):
 
 def fig_vs_noise(sweep, nls):
     style = {
-        "memetic": ("GCM-MRK (memetic)", "o-", "C0"),
-        "factor_auto": ("GCM-MRK (loglik_factor, BIC rank)", "h-", "C3"),
-        "no_local": ("GCM-MRK (no local search)", "s--", "C1"),
+        "memetic": ("GCM (memetic)", "o-", "C0"),
+        "factor_auto": ("GCM (loglik_factor, BIC rank)", "h-", "C3"),
+        "no_local": ("GCM (no local search)", "s--", "C1"),
         "hier_avg": ("hierarchical (average)", "^-", "C2"),
         "kmeans": ("k-means", "d-", "C4"),
         "spectral": ("spectral", "P-", "C5"),

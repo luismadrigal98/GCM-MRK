@@ -190,6 +190,14 @@ def write_latex(data):
         entry = mem.get(str(largest), mem.get(largest))
         M += f"\\newcommand{{\\ScaleMaxSeconds}}{{{entry['seconds']:.0f}}}\n"
         M += f"\\newcommand{{\\ScaleMaxARI}}{{{entry['ari']:.2f}}}\n"
+        # empirical growth exponent over 1000 genes and up, where fixed
+        # overheads no longer dominate
+        big = [n for n in done if n >= 1000]
+        if len(big) >= 2:
+            secs = [mem.get(str(n), mem.get(n))["seconds"] for n in big]
+            slope = np.polyfit(np.log(big), np.log(secs), 1)[0]
+            M += f"\\newcommand{{\\ScaleExponent}}{{{slope:.2f}}}\n"
+            M += f"\\newcommand{{\\ScaleExponentFrom}}{{{min(big)}}}\n"
     (RESULTS / "scaling_macros.tex").write_text(M)
 
 
@@ -202,7 +210,7 @@ def fig_scaling(data):
             continue
         ys = [res[m].get(str(n), res[m].get(n))["seconds"] for n in xs]
         aa = [res[m].get(str(n), res[m].get(n))["ari"] for n in xs]
-        lab = METHOD_LABELS[m].replace("\\tool{}", "GCM-MRK")
+        lab = METHOD_LABELS[m].replace("\\tool{}", "GCM")
         ax1.plot(xs, ys, "o-", label=lab, lw=1.5, ms=4)
         ax2.plot(xs, aa, "o-", label=lab, lw=1.5, ms=4)
     ax1.set_xscale("log"); ax1.set_yscale("log")
