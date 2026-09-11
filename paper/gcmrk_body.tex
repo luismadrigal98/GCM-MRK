@@ -458,7 +458,7 @@ We use the adjusted Rand index (ARI)~\cite{HubertArabie1985}; for the single-dat
 \subsection*{Recovering correlated modules on synthetic data}
 On Synthetic-Easy, \tool{} driven by the correlation log-likelihood (with
 $g_{\max}$ set to the true count) recovers the planted three-module structure
-perfectly (ARI $=\EasyLoglikARI{}$), whereas the k-means baseline, given the
+perfectly (ARI $=\EasyLoglikARI{}$; Table~\ref{tab:benchmark}), whereas the k-means baseline, given the
 same true $k$, fails badly (ARI $=\EasyKmeansARI{}$). The gap is diagnostic:
 because module loadings carry random signs, each module contains strongly
 anti-correlated genes that are coherent under the absolute-correlation objective
@@ -470,6 +470,38 @@ substantially harder, \tool{} still recovers the five modules well
 The correlation-aware hierarchical seeding (Methods) is important here: it
 supplies the GA with starting partitions that already respect the
 absolute-correlation structure, which a Euclidean seeder cannot.
+
+% Place tables after the first paragraph in which they are cited.
+\begin{table}[!ht]
+\centering
+\caption{\textbf{Benchmark results: clusters recovered ($k$), adjusted Rand
+index (ARI), and Hungarian-matched accuracy against ground truth.}}
+\label{tab:benchmark}
+\begin{adjustwidth}{-1.25in}{0in}
+\centering
+\IfFileExists{results/benchmark_table.tex}{\input{results/benchmark_table.tex}}{%
+\begin{tabular}{@{}l@{}}\hline
+\textit{Run experiments/run\_experiments.py to populate this table.}\\\hline
+\end{tabular}}
+\end{adjustwidth}
+\begin{flushleft}
+True $k$ is 3 (Synthetic-Easy, Iris) and 5 (Synthetic-Hard); GSE183947 has no
+ground-truth labelling (ARI/accuracy not applicable). ``known $k$'' fixes
+$g_{\max}$ to the true value; ``loose $g_{\max}$'' and ``model sel.'' use a loose
+bound, the latter with a penalized correlation criterion. k-means is given the
+true $k$ and 10 restarts. GA settings as in Methods; fixed random seed.
+\end{flushleft}
+\end{table}
+
+\begin{figure}[!h]
+\caption{\textbf{Convergence of the genetic algorithm on Synthetic-Easy.}
+Best and population-mean weighted fitness (correlation log-likelihood) across
+generations. The optimizer reaches a high-quality partition within the first few
+dozen generations and the elite fitness is monotone non-decreasing by
+construction.}
+\previewfig{convergence.pdf}
+\label{fig:convergence}
+\end{figure}
 
 \subsection*{Comparison against contemporary module detectors}
 The central methodological question is whether globally optimizing the block
@@ -502,7 +534,7 @@ average-linkage hierarchical clustering, the comparison a reader of the earlier
 GA-clustering literature would expect, is $0.14$. A benchmark restricted to
 agglomerative clustering and k-means would have overstated the advantage roughly
 fourfold, and we report the stronger comparison because it is the honest one.
-Second, the ablation isolating the memetic local search is noise-dependent in the
+Second, the ablation isolating the memetic local search (Fig~\ref{fig:ablation}) is noise-dependent in the
 same way: at $\sigma=1.5$ disabling it costs $0.065$ ARI ($p=2\times10^{-4}$),
 confirming that the hill-climb---which reassigns genes \emph{a posteriori}, a move
 greedy agglomeration cannot make---is responsible for much of the margin, while at
@@ -561,37 +593,9 @@ significant.}
 \label{fig:ablation}
 \end{figure}
 
-% Place tables after the first paragraph in which they are cited.
-\begin{table}[!ht]
-\centering
-\caption{\textbf{Benchmark results: clusters recovered ($k$), adjusted Rand
-index (ARI), and Hungarian-matched accuracy against ground truth.}}
-\label{tab:benchmark}
-\begin{adjustwidth}{-1.25in}{0in}
-\centering
-\IfFileExists{results/benchmark_table.tex}{\input{results/benchmark_table.tex}}{%
-\begin{tabular}{@{}l@{}}\hline
-\textit{Run experiments/run\_experiments.py to populate this table.}\\\hline
-\end{tabular}}
-\end{adjustwidth}
-\begin{flushleft}
-True $k$ is 3 (Synthetic-Easy, Iris) and 5 (Synthetic-Hard); GSE183947 has no
-ground-truth labelling (ARI/accuracy not applicable). ``known $k$'' fixes
-$g_{\max}$ to the true value; ``loose $g_{\max}$'' and ``model sel.'' use a loose
-bound, the latter with a penalized correlation criterion. k-means is given the
-true $k$ and 10 restarts. GA settings as in Methods; fixed random seed.
-\end{flushleft}
-\end{table}
 
-\begin{figure}[!h]
-\caption{\textbf{Convergence of the genetic algorithm on Synthetic-Easy.}
-Best and population-mean weighted fitness (correlation log-likelihood) across
-generations. The optimizer reaches a high-quality partition within the first few
-dozen generations and the elite fitness is monotone non-decreasing by
-construction.}
-\previewfig{convergence.pdf}
-\label{fig:convergence}
-\end{figure}
+
+
 
 \subsection*{When the model is right, and when it is not}
 The benchmark above, like the synthetic designs in most module-detection papers,
@@ -999,7 +1003,7 @@ The first criterion is the one the earlier literature, and an earlier version of
 this manuscript, relied on: whether module eigengenes separate tumour from normal
 tissue. It does not discriminate between methods. Every method produces modules
 whose eigengenes differ significantly between tissue types
-(Benjamini--Hochberg $q<0.05$), which is unsurprising given that the
+(Benjamini--Hochberg $q<0.05$; Fig~\ref{fig:empirical}), which is unsurprising given that the
 tumour/normal contrast dominates variation in this dataset; almost any partition
 of its most variable genes will recover some of it. We report this criterion for
 continuity with the literature while noting that it is close to unfalsifiable and
