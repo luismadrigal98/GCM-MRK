@@ -273,7 +273,9 @@ def fig_ablation(sweep):
     ax.bar(x + w/2, nol, w, yerr=nol_sd, capsize=3, label="GA only")
     ax.set_xticks(x); ax.set_xticklabels([f"{nl}" for nl in nls])
     ax.set_xlabel("noise level $\\sigma$"); ax.set_ylabel("adjusted Rand index")
-    ax.legend(frameon=False, fontsize=8)
+    # the bars fill every corner, so the legend goes above the axes
+    ax.legend(frameon=False, fontsize=8, loc="lower center",
+              bbox_to_anchor=(0.5, 1.0), ncol=2)
     fig.tight_layout(); fig.savefig(FIGURES / "ablation.pdf"); plt.close(fig)
 
 

@@ -325,12 +325,25 @@ def main():
     print(f"\nDone in {time.time()-t_start:.0f}s -> {RESULTS/'saelens.json'}")
 
 
+#: two-line column headers: organism over compendium
+DISPLAY = {"ecoli_colombos": ("\\emph{E. coli}", "COLOMBOS"),
+           "ecoli_precise2": ("\\emph{E. coli}", "PRECISE2"),
+           "ecoli_dream5": ("\\emph{E. coli}", "DREAM5"),
+           "yeast_gpl2529": ("yeast", "GPL2529"),
+           "yeast_dream5": ("yeast", "DREAM5"),
+           "human_tcga": ("human", "TCGA"),
+           "human_gtex": ("human", "GTEx"),
+           "human_seek_gpl5175": ("human", "SEEK 5175"),
+           "human_seek_gpl8300": ("human", "SEEK 8300")}
+
+
 def write_latex(data):
     res = data["results"]
     names = list(res)
+    head = " & ".join("\\shortstack{%s\\\\%s}" % DISPLAY.get(n, (n.replace("_", "\\_"), ""))
+                      for n in names)
     rows = ["\\begin{tabular}{@{}l" + "r" * len(names) + "@{}}", "\\hline",
-            "Method & " + " & ".join(n.replace("_", "\\_") for n in names) + " \\\\",
-            "\\hline"]
+            "Method & " + head + " \\\\", "\\hline"]
     best = {n: max((res[n]["methods"][m].get("f1rr", -1) for m in METHOD_ORDER
                     if m in res[n]["methods"]), default=-1) for n in names}
     for m in METHOD_ORDER:

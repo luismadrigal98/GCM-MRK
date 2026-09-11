@@ -43,9 +43,9 @@
 \providecommand{\IrisSilK}{2}\providecommand{\IrisSilARI}{0.57}
 \providecommand{\IrisCHK}{2}\providecommand{\IrisCHARI}{0.57}
 \providecommand{\EmpFullGenes}{20246}\providecommand{\EmpSamples}{60}
-\providecommand{\EmpNtop}{200}\providecommand{\EmpKmodules}{12}
-\providecommand{\EmpNmodules}{12}\providecommand{\EmpWithinR}{0.59}
-\providecommand{\EmpBgR}{0.31}\providecommand{\EmpNsig}{7}
+\providecommand{\EmpNtop}{200}\providecommand{\EmpKmodules}{14}
+\providecommand{\EmpNmodules}{14}\providecommand{\EmpWithinR}{0.63}
+\providecommand{\EmpBgR}{0.31}\providecommand{\EmpNsig}{8}
 
 % Decisive multi-seed benchmark macros.
 \InputIfFileExists{results/decisive_macros.tex}{}{}
@@ -73,9 +73,6 @@
 \providecommand{\LeidenSelK}{4.9}\providecommand{\LeidenSelARI}{0.88}
 \providecommand{\WgcnaSelK}{1.6}\providecommand{\WgcnaSelARI}{0.11}
 \providecommand{\FactorSelK}{5.0}\providecommand{\FactorSelARI}{0.90}
-\providecommand{\TwoStageSeeds}{10}\providecommand{\TwoStageK}{6.6}
-\providecommand{\TwoStageARI}{0.91}\providecommand{\TwoStageAicARI}{0.88}
-\providecommand{\TwoStageLooseARI}{0.70}\providecommand{\TwoStageOracleARI}{0.94}
 
 % Model-misspecification sweep at the discriminating noise level (sigma = 1.5).
 \InputIfFileExists{results/misspec_macros_n15.tex}{}{}
@@ -136,9 +133,10 @@
 % Diagnostic experiments (diagnostics.py): likelihood versus truth, rank recovery,
 % automatic versus oracle rank, modularity at the truth, and the two-stage recipe.
 \InputIfFileExists{results/diagnostics_macros.tex}{}{}
+\providecommand{\TwoStageSeeds}{10}\providecommand{\TwoStageK}{6.6}\providecommand{\TwoStageARI}{0.91}\providecommand{\TwoStageAicARI}{0.88}\providecommand{\TwoStageLooseARI}{0.70}\providecommand{\TwoStageOracleARI}{0.94}
 \providecommand{\DiagLLSeeds}{10}\providecommand{\DiagLLMultiWins}{10/10}
-\providecommand{\DiagLLHubWins}{10/10}\providecommand{\DiagLLMultiARI}{0.50}
-\providecommand{\DiagLLHubARI}{0.80}
+\providecommand{\DiagLLHubWins}{10/10}\providecommand{\DiagLLMultiARI}{0.42}
+\providecommand{\DiagLLHubARI}{0.81}
 \providecommand{\DiagLLExampleGCM}{16.8}\providecommand{\DiagLLExampleTruth}{15.4}
 \providecommand{\DiagRankSeeds}{10}
 \providecommand{\DiagRankBicOneFac}{10/10}\providecommand{\DiagRankAicOneFac}{10/10}
@@ -146,7 +144,7 @@
 \providecommand{\DiagRankBicHub}{10/10}\providecommand{\DiagRankAicHub}{10/10}
 \providecommand{\DiagAutoSeeds}{5}\providecommand{\DiagAutoMatches}{20/20}
 \providecommand{\DiagAutoGap}{0.000}
-\providecommand{\DiagOneFacLoglikARI}{1.00}\providecommand{\DiagOneFacQthreeARI}{0.58}
+\providecommand{\DiagOneFacLoglikARI}{1.00}\providecommand{\DiagOneFacQthreeARI}{0.55}
 \providecommand{\DiagModSeeds}{6}\providecommand{\DiagModTruthTopOneFac}{6/6}
 \providecommand{\DiagModTruthTopMultiFac}{2/6}\providecommand{\DiagModTruthTopHub}{1/6}
 \providecommand{\TwoStageLooseK}{10.0}
