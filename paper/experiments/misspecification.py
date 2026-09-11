@@ -113,6 +113,18 @@ METHOD_LABELS = {
     "wgcna_oracle": "WGCNA (oracle-tuned)",
 }
 
+FIG_LABELS = {
+    "memetic": "GCM-MRK (memetic)",
+    "factor_auto": "GCM-MRK (loglik_factor, BIC rank)",
+    "hier_avg": "hierarchical (average)",
+    "kmeans": "k-means",
+    "spectral": "spectral",
+    "louvain": "Louvain",
+    "leiden": "Leiden",
+    "mcl": "MCL",
+    "wgcna_oracle": "WGCNA (oracle-tuned)",
+}
+
 METHOD_ORDER = ["memetic", "factor_auto", "hier_avg", "kmeans", "spectral",
                 "louvain", "leiden", "mcl", "wgcna_oracle"]
 
@@ -243,22 +255,24 @@ def fig_misspec(data):
     show = ["memetic", "factor_auto", "hier_avg", "spectral", "leiden",
             "wgcna_oracle"]
 
-    fig, ax = plt.subplots(figsize=(7.2, 3.4))
+    fig, ax = plt.subplots(figsize=(7.2, 3.6))
     x = np.arange(len(gens))
     w = 0.8 / len(show)
     for j, m in enumerate(show):
         mu = [ms(res[g]["ari"][m])[0] for g in gens]
         sd = [ms(res[g]["ari"][m])[1] for g in gens]
         ax.bar(x + (j - len(show) / 2 + 0.5) * w, mu, w, yerr=sd, capsize=2,
-               label=METHOD_LABELS[m].replace("\\tool{}", "GCM-MRK"))
+               label=FIG_LABELS.get(m, m))
     ax.set_xticks(x)
     ax.set_xticklabels([GEN_LABELS[g].replace("$\\pm$", "±") for g in gens],
                        rotation=20, ha="right", fontsize=7)
     ax.set_ylabel("adjusted Rand index")
+    ax.set_ylim(0, 1.08)
     ax.axvline(0.5, color="0.6", lw=0.8, ls=":")
-    ax.text(0.02, 0.97, "model correct →| ← model misspecified",
+    ax.text(0.02, 0.98, "model correct →| ← model misspecified",
             transform=ax.transAxes, fontsize=6.5, va="top", color="0.35")
-    ax.legend(frameon=False, fontsize=6.5, ncol=3)
+    ax.legend(frameon=False, fontsize=6.5, ncol=3, loc="lower center",
+              bbox_to_anchor=(0.5, 1.01))
     fig.tight_layout()
     fig.savefig(FIGURES / f"misspecification{TAG}.pdf")
     plt.close(fig)
