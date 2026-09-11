@@ -55,7 +55,7 @@ while stochastic Bayesian approaches (such as Reversible Jump MCMC) could theore
 Here we present \tool{} (Genetic Clustering by Metric), an open-source Python package that clusters data by directly optimizing a chosen cluster-validity metric with a memetic genetic algorithm (GA), which is an evolutionary algorithm hybridized with a problem-specific local search that refines each candidate solution within its own ``lifetime,''. This strategy was introduced by Moscato~\cite{Moscato2000} and surveyed by Neri and Cotta~\cite{NeriCotta2012}. Genetic algorithms (GAs) could be a promising solution for clustering tasks \cite{katoch2021}, particularly in the context of gene expression data \cite{pirim2012}. Other attempts have been made to use evolutionary algorithms in this or similar contexts, with overall promising results \cite{hageman2008, hruschka2006, korkmaz2006, weiEntropyClusteringAnalysis2008}. GAs are optimization algorithms that mimic the principles of natural selection and evolution, making them well-suited for complex, multi-objective problems where traditional methods may struggle to find optimal solutions \cite{wirsanskyHGA2020}. 
 
 \tool{} makes four contributions. First, we place co-expression module detection
-on an explicit likelihood footing: the absolute-correlation criterion used
+on an explicit likelihood framework: the absolute-correlation criterion used
 throughout the field is the profile log-likelihood of a block-diagonal one-factor
 Gaussian with equal-magnitude loadings, and it is the constrained member of a
 family whose general form permits $q$ factors with free loadings. Making that
@@ -71,15 +71,12 @@ against ground truth, so that no margin can be attributed to unfavourable settin
 for a competitor. Third, we test on real data with real ground truth, using the
 benchmark of Saelens et al.~\cite{Saelens2018}, which pairs expression compendia
 from three organisms with curated module definitions derived from regulatory
-networks. Fourth, and unusually for a methods paper, we characterize when our own
+networks. Fourth, we characterize when our own
 objective is wrong: across data-generating processes that violate the block model
 we identify two structural regimes in which maximizing the constrained likelihood
 moves \emph{away} from the true modules, demonstrate that this is model
 misspecification rather than optimizer failure, and show that the free-loading
-model removes the failure on those processes---while reporting that this
-advantage does not carry over to any of the real datasets we tested, which is a
-result about the structure of real co-expression data rather than about the
-optimizer. The implementation is deliberately minimal---depending only on
+model removes the failure on those processes. The implementation is deliberately minimal---depending only on
 NumPy~\cite{Harris2020} and SciPy~\cite{Virtanen2020}, with internal
 k-means++~\cite{ArthurVassilvitskii2007} and correlation-distance hierarchical
 seeders, behind one swappable-metric interface that also exposes standard
@@ -1296,7 +1293,7 @@ scripts are openly available.
 \section*{Supporting information}
 
 \paragraph*{S1 Appendix.}
-\label{S1_Appendix}
+\namedlabel{S1_Appendix}{S1 Appendix}
 \textbf{Derivation of the correlation objective from the one-factor block model.}
 
 \emph{Model.} Each of the $d$ samples (columns of $\mathbf{X}$) is an
@@ -1357,7 +1354,7 @@ attained the same recovery as the best rank chosen with knowledge of the truth o
 every process.
 
 \paragraph*{S1 File.}
-\label{S1_File}
+\namedlabel{S1_File}{S1 File}
 \textbf{Reproduction package.} For convenience, a compressed version of the repository is shared as a companion to the paper (although it is also available through GitHub and Zenodo). It contains the source code, the benchmark driver (\texttt{experiments/run\_experiments.py}), and the generated results tables and figures.
 
 \section*{Data and Software Availability}

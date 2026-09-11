@@ -3,6 +3,16 @@
 % Shorthand
 \newcommand{\tool}{GCM}
 
+% Named cross-reference for unnumbered headings (e.g. Supporting Information items).
+% Sets \phantomsection for hyperref and defines \@currentlabelname for \nameref.
+\makeatletter
+\newcommand{\namedlabel}[2]{%
+  \phantomsection%
+  \def\@currentlabelname{#2}%
+  \label{#1}%
+}
+\makeatother
+
 % Local-preview figures.  PLOS requires figures to be uploaded separately and
 % removed from the manuscript PDF before submission; set \showfigsfalse for the
 % submission build.  When true, the generated PDFs in figures/ are embedded.
