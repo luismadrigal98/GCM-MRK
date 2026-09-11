@@ -472,8 +472,8 @@ We use the adjusted Rand index (ARI)~\cite{HubertArabie1985}; for the single-dat
 \subsection*{Recovering correlated modules on synthetic data}
 On Synthetic-Easy, \tool{} driven by the correlation log-likelihood (with
 $g_{\max}$ set to the true count) recovers the planted three-module structure
-perfectly (ARI $=\EasyLoglikARI{}$), whereas the k-means baseline---given the
-same true $k$---fails badly (ARI $=\EasyKmeansARI{}$). The gap is diagnostic:
+perfectly (ARI $=\EasyLoglikARI{}$), whereas the k-means baseline, given the
+same true $k$, fails badly (ARI $=\EasyKmeansARI{}$). The gap is diagnostic:
 because module loadings carry random signs, each module contains strongly
 anti-correlated genes that are coherent under the absolute-correlation objective
 but lie far apart in Euclidean space, so k-means splits them. The GA converges
@@ -646,25 +646,22 @@ that outscores the ground truth is, in this sense, a sharper diagnostic of
 misspecification than any accuracy metric, because it separates the two failure
 modes that an accuracy drop alone conflates.
 
-\begin{table}[!ht]
+\begin{sidewaystable}
 \centering
 \caption{\textbf{Recovery under model misspecification} (ARI, mean $\pm$ SD over
 \MisspecSeeds{} datasets per process, $\sigma=1.5$). Best method per process in
 bold.}
 \label{tab:misspec}
-\begin{adjustwidth}{-1.25in}{0in}
-\centering
 \IfFileExists{results/misspec_table_n15.tex}{\input{results/misspec_table_n15.tex}}{%
 \begin{tabular}{@{}l@{}}\hline
 \textit{Run experiments/misspecification.py to populate this table.}\\\hline
 \end{tabular}}
-\end{adjustwidth}
 \begin{flushleft}
 The first column is \tool{}'s own generative model; the remaining five each
 violate one of its assumptions (Methods). Every method receives the number of
 modules planted in that dataset.
 \end{flushleft}
-\end{table}
+\end{sidewaystable}
 
 \begin{figure}[!h]
 \previewfig{misspecification_n15.pdf}
@@ -1173,7 +1170,7 @@ real expression compendia with curated modules it is worse on every dataset we
 tested, never wins one, and costs twenty to a hundred times more. We therefore
 recommend the constrained absolute-correlation criterion as the default, and the
 factor model where there is specific reason to think module members respond at
-very different strengths or to several regulators---a situation we can construct
+very different strengths or to several regulators, which is a situation we can construct
 and detect in simulation but did not find in seven real datasets.
 
 We think the negative transfer is itself worth reporting. The obvious reading is
@@ -1181,7 +1178,7 @@ that our generators overstate how often real modules are multi-directional: a
 regulon at the scale of a few hundred variable genes appears to behave much like
 a single dominant signal, so the extra loadings fit noise rather than structure.
 That is a claim about co-expression data, not about the optimizer, and it is
-testable---by anyone who finds a compendium where the factor model does win. It
+testable by anyone who finds a compendium where the factor model does win. It
 also cautions against a common inference in methods papers, that a model which
 dominates on simulations designed to exercise it will dominate in application.
 
@@ -1191,20 +1188,15 @@ Euclidean-Gaussian clusters, which a correlation block model contradicts wheneve
 modules contain anti-correlated genes.
 
 Given the model, the first contribution that matters in practice is optimization
-quality. Greedy agglomerative clustering on the correlation distance---the core
-of widely used co-expression pipelines---is a strong seed but a poor optimizer:
+quality. Greedy agglomerative clustering on the correlation distance (the core
+of widely used co-expression pipelines) is a strong seed but a poor optimizer:
 once it merges two genes it can never separate them. Our replicated benchmark
 shows that hybridizing the GA with a memetic local search, which reassigns genes
 after the fact, surpasses hierarchical clustering and every contemporary
 alternative we tested at moderate noise. We are deliberate about the size of that
 claim. Measured against agglomerative clustering alone the margin is $0.14$ ARI;
 measured against oracle-tuned WGCNA, the strongest competitor, it is $0.03$, and
-at $\sigma=2.0$ that competitor overtakes us. A benchmark restricted to
-hierarchical clustering and k-means---the comparison the earlier literature on
-GA-based clustering has largely used---would have overstated the advantage by
-roughly fourfold. Where the margin is unambiguous is in the presence of
-unstructured genes, a situation any variance-filtered gene set presents, and we
-regard that as the more consequential practical result.
+at $\sigma=2.0$ that competitor overtakes us.
 
 The second contribution is a negative one that we think is more useful than
 another favourable table. By generating data from processes the model does not
@@ -1217,12 +1209,12 @@ diagnostic generalizes beyond this method. Any model-based clustering procedure
 can be interrogated the same way, by evaluating its own objective at a trusted
 reference partition; an objective that outscores the truth is misspecified for
 those data, and no amount of better search will help. Notably, distributional
-misspecification---non-Gaussian counts with a mean--variance trend---did not
+misspecification (non-Gaussian counts with a mean--variance trend) did not
 degrade performance, which suggests that practitioners should worry more about
 whether their modules are single-signal than about whether their data are normal.
 
 The third contribution follows from the second. Because the failure is
-attributable to a specific assumption---exchangeability of module members---it
+attributable to a specific assumption (exchangeability of module members) it
 can be repaired by relaxing that assumption rather than abandoning the framework.
 The rank-$q$ free-loading block model does not merely recover the lost accuracy:
 with the rank selected from the data it leads every process we tested, including
@@ -1279,8 +1271,8 @@ we tested.
 Making the model explicit also let us find where it breaks. We identify two
 structural regimes in which the constrained objective is misspecified,
 demonstrate that its optimizer there returns partitions scoring above the ground
-truth---a diagnostic that separates a wrong model from a failed search, and that
-applies to any model-based clustering method---and show that freeing the loadings
+truth, a diagnostic that separates a wrong model from a failed search, and that
+applies to any model-based clustering method, and show that freeing the loadings
 repairs the failure completely on those processes. We then report that this
 repair does not transfer to real data, that the criterion which selects the
 factor rank cannot select the number of modules, and that our advantage over
