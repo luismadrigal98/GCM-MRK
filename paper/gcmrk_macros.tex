@@ -1,5 +1,5 @@
 % Shared macro definitions and generated-result inputs.
-% Included by both the PLOS and PeerJ wrappers so the two cannot diverge.
+% Included by the manuscript wrapper; keeps generated values out of the text.
 % Shorthand
 \newcommand{\tool}{GCM}
 
@@ -13,8 +13,7 @@
 }
 \makeatother
 
-% Local-preview figures.  PLOS requires figures to be uploaded separately and
-% removed from the manuscript PDF before submission; set \showfigsfalse for the
+% Local-preview figures: figures are uploaded separately at submission, so
 % submission build.  When true, the generated PDFs in figures/ are embedded.
 \graphicspath{{figures/}}
 \newif\ifshowfigs\showfigstrue

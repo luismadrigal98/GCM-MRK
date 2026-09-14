@@ -1,11 +1,9 @@
 """Module recovery on the Saelens et al. (2018) benchmark: real data, real modules.
 
-Every decisive result in this manuscript so far comes from data we generated
-ourselves.  The misspecification sweep mitigates that -- those generators
-deliberately break our own model -- but they are still simulations, and the one
-empirical dataset analysed (GSE183947) cannot separate any of the methods.  This
-script closes the gap using the benchmark of Saelens, Cannoodt and Saeys
-(Nat Commun 9:1090, 2018), which pairs real expression compendia with curated
+Synthetic designs and misspecified generators test the optimizer and the model,
+but both are simulations.  This script evaluates recovery on real data with
+independently curated ground truth, using the benchmark of Saelens, Cannoodt and
+Saeys (Nat Commun 9:1090, 2018), which pairs real expression compendia with
 module definitions derived from regulatory networks.
 
 Ground truth here is *not* a partition.  Known modules are regulons: they

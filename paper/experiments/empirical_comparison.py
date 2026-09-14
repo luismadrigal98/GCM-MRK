@@ -1,11 +1,10 @@
 """Comparative empirical analysis on GSE183947 breast-cancer RNA-seq.
 
-The manuscript's original empirical section applied GCM-MRK alone and reported
-that its module eigengenes separate tumour from normal tissue.  That is close to
-unfalsifiable: almost any partition of the most variable genes in a tumour/normal
-dataset will produce some eigengenes that differ between the groups.  This script
-replaces it with a comparison in which every method is scored on the same data by
-the same criteria, none of which uses the tumour label to fit anything.
+Whether a method's module eigengenes separate tumour from normal tissue is a weak
+criterion on its own: the tumour/normal contrast dominates this dataset, so almost
+any partition of its most variable genes recovers some of it.  This script scores
+every method on the same data by four criteria instead, none of which uses the
+tissue label to fit anything.
 
 Methods
 -------

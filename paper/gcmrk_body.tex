@@ -1,5 +1,5 @@
 % Venue-agnostic manuscript body: Introduction through Acknowledgments.
-% Requires \tool, \previewfig, \adjustwidth and \nameref from the wrapper.
+% Requires \tool, \previewfig, \adjustwidth and \nameref from the preamble.
 \section*{Introduction}
 
 High-throughput technologies for profiling gene expression have revolutionized the field of molecular biology, enabling researchers to capture the intricate patterns of gene regulation and unravel the underlying genetic networks. However, the sheer volume and complexity of gene expression data pose significant challenges in extracting meaningful insights \cite{lorenaComplexityGeneExpression2008}. One critical step in this process is the clustering of genes based on their expression profiles, which aims to group together genes exhibiting similar patterns of expression across various experimental conditions or time points \cite{Saelens2018}. Clustering is a foundational step in computational biology, from grouping co-expressed genes into putative regulatory modules~\cite{Eisen1998,Wolfe2005} to shedding light on regulatory pathways mechanisms \cite{vengatharajulooGeneCoExpressionNetwork2023}, disease-associated genes \cite{vandamGeneCoexpressionAnalysis2017}, and potential therapeutic targets \cite{hasankhaniDifferentialCoExpressionNetwork2021}. By partitioning a set of objects into groups based on similarity, cluster analysis identifies intrinsic structures in data to gain insight \cite{hruschka2004, pirim2012}.  
@@ -101,7 +101,7 @@ population of partitions to optimize these scores in their natural direction
 \paragraph*{A generative model for correlation modules.}
 The correlation objective is the maximum log-likelihood of an explicit
 generative model, which we state here and derive in full in
-\nameref{S1_Appendix}. Let the data matrix $\mathbf{X}\in\mathbb{R}^{n\times d}$
+\nameref{AppendixA}. Let the data matrix $\mathbf{X}\in\mathbb{R}^{n\times d}$
 hold $n$ genes measured over $d$ samples, row-standardized. We model each
 \emph{sample} (column) as an independent draw from a multivariate Gaussian over
 genes, $N(\mathbf{0},\Sigma)$, whose correlation matrix $\Sigma$ is
@@ -120,7 +120,7 @@ $s$ of size $n_s$, let
 \label{eq:cs}
 C_s = \sum_{i\in s}\sum_{j\in s} \lvert R_{ij}\rvert \in [\,n_s,\,n_s^{2}\,]
 \end{equation}
-(the unit diagonal is included). As shown in \nameref{S1_Appendix}, the
+(the unit diagonal is included). As shown in \nameref{AppendixA}, the
 maximum-likelihood common coherence of a module is its mean absolute
 off-diagonal correlation, $\hat\rho_s=(C_s-n_s)/(n_s^2-n_s)$, and at that
 estimate the trace term of the Gaussian log-likelihood collapses to the module
@@ -332,7 +332,7 @@ model charges one parameter per module regardless of size. Summing $p_m$ into th
 usual AIC/BIC penalties therefore yields criteria that are comparable
 \emph{across ranks}, so $q$ need not be fixed by the user: we run the optimizer
 once per candidate rank and keep the fit minimizing BIC. We use BIC rather than
-AIC throughout, because AIC selects one rank too many (\nameref{S1_Appendix}).
+AIC throughout, because AIC selects one rank too many (\nameref{AppendixA}).
 
 \emph{Relationship between the two objectives.} Eq~\eqref{eq:factorblock} at
 $q=1$ with the loadings constrained to a common magnitude,
@@ -1134,7 +1134,7 @@ is that it can be tested rather than assumed. The correlation criterion the fiel
 already uses is not a heuristic: it is, up to a constant and the sample-size
 factor, the profile log-likelihood of a block-diagonal one-factor Gaussian in
 which each module is driven by a single regulator with equal-magnitude $\pm$
-loadings \cite{bartholomew2011} (\nameref{S1_Appendix}). Writing it that way makes
+loadings \cite{bartholomew2011} (\nameref{AppendixA}). Writing it that way makes
 two constraints visible---one factor, equal magnitudes---and both can be relaxed
 within the same family. Whether to relax them is then an empirical question
 rather than a matter of taste, and our answer is split. On synthetic data the
@@ -1252,10 +1252,10 @@ improvement fails to generalize, is more useful to practitioners than a benchmar
 in which it always wins. The software, documentation, and full reproduction
 scripts are openly available.
 
-\section*{Supporting information}
+\section*{Appendices}
 
-\paragraph*{S1 Appendix.}
-\namedlabel{S1_Appendix}{S1 Appendix}
+\paragraph*{Appendix A.}
+\namedlabel{AppendixA}{Appendix A}
 \textbf{Derivation of the correlation objective from the one-factor block model.}
 
 \emph{Model.} Each of the $d$ samples (columns of $\mathbf{X}$) is an
@@ -1315,12 +1315,12 @@ the optimizer once per candidate rank and keeping the lowest-BIC fit, which
 attained the same recovery as the best rank chosen with knowledge of the truth on
 every process.
 
-\paragraph*{S1 File.}
-\namedlabel{S1_File}{S1 File}
+\paragraph*{Appendix B.}
+\namedlabel{AppendixB}{Appendix B}
 \textbf{Reproduction package.} For convenience, a compressed version of the repository is shared as a companion to the paper (although it is also available through GitHub and Zenodo). It contains the source code, one script per analysis in \texttt{paper/experiments/} (listed in that directory's README), and the generated results tables and figures.
 
 \section*{Data and Software Availability}
 All source code for the \tool{} package, along with the reproduction scripts to generate the results and figures presented in this manuscript, is publicly available under an open-source license on GitHub at \url{https://github.com/luismadrigal98/GCM-MRK}. To ensure long-term reproducibility, a persistent snapshot of the codebase at the time of submission has been archived on Zenodo (DOI: 10.5281/zenodo.21361265). The breast-cancer RNA-seq dataset (GSE183947) analyzed in this study is publicly available from the NCBI Gene Expression Omnibus (GEO). The expression compendia and curated module definitions of the Saelens et al.\ benchmark are available from Zenodo (DOI: 10.5281/zenodo.5532578); the scripts in \texttt{paper/experiments/} document how they were subset and scored.
 
 \section*{Acknowledgments}
-We thank all the class of Simulation in Python offered in the University of Kansas, where all this project of evolving solutions using evolutionary algorithms (the simulation bit) started.
+We thank all the class of Simulation in Python offered in the University of Kansas, where all this project of evolving solutions using evolutionary algorithms (the simulation bit) started. We also acknowledge the use of Claude Opus 5 model from Anthropic for polishing writing and language refinement. All AI-refined content was reviewed by the authors and we take full responsibility for the content presented in the manuscript. 

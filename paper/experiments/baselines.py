@@ -1,9 +1,9 @@
-"""Third-party clustering baselines for the GCM-MRK benchmark.
+"""Third-party clustering baselines, behind a single interface.
 
-The reviewers of a module-detection paper expect the community-detection and
-spectral methods that dominate practice, not only the agglomerative core of the
-co-expression pipelines.  This module wraps them behind one signature so
-``decisive.py`` can call them interchangeably:
+Module detection in practice is dominated by community-detection, spectral and
+network methods as much as by the agglomerative clustering at the core of
+co-expression pipelines.  This module wraps all of them behind one signature so
+that a driver can call them interchangeably:
 
     labels = method(cor, X, k_true, rng)     # 1-based integer labels
 

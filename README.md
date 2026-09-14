@@ -55,20 +55,38 @@ The two correlation objectives assume different things about what a module *is*.
 
 `loglik` models a module as **one latent factor with equal-magnitude ± loadings**.
 It sees a module only through its mean absolute correlation and treats all member
-pairs as interchangeable. That is the efficient choice when the assumption holds,
-and it is the faster of the two.
+pairs as interchangeable. `loglik_factor` models a module as **`q` freely-loaded
+factors**: members may carry different loading magnitudes, and anti-correlated
+members are represented by negative loadings rather than an absolute value. The
+first is the constrained special case of the second.
 
-`loglik_factor` models a module as **`q` freely-loaded factors**. Members may
-carry different loading magnitudes, and anti-correlated members are represented
-by negative loadings rather than an absolute value. Use it when:
+**Start with `loglik_aic`.** It is much faster, needs no rank selection, and on
+real expression data we have found it to match or beat the factor model. Reach
+for `loglik_factor` when there is specific reason to expect that module members
+respond to a shared regulator at *different strengths* (hub-and-spoke structure),
+or that modules are driven by *several* factors.
 
-- module members respond to a shared regulator at *different strengths*
-  (hub-and-spoke structure), or
-- modules are driven by *several* factors, in which case set `q` accordingly.
+| situation | use |
+|---|---|
+| general use; cluster count unknown | `loglik_aic` (or `loglik_bic`) |
+| unequal member strengths or several regulators, count known | `cluster_factor_auto(..., g_max=K)` |
+| as above, count unknown | two-stage: `loglik_aic` picks K, then `cluster_factor_auto(g_max=K)` |
+| large inputs | `loglik` / `loglik_aic` |
 
-The rank matters, and setting it too high is worse than leaving it at 1. To pick
-it from the data, compare ranks under the information criterion — whose parameter
-count scales with module size, unlike the exchangeable model's one-per-module:
+The rank matters, and setting it too high is worse than leaving it at 1, so let
+the information criterion choose it — its parameter count scales with module
+size, unlike the exchangeable model's one-per-module:
+
+```python
+from gcmrk import cluster, cluster_factor_auto
+
+# cluster count unknown: pick it with the constrained criterion first
+k_hat = len(set(cluster(data, targets=["loglik_aic"], g_max=15).labels))
+result = cluster_factor_auto(data, ranks=(1, 2, 3), g_max=k_hat)
+print(result.scores["factor_rank"])   # the q that was selected
+```
+
+or from the command line, keeping the rank with the lowest criterion:
 
 ```bash
 for q in 1 2 3; do
@@ -77,56 +95,18 @@ for q in 1 2 3; do
 done
 ```
 
-and keep the rank with the lowest criterion. From Python this is one call:
+**Give `cluster_factor_auto` a cluster count you trust.** It selects the rank
+reliably but cannot select the number of clusters: the summed parameter count is
+`n*q - k*q(q-1)/2 + k`, which grows with `k` only at `q = 1`, is flat at `q = 2`
+and shrinks for `q >= 3`. At higher ranks the criterion charges less for more
+modules, so with a loose `g_max` the search runs to the ceiling. Use
+`loglik_aic` / `loglik_bic` when the count is unknown.
 
-```python
-from gcmrk import cluster_factor_auto
-
-result = cluster_factor_auto(data, ranks=(1, 2, 3), g_max=8)
-print(result.scores["factor_rank"])   # the q that was selected
-```
-
-On synthetic data spanning one-factor, multi-factor, hub-and-spoke and
-network-derived modules, BIC-selected rank matched the best attainable rank in
-every case — so auto-selection costs a few extra runs but not accuracy.
-
-### Which correlation objective should I use?
-
-`loglik_factor` (free loadings, rank chosen by BIC) is the **recommended
-default**. `loglik` is the same model constrained to one factor with all loadings
-of equal magnitude — roughly 3–4x faster and needing no rank selection, but it
-loses badly when a module spans several regulators or when its members respond at
-very different strengths.
-
-| situation | use |
-|---|---|
-| number of modules known or bounded | `cluster_factor_auto(...)` |
-| number of modules unknown | two-stage: `loglik_aic` to pick K, then `cluster_factor_auto(g_max=K)` |
-| large input, or modules known to be single-signal | `loglik` (fast approximation) |
-| choosing K only | `loglik_aic` / `loglik_bic`, or a resolution-based method |
-
-The two-stage recipe matters because the factor criterion selects the *rank* well
-but cannot select the *number of clusters* (see the warning below):
-
-```python
-from gcmrk import cluster, cluster_factor_auto
-
-k_hat = len(set(cluster(data, targets=["loglik_aic"], g_max=15).labels))
-result = cluster_factor_auto(data, ranks=(1, 2, 3), g_max=k_hat)
-```
-
-**Set `g_max` from knowledge of the data.** `cluster_factor_auto` selects the
-rank reliably but *cannot* select the number of clusters: the summed parameter
-count is `n*q - k*q(q-1)/2 + k`, which grows with `k` only at `q = 1`, is flat at
-`q = 2`, and shrinks for `q >= 3`. At higher ranks the criterion charges less for
-more modules, so with a loose `g_max` the search runs to the ceiling. When the
-module count is unknown, use `loglik_aic` / `loglik_bic` instead.
-
-Expect `loglik_factor` to cost
-roughly 3-4x the runtime of `loglik`: its local search must re-solve the affected
-blocks' leading eigenvalues per candidate move, where the exchangeable objective
-updates in constant time. Above ~1500 elements the hill-climb is skipped
-automatically and the GA optimizes the objective without refinement.
+`loglik_factor` costs several times more than `loglik` per run — its local search
+re-solves the affected blocks' leading eigenvalues per candidate move, where the
+exchangeable objective updates in constant time — and the gap widens on real data,
+where more modules and a higher selected rank are typical. Above ~1500 elements
+the hill-climb is skipped automatically and the GA optimizes without refinement.
 
 ## Command-line usage
 

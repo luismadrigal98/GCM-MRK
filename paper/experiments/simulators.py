@@ -4,9 +4,9 @@ The benchmark in the manuscript uses :func:`gcmrk.simulate_modular_data`, which
 draws each module from a single latent factor with random :math:`\\pm 1` loadings.
 That is exactly the model whose profile log-likelihood the ``loglik`` objective
 maximizes.  Recovering those modules therefore demonstrates that the optimizer
-reaches the likelihood optimum --- it cannot, on its own, demonstrate that the
-model is a good description of real co-expression data.  A reviewer will make
-this point, so we make it first.
+reaches the likelihood optimum; it cannot, on its own, demonstrate that the model
+is a good description of real co-expression data.  Testing that requires data the
+model does not assume.
 
 Each generator here violates at least one assumption of the one-factor block
 model, while keeping the planted module structure that defines ground truth:

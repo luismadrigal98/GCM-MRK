@@ -1,11 +1,10 @@
-"""Extended benchmark: GCM-MRK against the state-of-the-art module detectors.
+"""Benchmark against contemporary module detectors.
 
-``decisive.py`` compares GCM-MRK only with agglomerative linkage and k-means.
-That is the comparison an editor will call incomplete, because the methods that
-actually dominate module detection in practice --- Louvain, Leiden, spectral
-clustering, Markov clustering and WGCNA itself --- are absent.  This script adds
-them on exactly the same datasets, seeds and metrics, so the two sets of numbers
-are directly comparable.
+Compares the correlation objectives with the methods that dominate module
+detection in practice --- Louvain, Leiden, spectral clustering, Markov clustering
+and WGCNA --- alongside agglomerative linkage and k-means, on shared datasets,
+seeds and metrics so that every number is directly comparable.  ``decisive.py``
+runs the smaller comparison against agglomerative clustering and k-means alone.
 
 Fairness protocol
 -----------------

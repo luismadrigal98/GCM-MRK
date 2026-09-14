@@ -1,15 +1,14 @@
-"""Reproduce the manuscript's diagnostic claims that no benchmark script covers.
+"""Targeted diagnostics behind the manuscript's model-selection statements.
 
 The benchmark drivers produce the paper's tables.  Several statements in the
-text, however, rest on smaller targeted experiments: that the optimizer returns
+text rest instead on smaller targeted experiments: that the optimizer returns
 partitions scoring *above* the ground truth, that BIC recovers the factor rank,
 that automatic rank selection loses nothing against an oracle rank, that graph
 modularity is itself misspecified on the same processes, and the performance of
-the two-stage recipe for choosing K.  The manuscript states that all code needed
-to reproduce its results ships with the package; this script is what makes that
-true for those statements.
+the two-stage recipe for choosing K.  Each is reproduced here so that every
+statement in the text has a script behind it.
 
-Experiments (each at the noise level the manuscript states for it)
+Experiments (each at the noise level the text reports for it)
 ------------------------------------------------------------------
 1. Likelihood versus ground truth (sigma = 1.0), multi-factor and hub processes.
 2. Rank recovery by BIC and AIC evaluated at the planted partition (sigma = 1.0).

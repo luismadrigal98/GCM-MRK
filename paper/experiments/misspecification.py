@@ -10,12 +10,12 @@ seed and metric fixed.
 
 Reading the result
 ------------------
-* If GCM-MRK leads on ``onefactor`` and loses elsewhere, the manuscript's claim
-  is an artifact of the simulator and must be rewritten.
-* If it leads throughout, the correlation objective is robust to
-  misspecification and the claim strengthens considerably.
-* A middle outcome tells us which structural assumptions matter, which is the
-  most useful result for a reader deciding whether to use the method.
+Leading on ``onefactor`` alone would mean the advantage is an artifact of the
+simulator; leading throughout would mean the objective is robust to
+misspecification.  The informative outcome is between the two, since it
+identifies *which* structural assumptions matter to a reader deciding whether the
+objective suits their data.  The reported within- minus between-module
+correlation contrast bounds how much any generator can discriminate.
 
 Outputs (../results, ../figures):
   results/misspecification.json         full results + metadata
