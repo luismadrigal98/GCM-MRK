@@ -60,6 +60,8 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys; _sys.path.insert(0, str(Path(__file__).resolve().parent))
+from plotstyle import FIG_WIDTH  # noqa: E402  (sets pdf.fonttype=42)
 
 from scipy import stats
 from scipy.cluster.hierarchy import fcluster, linkage
@@ -370,10 +372,13 @@ def fig_comparison(data):
     labels = [METHOD_LABELS[m].replace("\\tool{}", "GCM")
               .replace("\\texttt{", "").replace("}", "").replace("\\_", "_")
               for m in ms]
-    fig, axes = plt.subplots(1, 3, figsize=(9.5, 3.1))
+    # One shared row of method labels: repeating them on all three panels cost
+    # the width that made them legible.
+    fig, axes = plt.subplots(1, 3, figsize=(FIG_WIDTH, 2.7), sharey=True)
+    # Two-line labels: a single line does not fit a third of the text width.
     panels = [
-        ("median_coherence", "median within-module $|r|$"),
-        (None, "GO-enriched modules (fraction)"),
+        ("median_coherence", "median within-\nmodule $|r|$"),
+        (None, "GO-enriched\nmodules (fraction)"),
         ("split_half_ari", "split-half ARI"),
     ]
     for ax, (key, title) in zip(axes, panels):
@@ -382,11 +387,15 @@ def fig_comparison(data):
                      / max(r[m].get("n_enrichment_tested", 1), 1)) for m in ms]
         else:
             vals = [r[m].get(key, np.nan) for m in ms]
-        ax.barh(np.arange(len(ms)), vals, color=["C0"] + ["0.7"] * (len(ms) - 1))
+        # Highlight the recommended method, which is the one the caption's
+        # claims are about -- not whichever happens to sort first.
+        ax.barh(np.arange(len(ms)), vals,
+                color=["C0" if m == "gcm_loglik" else "0.7" for m in ms])
         ax.set_yticks(np.arange(len(ms)))
-        ax.set_yticklabels(labels, fontsize=6)
-        ax.set_xlabel(title, fontsize=7)
-        ax.invert_yaxis()
+        ax.set_xlabel(title, fontsize=8)
+        ax.tick_params(axis="x", labelsize=8)
+    axes[0].set_yticklabels(labels, fontsize=8)
+    axes[0].invert_yaxis()
     fig.tight_layout()
     fig.savefig(FIGURES / "empirical_comparison.pdf")
     plt.close(fig)

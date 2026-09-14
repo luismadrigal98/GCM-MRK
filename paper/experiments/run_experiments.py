@@ -42,6 +42,8 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys; _sys.path.insert(0, str(Path(__file__).resolve().parent))
+from plotstyle import FIG_WIDTH  # noqa: E402  (sets pdf.fonttype=42)
 
 from scipy.optimize import linear_sum_assignment
 from scipy.stats import ttest_ind
@@ -288,7 +290,7 @@ def empirical_block(rows, meta, n_top=200, g_max=EMP_G_MAX):
 # --------------------------------------------------------------------------- #
 def fig_convergence(res):
     gens = [h["gen"] for h in res.history]
-    fig, ax = plt.subplots(figsize=(4.2, 3.0))
+    fig, ax = plt.subplots(figsize=(FIG_WIDTH, 3.2))
     ax.plot(gens, [h["max"] for h in res.history], label="best", lw=1.8)
     ax.plot(gens, [h["avg"] for h in res.history], label="population mean",
             lw=1.2, ls="--")
@@ -299,7 +301,7 @@ def fig_convergence(res):
 
 def fig_model_selection(scan, k_true):
     ks = [s["k_found"] for s in scan]
-    fig, ax1 = plt.subplots(figsize=(4.6, 3.0))
+    fig, ax1 = plt.subplots(figsize=(FIG_WIDTH, 3.2))
     ax1.plot(ks, [s["loglik"] for s in scan], "o-", color="C0",
              label="loglik (fit)")
     ax1.set_xlabel("number of clusters k")
@@ -319,7 +321,7 @@ def fig_model_selection(scan, k_true):
     # matplotlib names unlabelled artists "_childN"; keep them out of the legend
     lines = [l for l in ax1.get_lines() + ax2.get_lines()
              if not l.get_label().startswith("_")]
-    ax1.legend(lines, [l.get_label() for l in lines], frameon=False, fontsize=7,
+    ax1.legend(lines, [l.get_label() for l in lines], frameon=False, fontsize=8,
                loc="lower center", bbox_to_anchor=(0.5, 1.02), ncol=3)
     fig.tight_layout(); fig.savefig(FIGURES / "model_selection.pdf"); plt.close(fig)
     return kbic, kaic
@@ -332,7 +334,7 @@ def fig_pareto(res):
     bic = np.array([s["scores"]["bic"] for s in res.pareto_front])
     kk = np.array([n_clusters(s["labels"]) for s in res.pareto_front])
     order = np.argsort(ll)
-    fig, ax = plt.subplots(figsize=(4.2, 3.0))
+    fig, ax = plt.subplots(figsize=(FIG_WIDTH, 3.2))
     sc = ax.scatter(ll[order], bic[order], c=kk[order], cmap="viridis", s=40,
                     edgecolor="k", lw=0.4)
     ax.set_xlabel("correlation log-likelihood (maximize)")
@@ -352,7 +354,7 @@ def fig_iris_silhouette(X, labels):
         a = D[i, own].sum() / max(1, own.sum() - 1)
         b = min(D[i, labels == c].mean() for c in uniq if c != labels[i])
         sil[i] = (b - a) / max(a, b)
-    fig, ax = plt.subplots(figsize=(4.2, 3.0)); y = 0
+    fig, ax = plt.subplots(figsize=(FIG_WIDTH, 3.2)); y = 0
     for c in uniq:
         vals = np.sort(sil[labels == c]); ax.barh(range(y, y + len(vals)), vals,
                                                    height=1.0)
@@ -370,7 +372,7 @@ def fig_empirical_eigengenes(module_rows, eigengenes, is_tumor):
         return
     # show the modules most associated with phenotype
     order = sorted(module_rows, key=lambda m: m["tumor_normal_q"])[:6]
-    fig, ax = plt.subplots(figsize=(5.0, 3.0))
+    fig, ax = plt.subplots(figsize=(FIG_WIDTH, 3.2))
     pos = 0; ticks = []; ticklab = []
     for m in order:
         eig = eigengenes[m["module"]]
@@ -393,7 +395,7 @@ def fig_empirical_eigengenes(module_rows, eigengenes, is_tumor):
 
 def fig_dimred_synthetic(X, labels, truth, name):
     """PCA + correlation-MDS embeddings of a synthetic clustering result."""
-    fig, axes = plt.subplots(1, 2, figsize=(9.0, 3.8))
+    fig, axes = plt.subplots(1, 2, figsize=(FIG_WIDTH, 3.0))
     for ax, method, title in zip(
         axes,
         ["pca", "cor_mds"],
@@ -402,7 +404,7 @@ def fig_dimred_synthetic(X, labels, truth, name):
         X2 = reduce_dimensions(X, labels, method=method)
         plot_clusters(X2, labels, method=method, ax=ax, title=title,
                       truth=truth, show_legend=(method == "pca"))
-    fig.suptitle(f"{name}: recovered clusters", fontsize=11, fontweight="bold")
+    fig.suptitle(f"{name}: recovered clusters", fontsize=10, fontweight="bold")
     fig.tight_layout(rect=[0, 0, 1, 0.94])
     tag = name.lower().replace("-", "_").replace(" ", "_")
     fig.savefig(FIGURES / f"dimred_{tag}.pdf")
@@ -411,7 +413,7 @@ def fig_dimred_synthetic(X, labels, truth, name):
 
 def fig_dimred_empirical(G, labels):
     """PCA + correlation-MDS of the GSE183947 gene modules."""
-    fig, axes = plt.subplots(1, 2, figsize=(9.0, 3.8))
+    fig, axes = plt.subplots(1, 2, figsize=(FIG_WIDTH, 3.0))
     for ax, method, title in zip(
         axes,
         ["pca", "cor_mds"],
@@ -421,7 +423,7 @@ def fig_dimred_empirical(G, labels):
         plot_clusters(X2, labels, method=method, ax=ax, title=title,
                       show_legend=(method == "pca"))
     fig.suptitle("GSE183947: co-expression modules in reduced dimensions",
-                 fontsize=11, fontweight="bold")
+                 fontsize=10, fontweight="bold")
     fig.tight_layout(rect=[0, 0, 1, 0.94])
     fig.savefig(FIGURES / "dimred_empirical.pdf")
     plt.close(fig)

@@ -13,12 +13,14 @@
 }
 \makeatother
 
-% Local-preview figures: figures are uploaded separately at submission, so
-% submission build.  When true, the generated PDFs in figures/ are embedded.
+% Figure inclusion.  Every figure is drawn at \textwidth by the scripts (see
+% experiments/plotstyle.py), so including it at \linewidth reproduces it 1:1
+% and its labels appear at the point size the script set.  Scaling a figure
+% down here would shrink its labels with it.
 \graphicspath{{figures/}}
 \newif\ifshowfigs\showfigstrue
 \newcommand{\previewfig}[1]{\ifshowfigs\begin{center}%
-\includegraphics[width=0.7\textwidth]{#1}\end{center}\fi}
+\includegraphics[width=\linewidth]{#1}\end{center}\fi}
 
 % Auto-generated result macros (written by experiments/run_experiments.py).
 % Re-running the experiments regenerates these, so the numbers below update

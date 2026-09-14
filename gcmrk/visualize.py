@@ -379,10 +379,13 @@ def plot_clusters(
             if l and l not in seen:
                 seen[l] = h
         if seen:
+            # A single column taller than about eight entries runs off the
+            # axes, so wide legends are split across columns instead.
+            ncol = max(1, -(-len(seen) // 8))
             ax.legend(
                 seen.values(), seen.keys(),
                 fontsize=7, frameon=True, framealpha=0.7,
-                loc="best", markerscale=0.8,
+                loc="best", markerscale=0.8, ncol=ncol,
             )
 
     ax.tick_params(labelsize=7)

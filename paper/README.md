@@ -102,6 +102,11 @@ PYTHONPATH=. python3 paper/experiments/<script>.py
 - `decisive.py` — a lighter replicated benchmark against agglomerative
   clustering and k-means; much cheaper than `benchmark_baselines.py` and used
   for the ablation figure.
+- `plotstyle.py` — imported by every script that writes a figure, not run
+  directly. It embeds TrueType rather than Matplotlib's default Type 3 fonts,
+  which publishers reject, and defines `FIG_WIDTH`, the manuscript's text width.
+  Draw figures at that width: they are included at `\linewidth`, so a wider
+  figure is scaled down and its labels shrink with it.
 - `baselines.py`, `simulators.py` — imported by the drivers, not run directly:
   the competing methods behind one interface (with the protocol that gives each
   its most favourable setting), and the data-generating processes.

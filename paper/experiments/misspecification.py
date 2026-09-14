@@ -41,6 +41,8 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys; _sys.path.insert(0, str(Path(__file__).resolve().parent))
+from plotstyle import FIG_WIDTH  # noqa: E402  (sets pdf.fonttype=42)
 
 from sklearn.metrics import adjusted_rand_score as ARI
 
@@ -260,7 +262,7 @@ def fig_misspec(data):
     show = ["memetic", "factor_auto", "hier_avg", "spectral", "leiden",
             "wgcna_oracle"]
 
-    fig, ax = plt.subplots(figsize=(7.2, 3.6))
+    fig, ax = plt.subplots(figsize=(FIG_WIDTH, 3.8))
     x = np.arange(len(gens))
     w = 0.8 / len(show)
     for j, m in enumerate(show):
@@ -270,13 +272,13 @@ def fig_misspec(data):
                label=FIG_LABELS.get(m, m))
     ax.set_xticks(x)
     ax.set_xticklabels([GEN_LABELS[g].replace("$\\pm$", "±") for g in gens],
-                       rotation=20, ha="right", fontsize=7)
+                       rotation=20, ha="right", fontsize=7.5)
     ax.set_ylabel("adjusted Rand index")
     ax.set_ylim(0, 1.08)
     ax.axvline(0.5, color="0.6", lw=0.8, ls=":")
     ax.text(0.02, 0.98, "model correct →| ← model misspecified",
-            transform=ax.transAxes, fontsize=6.5, va="top", color="0.35")
-    ax.legend(frameon=False, fontsize=6.5, ncol=3, loc="lower center",
+            transform=ax.transAxes, fontsize=7, va="top", color="0.35")
+    ax.legend(frameon=False, fontsize=7, ncol=2, loc="lower center",
               bbox_to_anchor=(0.5, 1.01))
     fig.tight_layout()
     fig.savefig(FIGURES / f"misspecification{TAG}.pdf")

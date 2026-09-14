@@ -57,6 +57,8 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys; _sys.path.insert(0, str(Path(__file__).resolve().parent))
+from plotstyle import FIG_WIDTH  # noqa: E402  (sets pdf.fonttype=42)
 
 from scipy.cluster.hierarchy import fcluster, linkage
 from scipy.spatial.distance import squareform
@@ -413,7 +415,7 @@ def fig_saelens(data):
                                  .replace("\\texttt{", "").replace("}", "")
                                  .replace("\\_", "_")
              for m in METHOD_ORDER}
-    fig, ax = plt.subplots(figsize=(7.0, 3.6))
+    fig, ax = plt.subplots(figsize=(FIG_WIDTH, 3.6))
     x = np.arange(len(names))
     w = 0.8 / len(METHOD_ORDER)
     for j, m in enumerate(METHOD_ORDER):
@@ -423,7 +425,10 @@ def fig_saelens(data):
     ax.set_xticklabels([n.replace("_", "\n", 1) for n in names], fontsize=8)
     ax.set_ylabel("F1 (recovery, relevance)", fontsize=9)
     ax.tick_params(axis="y", labelsize=8)
-    ax.legend(frameon=False, fontsize=7.5, ncol=2, loc="upper right")
+    # The tallest bars reach the top of the axes, so the legend goes above them
+    # rather than over them.
+    ax.legend(frameon=False, fontsize=7.5, ncol=3, loc="lower center",
+              bbox_to_anchor=(0.5, 1.01))
     ax.spines[["top", "right"]].set_visible(False)
     fig.tight_layout()
     fig.savefig(FIGURES / "saelens.pdf")

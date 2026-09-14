@@ -36,6 +36,8 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys; _sys.path.insert(0, str(Path(__file__).resolve().parent))
+from plotstyle import FIG_WIDTH  # noqa: E402  (sets pdf.fonttype=42)
 
 from scipy.cluster.hierarchy import fcluster, linkage
 from scipy.spatial.distance import squareform
@@ -242,6 +244,16 @@ def write_latex(data):
     (RESULTS / "decisive_macros.tex").write_text(M)
 
 
+def _series(sweep, m, nl):
+    """Fetch one cell, tolerating float or string keys.
+
+    Keys are floats in a live run but become strings after a JSON round-trip, so
+    the figures can be regenerated from ``decisive.json`` without a rerun.
+    """
+    cell = sweep[m]
+    return cell[nl] if nl in cell else cell[str(nl)]
+
+
 def fig_perf_vs_noise(sweep):
     nls = NOISE_LEVELS
     style = {"memetic": ("GCM-MRK (memetic)", "o-", "C0"),
@@ -249,10 +261,10 @@ def fig_perf_vs_noise(sweep):
              "hier_avg": ("hierarchical (average)", "^-", "C2"),
              "hier_comp": ("hierarchical (complete)", "v-", "C3"),
              "kmeans": ("k-means", "d-", "C4")}
-    fig, ax = plt.subplots(figsize=(4.6, 3.2))
+    fig, ax = plt.subplots(figsize=(FIG_WIDTH, 3.2))
     for m, (lab, ls, c) in style.items():
-        mean = np.array([np.mean(sweep[m][nl]) for nl in nls])
-        sd = np.array([np.std(sweep[m][nl]) for nl in nls])
+        mean = np.array([np.mean(_series(sweep, m, nl)) for nl in nls])
+        sd = np.array([np.std(_series(sweep, m, nl)) for nl in nls])
         ax.plot(nls, mean, ls, color=c, label=lab, lw=1.6, ms=4)
         ax.fill_between(nls, mean - sd, mean + sd, color=c, alpha=0.15)
     ax.set_xlabel("noise level $\\sigma$")
@@ -263,12 +275,12 @@ def fig_perf_vs_noise(sweep):
 
 def fig_ablation(sweep):
     nls = NOISE_LEVELS
-    fig, ax = plt.subplots(figsize=(4.2, 3.0))
+    fig, ax = plt.subplots(figsize=(FIG_WIDTH, 3.2))
     x = np.arange(len(nls)); w = 0.38
-    mem = [np.mean(sweep["memetic"][nl]) for nl in nls]
-    nol = [np.mean(sweep["no_local"][nl]) for nl in nls]
-    mem_sd = [np.std(sweep["memetic"][nl]) for nl in nls]
-    nol_sd = [np.std(sweep["no_local"][nl]) for nl in nls]
+    mem = [np.mean(_series(sweep, "memetic", nl)) for nl in nls]
+    nol = [np.mean(_series(sweep, "no_local", nl)) for nl in nls]
+    mem_sd = [np.std(_series(sweep, "memetic", nl)) for nl in nls]
+    nol_sd = [np.std(_series(sweep, "no_local", nl)) for nl in nls]
     ax.bar(x - w/2, mem, w, yerr=mem_sd, capsize=3, label="with local search")
     ax.bar(x + w/2, nol, w, yerr=nol_sd, capsize=3, label="GA only")
     ax.set_xticks(x); ax.set_xticklabels([f"{nl}" for nl in nls])

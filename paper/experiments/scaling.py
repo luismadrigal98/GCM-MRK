@@ -34,6 +34,8 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys; _sys.path.insert(0, str(Path(__file__).resolve().parent))
+from plotstyle import FIG_WIDTH  # noqa: E402  (sets pdf.fonttype=42)
 
 from sklearn.metrics import adjusted_rand_score as ARI
 
@@ -203,7 +205,7 @@ def write_latex(data):
 
 def fig_scaling(data):
     res, sizes = data["results"], data["meta"]["sizes"]
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.2, 3.0))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(FIG_WIDTH, 3.0))
     for m in METHOD_ORDER:
         xs = sorted(int(k) for k in res[m])
         if not xs:
@@ -217,7 +219,7 @@ def fig_scaling(data):
     ax1.set_xlabel("genes"); ax1.set_ylabel("seconds per dataset")
     ax2.set_xscale("log")
     ax2.set_xlabel("genes"); ax2.set_ylabel("adjusted Rand index")
-    ax1.legend(frameon=False, fontsize=6.5)
+    ax1.legend(frameon=False, fontsize=8)
     fig.tight_layout()
     fig.savefig(FIGURES / "scaling.pdf")
     plt.close(fig)
