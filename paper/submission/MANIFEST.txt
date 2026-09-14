@@ -1,0 +1,32 @@
+Figure files, in order of first citation in the text:
+
+  figure1.pdf     convergence.pdf
+  figure2.pdf     baselines_vs_noise.pdf
+  figure3.pdf     ablation.pdf
+  figure4.pdf     misspecification_n15.pdf
+  figure5.pdf     saelens.pdf
+  figure6.pdf     model_selection.pdf
+  figure7.pdf     pareto.pdf
+  figure8.pdf     iris_silhouette.pdf
+  figure9.pdf     empirical_comparison.pdf
+  figure10.pdf    empirical_eigengenes.pdf
+  figure11.pdf    dimred_synthetic_easy.pdf
+  figure12.pdf    dimred_empirical.pdf
+
+Also in this directory:
+  manuscript.tex  the complete manuscript in one file
+  references.bib   bibliography source (the resolved entries are already
+                  inlined in the manuscript, so no BibTeX pass is needed)
+  wlpeerj.cls      PeerJ document class
+
+Note for submission staff (tables and bibliography are inside the TEX):
+
+  All tables are LaTeX tabular environments inside the manuscript file
+  rather than separate DOCX files, and the bibliography is included as a
+  resolved thebibliography environment (references.bib is supplied as
+  well).  Every number in the tables and text is written directly by the
+  analysis scripts that produced it, so re-keying them into DOCX would
+  break that provenance.  The file compiles with pdflatex alone, with no
+  BibTeX pass and no additional files beyond those listed above.
+
+Built by paper/make_submission.py -- edit the sources in paper/, not these.

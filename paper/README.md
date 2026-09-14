@@ -33,6 +33,23 @@ pdflatex gcmrk_paper_peerj
 The manuscript compiles before any analysis has been run: each generated value
 has a `\providecommand` fallback in `gcmrk_macros.tex`.
 
+## Submission bundle
+
+A submission system compiles whatever files it is given in one flat directory,
+which the split sources and the `results/` and `figures/` paths do not survive.
+`make_submission.py` resolves the whole chain once:
+
+```bash
+python3 paper/make_submission.py
+```
+
+It writes `submission/`: a single `manuscript.tex` with every macro value, table
+body and bibliography entry inlined, the figures copied out as `figure1.pdf` and
+so on in citation order, `references.bib`, the class file, a `MANIFEST.txt`, and
+the compiled PDF. The bundle needs only `pdflatex` --- no BibTeX pass, no other
+files. The script fails rather than falling back if a generated file is missing,
+so the bundle cannot carry a placeholder value.
+
 ## Analyses
 
 Run from the repository root so that `gcmrk` is importable:
