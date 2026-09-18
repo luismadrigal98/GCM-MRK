@@ -368,7 +368,11 @@ comparison we bisect these parameters until each method returns exactly $K$
 communities, which is the most generous setting available to them. We verified
 that the graph methods are insensitive to the soft-thresholding power $\beta$
 (bisecting to $K$ renormalizes granularity), so the shared choice $\beta=6$ does
-not handicap them.
+not handicap them. The implementations compared are WGCNA 1.74 in R 4.6.1,
+\texttt{leidenalg} 0.12.0 (Leiden), \texttt{python-igraph} 1.0.0 (Louvain),
+scikit-learn 1.9.0 (spectral clustering), \texttt{markov\_clustering} 0.0.6
+(Markov clustering) and SciPy 1.18.1 (agglomerative clustering); k-means uses
+\tool{}'s own k-means++ implementation.
 
 WGCNA~\cite{Langfelder2008} is reported twice, because it selects its own module
 count from a fixed tree-cut height and is correspondingly sensitive to
@@ -453,6 +457,21 @@ three replicates per size, on the same hardware and with identical GA settings.
 
 We use the adjusted Rand index (ARI)~\cite{HubertArabie1985}; for the single-dataset summaries we also report Hungarian-matched accuracy. Results are reported as mean $\pm$ SD over the random datasets. All code to reproduce the experiments, figures, and tables is provided with the package.
 
+\subsection*{Use of generative AI tools}
+Generative AI was used in this work under the authors' direction. The tool was
+Claude Opus 5 (model identifier \texttt{claude-opus-5}; Anthropic;
+\url{https://www.anthropic.com/claude}), accessed through Claude Code,
+Anthropic's agentic coding tool (version 2.1, most recently 2.1.170;
+\url{https://claude.com/claude-code}), between July and September 2026. It was
+used to (i) assist with the documentation of code and refactor software for organization: 
+the benchmarking code in \texttt{paper/experiments/} (interfaces to the competing methods, the
+data-generating processes, and the analysis and figure scripts) and parts of the
+\tool{} package, including the factor block-model objectives and the speed-up
+of the local search; (ii) audit analyses and methodological decisions,
+including the benchmark design and the factor block model, which the authors
+evaluated before adopting; (iii) revise manuscript text; and (iv) check
+citations formatinf for LaTeX compilation.
+
 \section*{Results}
 
 \subsection*{Recovering correlated modules on synthetic data}
@@ -503,7 +522,7 @@ construction.}
 \label{fig:convergence}
 \end{figure}
 
-\subsection*{Comparison against contemporary module detectors}
+\subsection*{Comparison with existing module-detection tools}
 The central methodological question is whether globally optimizing the block
 likelihood improves on the methods a practitioner would otherwise reach for. The
 replicated noise sweep (Fig~\ref{fig:perfnoise}, Table~\ref{tab:baselines}) shows
@@ -705,7 +724,7 @@ structure yields more modules and a higher selected rank, and on data that genui
 model it offers nothing over Eq~\eqref{eq:loglik}. Its value is that a user who
 has specific reason to expect module members to respond at different strengths, or to several regulators, can test that expectation; on the real compendia analysed below we found no such case.
 
-\subsection*{Real expression data with curated modules}
+\subsection*{Validation on real biological data with curated modules}
 Everything above is measured on data we generated. The misspecification sweep
 mitigates that---those processes deliberately break our own model---but they
 remain simulations, and a module detector should be judged on whether it recovers
@@ -1323,4 +1342,4 @@ every process.
 All source code for the \tool{} package, along with the reproduction scripts to generate the results and figures presented in this manuscript, is publicly available under an open-source license on GitHub at \url{https://github.com/luismadrigal98/GCM-MRK}. To ensure long-term reproducibility, a persistent snapshot of the codebase at the time of submission has been archived on Zenodo (DOI: 10.5281/zenodo.21361265). The breast-cancer RNA-seq dataset (GSE183947) analyzed in this study is publicly available from the NCBI Gene Expression Omnibus (GEO). The expression compendia and curated module definitions of the Saelens et al.\ benchmark are available from Zenodo (DOI: 10.5281/zenodo.5532578); the scripts in \texttt{paper/experiments/} document how they were subset and scored.
 
 \section*{Acknowledgments}
-We thank all the class of Simulation in Python offered in the University of Kansas, where all this project of evolving solutions using evolutionary algorithms (the simulation bit) started. We also acknowledge the use of Claude Opus 5 model from Anthropic for polishing writing and language refinement. All AI-refined content was reviewed by the authors and we take full responsibility for the content presented in the manuscript. 
+We thank the Simulation in Python class at the University of Kansas, where this project of evolving solutions with evolutionary algorithms began. Claude Opus 5 (Anthropic) was also used for language editing; its full role in this work, including software development and analysis, is described under ``Use of generative AI tools'' in Materials and methods. The authors take full responsibility for the content of the manuscript.

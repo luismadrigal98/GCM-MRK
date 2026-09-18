@@ -91,6 +91,17 @@ GENERATORS = {
 
 GEN_ORDER = ["onefactor", "multifactor", "hub", "overlapping", "counts", "network"]
 
+#: Short two-line labels for the figure, where six groups share the text width;
+#: the table keeps the full names.
+FIG_GEN_LABELS = {
+    "onefactor": "one-factor\n(GCM model)",
+    "multifactor": "multi-\nfactor",
+    "hub": "hub-and-\nspoke",
+    "overlapping": "over-\nlapping",
+    "counts": "NB\ncounts",
+    "network": "network\n(LFR)",
+}
+
 GEN_LABELS = {
     "onefactor": "one-factor $\\pm$ (GCM's model)",
     "multifactor": "multi-factor, continuous loadings",
@@ -262,7 +273,7 @@ def fig_misspec(data):
     show = ["memetic", "factor_auto", "hier_avg", "spectral", "leiden",
             "wgcna_oracle"]
 
-    fig, ax = plt.subplots(figsize=(FIG_WIDTH, 3.8))
+    fig, ax = plt.subplots(figsize=(FIG_WIDTH, 4.4))
     x = np.arange(len(gens))
     w = 0.8 / len(show)
     for j, m in enumerate(show):
@@ -271,14 +282,19 @@ def fig_misspec(data):
         ax.bar(x + (j - len(show) / 2 + 0.5) * w, mu, w, yerr=sd, capsize=2,
                label=FIG_LABELS.get(m, m))
     ax.set_xticks(x)
-    ax.set_xticklabels([GEN_LABELS[g].replace("$\\pm$", "±") for g in gens],
-                       rotation=20, ha="right", fontsize=7.5)
-    ax.set_ylabel("adjusted Rand index")
-    ax.set_ylim(0, 1.08)
+    ax.set_xticklabels([FIG_GEN_LABELS[g] for g in gens], fontsize=9)
+    ax.set_ylabel("adjusted Rand index", fontsize=10)
+    ax.tick_params(axis="y", labelsize=9)
+    # headroom above the bars carries the correct / misspecified annotation
+    ax.set_ylim(0, 1.22)
+    ax.set_yticks(np.arange(0, 1.01, 0.2))
     ax.axvline(0.5, color="0.6", lw=0.8, ls=":")
-    ax.text(0.02, 0.98, "model correct →| ← model misspecified",
-            transform=ax.transAxes, fontsize=7, va="top", color="0.35")
-    ax.legend(frameon=False, fontsize=7, ncol=2, loc="lower center",
+    ax.text(0, 1.12, "model\ncorrect", ha="center", va="center",
+            fontsize=8.5, color="0.35")
+    ax.text((len(gens) - 1 + 1) / 2, 1.12, "model misspecified", ha="center",
+            va="center", fontsize=8.5, color="0.35")
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.legend(frameon=False, fontsize=8.5, ncol=2, loc="lower center",
               bbox_to_anchor=(0.5, 1.01))
     fig.tight_layout()
     fig.savefig(FIGURES / f"misspecification{TAG}.pdf")

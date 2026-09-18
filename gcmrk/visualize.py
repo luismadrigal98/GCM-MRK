@@ -384,11 +384,11 @@ def plot_clusters(
             ncol = max(1, -(-len(seen) // 8))
             ax.legend(
                 seen.values(), seen.keys(),
-                fontsize=7, frameon=True, framealpha=0.7,
+                fontsize=8, frameon=True, framealpha=0.7,
                 loc="best", markerscale=0.8, ncol=ncol,
             )
 
-    ax.tick_params(labelsize=7)
+    ax.tick_params(labelsize=8)
     fig.tight_layout()
     return fig
 

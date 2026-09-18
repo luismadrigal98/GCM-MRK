@@ -328,7 +328,7 @@ def fig_vs_noise(sweep, nls):
         "mcl": ("MCL", "<-", "C8"),
         "wgcna_oracle": ("WGCNA (oracle-tuned)", ">-", "C9"),
     }
-    fig, ax = plt.subplots(figsize=(FIG_WIDTH, 3.6))
+    fig, ax = plt.subplots(figsize=(FIG_WIDTH, 4.6))
     for m, (lab, ls, c) in style.items():
         mean = np.array([np.mean(_series(sweep, m, nl)) for nl in nls])
         sd = np.array([np.std(_series(sweep, m, nl)) for nl in nls])
@@ -336,10 +336,9 @@ def fig_vs_noise(sweep, nls):
         ax.fill_between(nls, mean - sd, mean + sd, color=c, alpha=0.10)
     ax.set_xlabel("noise level $\\sigma$")
     ax.set_ylabel("adjusted Rand index")
-    # Ten series leave no clear space inside the axes, so the legend keeps an
-    # opaque background rather than sitting transparently over the curves.
-    ax.legend(fontsize=7.5, ncol=2, loc="lower left", frameon=True,
-              framealpha=0.9, edgecolor="none")
+    # Ten series leave no clear space inside the axes, so the legend sits above.
+    ax.legend(fontsize=8, ncol=2, loc="lower center", frameon=False,
+              bbox_to_anchor=(0.5, 1.01))
     fig.tight_layout()
     fig.savefig(FIGURES / "baselines_vs_noise.pdf")
     plt.close(fig)

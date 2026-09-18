@@ -415,19 +415,19 @@ def fig_saelens(data):
                                  .replace("\\texttt{", "").replace("}", "")
                                  .replace("\\_", "_")
              for m in METHOD_ORDER}
-    fig, ax = plt.subplots(figsize=(FIG_WIDTH, 3.6))
+    fig, ax = plt.subplots(figsize=(FIG_WIDTH, 4.0))
     x = np.arange(len(names))
     w = 0.8 / len(METHOD_ORDER)
     for j, m in enumerate(METHOD_ORDER):
         vals = [res[n]["methods"].get(m, {}).get("f1rr", np.nan) for n in names]
         ax.bar(x + (j - len(METHOD_ORDER) / 2 + 0.5) * w, vals, w, label=plain[m])
     ax.set_xticks(x)
-    ax.set_xticklabels([n.replace("_", "\n", 1) for n in names], fontsize=8)
-    ax.set_ylabel("F1 (recovery, relevance)", fontsize=9)
-    ax.tick_params(axis="y", labelsize=8)
+    ax.set_xticklabels([n.replace("_", "\n", 1) for n in names], fontsize=9)
+    ax.set_ylabel("F1 (recovery, relevance)", fontsize=10)
+    ax.tick_params(axis="y", labelsize=9)
     # The tallest bars reach the top of the axes, so the legend goes above them
     # rather than over them.
-    ax.legend(frameon=False, fontsize=7.5, ncol=3, loc="lower center",
+    ax.legend(frameon=False, fontsize=8.5, ncol=2, loc="lower center",
               bbox_to_anchor=(0.5, 1.01))
     ax.spines[["top", "right"]].set_visible(False)
     fig.tight_layout()

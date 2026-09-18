@@ -413,7 +413,7 @@ def fig_dimred_synthetic(X, labels, truth, name):
 
 def fig_dimred_empirical(G, labels):
     """PCA + correlation-MDS of the GSE183947 gene modules."""
-    fig, axes = plt.subplots(1, 2, figsize=(FIG_WIDTH, 3.0))
+    fig, axes = plt.subplots(1, 2, figsize=(FIG_WIDTH, 3.7))
     for ax, method, title in zip(
         axes,
         ["pca", "cor_mds"],
@@ -421,10 +421,18 @@ def fig_dimred_empirical(G, labels):
     ):
         X2 = reduce_dimensions(G, labels, method=method, by_sample=True)
         plot_clusters(X2, labels, method=method, ax=ax, title=title,
-                      show_legend=(method == "pca"))
+                      show_legend=False)
+    # Fourteen modules: a legend inside either panel covers the centroids, so
+    # one shared legend goes below both.
+    seen = {}
+    for h, lab in zip(*axes[0].get_legend_handles_labels()):
+        if lab and lab not in seen:
+            seen[lab] = h
+    fig.legend(seen.values(), seen.keys(), loc="lower center", ncol=7,
+               fontsize=8, frameon=False, markerscale=0.8)
     fig.suptitle("GSE183947: co-expression modules in reduced dimensions",
                  fontsize=10, fontweight="bold")
-    fig.tight_layout(rect=[0, 0, 1, 0.94])
+    fig.tight_layout(rect=[0, 0.13, 1, 0.94])
     fig.savefig(FIGURES / "dimred_empirical.pdf")
     plt.close(fig)
 
