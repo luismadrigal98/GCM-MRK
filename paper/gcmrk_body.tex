@@ -1142,6 +1142,8 @@ captures structure beyond what Euclidean geometry reveals.}
 \label{fig:dimred_emp}
 \end{figure}
 
+% Flush the remaining Results figures so the Discussion starts on a clean page.
+\clearpage
 \section*{Discussion}
 \tool{} reframes co-expression module detection as maximum-likelihood inference
 under an explicit generative model, and the value of making that model explicit
@@ -1335,7 +1337,7 @@ every process.
 \textbf{Reproduction package.} For convenience, a compressed version of the repository is shared as a companion to the paper (although it is also available through GitHub and Zenodo). It contains the source code, one script per analysis in \texttt{paper/experiments/} (listed in that directory's README), and the generated results tables and figures.
 
 \section*{Data and Software Availability}
-All source code for the \tool{} package, along with the reproduction scripts to generate the results and figures presented in this manuscript, is publicly available under an open-source license on GitHub at \url{https://github.com/luismadrigal98/GCM-MRK}. Every release of the repository is archived on Zenodo; DOI 10.5281/zenodo.21361264 identifies the archive and resolves to its most recent version. The breast-cancer RNA-seq dataset (GSE183947) analyzed in this study is publicly available from the NCBI Gene Expression Omnibus (GEO). The expression compendia and curated module definitions of the Saelens et al.\ benchmark are available from Zenodo (DOI: 10.5281/zenodo.5532578); the scripts in \texttt{paper/experiments/} document how they were subset and scored.
+All source code for the \tool{} package, along with the reproduction scripts to generate the results and figures presented in this manuscript, is publicly available under an open-source license on GitHub at \url{https://github.com/luismadrigal98/GCM-MRK}. The version of the code accompanying this manuscript is archived on Zenodo (DOI: 10.5281/zenodo.22848121); DOI 10.5281/zenodo.21361264 covers all archived versions and resolves to the most recent one. The breast-cancer RNA-seq dataset (GSE183947) analyzed in this study is publicly available from the NCBI Gene Expression Omnibus (GEO). The expression compendia and curated module definitions of the Saelens et al.\ benchmark are available from Zenodo (DOI: 10.5281/zenodo.5532578); the scripts in \texttt{paper/experiments/} document how they were subset and scored.
 
 \section*{Acknowledgments}
 We thank the Simulation in Python class at the University of Kansas, where this project of evolving solutions with evolutionary algorithms began. Claude Opus 5 (Anthropic) was also used for language editing; its full role in this work, including software refactoring and documentation, is described under ``Use of generative AI tools'' in Materials and methods. The authors take full responsibility for the content of the manuscript.
