@@ -155,18 +155,26 @@ def build() -> None:
         f"% --- inlined from {BBL} (also submitted as references.bib) ---\n{bbl}",
     )
 
-    # 5. Write the bundle.
-    if OUT.exists():
-        shutil.rmtree(OUT)
-    OUT.mkdir()
+    # 5. Write the bundle in place.  Deleting the directory first would unlink
+    # files a PDF viewer has open, and on a FUSE mount (this NTFS disk) each
+    # one then lingers as a .fuse_hidden* file until the viewer closes.
+    # Overwriting keeps the same file, and the viewer just reloads it.
+    for src, _ in mapping:
+        if not (PAPER / "figures" / src).exists():
+            raise MissingResult(f"figures/{src} is missing; re-run its script.")
+    OUT.mkdir(exist_ok=True)
+    expected = ({MASTER, Path(MASTER).with_suffix(".pdf").name, "wlpeerj.cls",
+                 "references.bib", "MANIFEST.txt"}
+                | {dst for _, dst in mapping})
+    for stale in OUT.iterdir():
+        if (stale.is_file() and stale.name not in expected
+                and not stale.name.startswith(".fuse_hidden")):
+            stale.unlink()
     (OUT / MASTER).write_text(text)
     shutil.copy2(PAPER / "wlpeerj.cls", OUT / "wlpeerj.cls")
     shutil.copy2(PAPER / "references.bib", OUT / "references.bib")
     for src, dst in mapping:
-        source = PAPER / "figures" / src
-        if not source.exists():
-            raise MissingResult(f"figures/{src} is missing; re-run its script.")
-        shutil.copy2(source, OUT / dst)
+        shutil.copy2(PAPER / "figures" / src, OUT / dst)
 
     manifest = ["Figure files, in order of first citation in the text:", ""]
     manifest += [f"  {dst:<15} {src}" for src, dst in mapping]
